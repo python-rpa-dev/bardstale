@@ -1,0 +1,183 @@
+/* Hollow Vale — single source of truth for design tokens (plan M3). */
+
+:root {
+  --ink: #141019;
+  --parchment: #f2e8d5;
+  --gold: #c9a227;
+  --hp: #c0392b;
+  --sp: #2e6fd8;
+  --rare: #8e44ad;
+  --uncommon: #27ae60;
+
+  /* derived surfaces */
+  --panel: color-mix(in srgb, var(--ink) 78%, var(--parchment));
+  --panel-edge: color-mix(in srgb, var(--gold) 55%, var(--ink));
+  --text: var(--parchment);
+  --muted: color-mix(in srgb, var(--parchment) 60%, var(--ink));
+
+  /* 8-px spacing scale */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 1rem;
+  --s4: 1.5rem;
+  --s5: 2rem;
+
+  /* font scale multiplier, set from settings */
+  --fs: 1;
+}
+
+/* Colorblind mode: red/green pair → blue/orange, glyphs reveal (never hue-only). */
+body.cb {
+  --hp: #1f6fd8;
+  --sp: #e07b00;
+  --uncommon: #0a7ea4;
+}
+body.cb .bar-glyph { display: inline; }
+
+html { font-size: calc(16px * var(--fs)); }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  line-height: 1.45;
+}
+
+#app { max-width: 68rem; margin: 0 auto; padding: var(--s3); }
+
+/* ---------- header ---------- */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 2px solid var(--panel-edge);
+  margin-bottom: var(--s3);
+}
+.hdr .loc { font-size: 1.15rem; letter-spacing: 0.04em; color: var(--gold); }
+.hdr .purse { text-align: right; min-width: 6rem; }
+.hdr .purse b { color: var(--gold); }
+
+/* ---------- focus & touch ---------- */
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+button, select, input { font: inherit; color: inherit; }
+
+.btn {
+  position: relative;
+  min-height: 3.5rem; /* 56 px touch target */
+  min-width: 3.5rem;
+  padding: var(--s2) var(--s3);
+  background: var(--panel);
+  color: var(--text);
+  border: 2px solid var(--panel-edge);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--gold); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* tooltip from hint */
+.btn[data-hint]:not([data-hint=""]):hover::after,
+.btn[data-hint]:not([data-hint=""]):focus-visible::after {
+  content: attr(data-hint);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 16rem;
+  padding: var(--s2);
+  background: var(--ink);
+  color: var(--parchment);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  z-index: 60;
+  pointer-events: none;
+}
+
+/* ---------- bars ---------- */
+.bar { display: flex; align-items: center; gap: var(--s2); }
+.bar-track {
+  position: relative;
+  flex: 1;
+  height: 1rem;
+  background: color-mix(in srgb, var(--ink) 60%, black);
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill { position: absolute; inset: 0 auto 0 0; }
+.bar-num { font-size: 0.8rem; color: var(--muted); min-width: 4.5ch; text-align: right; }
+.bar-glyph { display: none; font-size: 0.9rem; }
+
+/* ---------- title screen ---------- */
+.title-screen { text-align: center; padding-top: var(--s5); }
+.game-title {
+  font-size: 3.4rem;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  margin: var(--s4) 0 var(--s2);
+}
+.subtitle { color: var(--muted); margin-bottom: var(--s5); }
+.title-buttons { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; }
+
+/* ---------- town ---------- */
+.town-scene { position: relative; aspect-ratio: 16 / 9; background: var(--panel); border: 2px solid var(--panel-edge); border-radius: 8px; overflow: hidden; }
+.town-scene img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hotspot {
+  position: absolute;
+  top: 42%;
+  transform: translateX(-50%);
+  width: clamp(3.5rem, 12%, 8rem);
+  height: 30%;
+  background: transparent;
+  border: 2px dashed transparent;
+}
+.hotspot:hover, .hotspot:focus-visible { border-color: var(--gold); }
+.hotspot::before { content: attr(data-cap); position: absolute; inset: auto 0 -1.4rem 0; text-align: center; font-size: 0.85rem; color: var(--parchment); opacity: 0; }
+.hotspot:hover::before, .hotspot:focus-visible::before { opacity: 1; }
+
+.service-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: var(--s3); margin-top: var(--s4); }
+
+/* ---------- modal ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(0, 0, 0, 0.65);
+  display: grid; place-items: center; padding: var(--s3);
+}
+.modal-card {
+  background: var(--panel);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  padding: var(--s4);
+  max-width: 36rem; width: 100%;
+  max-height: 90vh; overflow: auto;
+}
+.modal-card h2 { margin-top: 0; color: var(--gold); }
+.modal-actions { display: flex; gap: var(--s3); margin-top: var(--s4); flex-wrap: wrap; }
+
+/* ---------- toasts (single aria-live region) ---------- */
+#toasts { position: fixed; left: 50%; bottom: var(--s4); transform: translateX(-50%); z-index: 90; display: grid; gap: var(--s2); }
+.toast {
+  background: var(--panel); border: 2px solid var(--gold); border-radius: 6px;
+  padding: var(--s2) var(--s3); max-width: 24rem; text-align: center;
+}
+
+/* ---------- shared bits (used from M4 on) ---------- */
+.panel { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 8px; padding: var(--s3); margin-bottom: var(--s3); }
+.chip { display: inline-block; padding: 2px var(--s2); border: 1px solid var(--gold); border-radius: 999px; font-size: 0.8rem; color: var(--gold); }
+.chip.dim { opacity: 0.55; }
+.rarity-common { color: var(--parchment); }
+.rarity-uncommon { color: var(--uncommon); }
+.rarity-rare { color: var(--rare); }
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--s3); }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* reduce-motion kills transitions/shakes */
+body.reduce-motion *, body.reduce-motion *::after, body.reduce-motion *::before { transition: none !important; animation: none !important; }

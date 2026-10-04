@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#141019"/>
+  <rect width="64" height="64" fill="#8e44ad" fill-opacity="0.20"/>
+  <g stroke="#141019" stroke-width="2" opacity="0.55">
+    <path d="M0,16 H64 M0,32 H64 M0,48 H64"/>
+    <path d="M16,0 V16 M48,0 V16 M32,16 V32 M16,32 V48 M48,32 V48 M32,48 V64"/>
+  </g>
+  <g fill="#ffffff" fill-opacity="0.05">
+    <rect x="2" y="2" width="12" height="12"/>
+    <rect x="34" y="18" width="12" height="12"/>
+    <rect x="2" y="34" width="12" height="12"/>
+    <rect x="50" y="50" width="12" height="12"/>
+  </g>
+  <g fill="#000000" fill-opacity="0.22">
+    <rect x="34" y="2" width="12" height="12"/>
+    <rect x="18" y="34" width="12" height="12"/>
+  </g>
+  <circle cx="32" cy="32" r="17" fill="none" stroke="#c9a227" stroke-width="2.5" stroke-opacity="0.45"/>
+  <circle cx="32" cy="32" r="11" fill="none" stroke="#c9a227" stroke-width="2" stroke-opacity="0.3"/>
+  <g fill="#c9a227" fill-opacity="0.4">
+    <rect x="30.5" y="11" width="3" height="6"/>
+    <rect x="30.5" y="47" width="3" height="6"/>
+    <rect x="11" y="30.5" width="6" height="3"/>
+    <rect x="47" y="30.5" width="6" height="3"/>
+  </g>
+</svg>

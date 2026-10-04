@@ -17,6 +17,13 @@ export interface Pc {
   points: number; // unallocated stat points (from level 2)
   alloc: { atk: number; def: number; dex: number; mnd: number };
   gear: { weapon?: string; armor?: string; trinket?: string }; // item ids
+  statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound)
+}
+
+/** A lingering condition on a PC; rounds tick only during combat. */
+export interface StatusMark {
+  kind: "poison" | "wound";
+  roundsLeft: number;
 }
 
 /** Effective maxima from class formula + growth (gear handled separately). */
@@ -92,7 +99,7 @@ export interface GameState {
   inventory: Inventory;
   codex: string[]; // stamped bestiary ids
   medals: string[]; // family ids with completed codex
-  bounties: { offers: BountyOffer[]; completed: string[] };
+  bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
   settings: Settings;
@@ -108,7 +115,7 @@ const CLASS_NAMES: Record<ClassId, string> = {
   rogue: "Tamsin",
 };
 
-function makePc(classId: ClassId, ordinal: number): Pc {
+export function makePc(classId: ClassId, ordinal: number): Pc {
   const def = classById(classId);
   return {
     id: `${classId}-${ordinal}`,
@@ -121,6 +128,7 @@ function makePc(classId: ClassId, ordinal: number): Pc {
     points: 0,
     alloc: { atk: 0, def: 0, dex: 0, mnd: 0 },
     gear: {},
+    statuses: [],
   };
 }
 
@@ -179,8 +187,11 @@ interface StorageLike {
 /** Version switch for future migrations; only v1 exists today. */
 function migrate(save: GameState & { version: number }): GameState | null {
   switch (save.version) {
-    case 1:
-      return save as unknown as GameState;
+    case 1: {
+      const s = save as unknown as GameState;
+      for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
+      return s;
+    }
     default:
       return null; // unknown/corrupt → caller starts a new game, never throws
   }

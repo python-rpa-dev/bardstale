@@ -181,3 +181,141 @@ button, select, input { font: inherit; color: inherit; }
 
 /* reduce-motion kills transitions/shakes */
 body.reduce-motion *, body.reduce-motion *::after, body.reduce-motion *::before { transition: none !important; animation: none !important; }
+
+/* ---------- M4: service screens ---------- */
+.muted { color: color-mix(in srgb, var(--parchment) 55%, transparent); }
+.quote { font-style: italic; }
+.price { color: var(--gold); white-space: nowrap; }
+.item-name.rar-common { color: #a7a29a; }
+.item-name.rar-uncommon { color: var(--uncommon); }
+.item-name.rar-rare { color: var(--rare); }
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+.badge-mod { border-color: var(--rare); color: var(--rare); }
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--uncommon) 30%, var(--panel));
+}
+.chip-wound { background: color-mix(in srgb, var(--hp) 30%, var(--panel)); }
+.status-chips { display: flex; gap: 0.25rem; min-height: 1.2em; }
+
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.pc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pc-card.selected { outline: 2px solid var(--gold); }
+.pc-card.downed .pc-id b { color: var(--hp); }
+.points-badge { color: var(--gold); font-weight: 700; }
+
+.detail-sheet,
+.panel {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+.sheet-top { display: flex; gap: 1rem; align-items: center; }
+.sheet-actions { display: flex; gap: 0.75rem; margin-block: 0.75rem; }
+.stat-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.4rem; }
+.stat-row { display: flex; align-items: center; gap: 0.6rem; }
+
+.gear-slots { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.gear-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+}
+.slot-name { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.08em; min-width: 4.5rem; }
+.slot-empty { color: color-mix(in srgb, var(--parchment) 40%, transparent); }
+.gear-picker { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
+
+.recruit-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block: 1rem; }
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.shop-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+}
+.shop-card .muted { flex: 1; font-size: 0.85rem; }
+.sell-list { display: grid; gap: 0.4rem; margin-block: 0.75rem; }
+.sell-row,
+.temple-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
+}
+.temple-rows { display: grid; gap: 0.4rem; margin-block: 1rem; }
+.temple-id { flex: 1; min-width: 12rem; }
+.temple-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.temple-row.downed b { color: var(--hp); }
+
+.bounty-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-block: 0.5rem;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+}
+.bounty-card.accepted { outline: 2px solid var(--gold); }
+.rumor { margin-block: 0.4rem; }
+
+.family-block { margin-block: 1.75rem; }
+.family-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.codex-card {
+  padding: 0.75rem;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 6px;
+}
+.codex-card ul { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; }
+.codex-card.unstamped { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; opacity: 0.75; }
+.silhouette { filter: brightness(0) invert(0.28); }
+.unknown { color: var(--gold); letter-spacing: 0.3em; }

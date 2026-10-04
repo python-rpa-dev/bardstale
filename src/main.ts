@@ -6,6 +6,11 @@ import { createSfx } from "./core/sfx";
 import { loadManifest } from "./render/art";
 import { renderTitle } from "./screens/title";
 import { renderTown } from "./screens/town";
+import { renderGuild } from "./screens/guild";
+import { renderTemple } from "./screens/temple";
+import { renderShop } from "./screens/shop";
+import { renderTavern } from "./screens/tavern";
+import { renderCodex } from "./screens/codex";
 
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
@@ -37,7 +42,7 @@ const ctx: RouteCtx = {
   hasSave: () => store.hasSave(),
 };
 
-/** Placeholder for milestones not yet implemented (M4–M6 fill these in). */
+/** Placeholder for milestones not yet implemented (M5–M6 fill these in). */
 const underConstruction: Screen = (host, c) => {
   host.append(
     el("div", { class: "panel" },
@@ -81,11 +86,11 @@ function updateHeader(route: string): void {
 const routes: Record<string, Screen> = {
   title: renderTitle,
   town: renderTown,
-  party: underConstruction,
-  shop: underConstruction,
-  temple: underConstruction,
-  tavern: underConstruction,
-  codex: underConstruction,
+  party: renderGuild,
+  shop: renderShop,
+  temple: renderTemple,
+  tavern: renderTavern,
+  codex: renderCodex,
   gate: underConstruction,
   dungeon: underConstruction,
   combat: underConstruction,

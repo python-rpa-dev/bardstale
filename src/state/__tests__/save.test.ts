@@ -44,6 +44,8 @@ describe("save round-trip", () => {
       partyHpSp: s.party.map((p) => ({ id: p.id, hp: p.hp, sp: p.sp })),
       chests: [{ cell: 500, opened: false }],
       flags: { "shrine-f0": true },
+      steps: 7,
+      loot: { gold: 12, items: { "potion-hp": 1 } },
     };
     s.activeGate = gate;
     expect(deserialize(serialize(s))?.activeGate).toEqual(gate);

@@ -319,3 +319,48 @@ body.reduce-motion *, body.reduce-motion *::after, body.reduce-motion *::before 
 .codex-card.unstamped { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; opacity: 0.75; }
 .silhouette { filter: brightness(0) invert(0.28); }
 .unknown { color: var(--gold); letter-spacing: 0.3em; }
+
+/* ---------- The Depths (M5) ---------- */
+.dungeon-grid { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: 1rem; align-items: start; }
+@media (max-width: 62rem) { .dungeon-grid { grid-template-columns: 1fr; } }
+.view-col, .side-col { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.view-canvas {
+  display: block;
+  width: 100%;
+  max-width: 46rem;
+  aspect-ratio: 480 / 300;
+  image-rendering: pixelated;
+  border: 2px solid #000;
+  border-radius: 6px;
+  background: #05040a;
+}
+.view-canvas.shake { animation: shake 0.1s linear; }
+@keyframes shake {
+  0% { transform: translate(3px, 2px); }
+  50% { transform: translate(-3px, -2px); }
+  100% { transform: none; }
+}
+.mini-card { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }
+.minimap-canvas {
+  image-rendering: pixelated;
+  width: 100%;
+  max-width: 13rem;
+  aspect-ratio: 1 / 1;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  border-radius: 4px;
+  background: #070510;
+}
+.legend { font-size: 0.72rem; text-align: center; margin: 0; }
+.cmd-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.dlog {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  max-height: 13rem;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+.dlog p { margin: 0 0 0.3rem; }
+.dlog p:last-child { margin-bottom: 0; }
+button.danger { color: #e0645c; border-color: #7e2f2a; }

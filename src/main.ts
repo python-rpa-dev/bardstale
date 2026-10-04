@@ -11,6 +11,8 @@ import { renderTemple } from "./screens/temple";
 import { renderShop } from "./screens/shop";
 import { renderTavern } from "./screens/tavern";
 import { renderCodex } from "./screens/codex";
+import { renderGate } from "./screens/gate";
+import { renderDungeon } from "./screens/dungeon";
 
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
@@ -91,8 +93,8 @@ const routes: Record<string, Screen> = {
   temple: renderTemple,
   tavern: renderTavern,
   codex: renderCodex,
-  gate: underConstruction,
-  dungeon: underConstruction,
+  gate: renderGate,
+  dungeon: renderDungeon,
   combat: underConstruction,
 };
 

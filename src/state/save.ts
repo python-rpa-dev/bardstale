@@ -59,7 +59,7 @@ export interface FloorMapSave {
   w: number;
   h: number;
   cells: string; // row-major "0"/"1", 1 = wall
-  entities: [number, string][]; // cellId → kind ("stairs"|"shrine"|"secret")
+  entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret")
 }
 
 export interface ActiveGate {
@@ -75,6 +75,9 @@ export interface ActiveGate {
   partyHpSp: { id: string; hp: number; sp: number }[];
   chests: { cell: number; opened: boolean }[];
   flags: Record<string, boolean>; // shrine-f<N>, merchant, hermit, villager…
+  steps: number; // per-floor event counter — seeds deterministic trap/encounter rolls, survives reloads
+  loot: { gold: number; items: Record<string, number> }; // this run's tally for the end-of-run summary
+  pendingMonsters?: string[]; // encounter awaiting combat (consumed by M6)
 }
 
 // ---------- Root state ----------

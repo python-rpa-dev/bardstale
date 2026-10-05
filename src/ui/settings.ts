@@ -1,5 +1,6 @@
 import { el, button, modal } from "./dom";
 import type { RouteCtx } from "./router";
+import { startTour } from "./tour";
 
 function checkRow(labelText: string, hint: string, checked: boolean, onChange: (v: boolean) => void): HTMLElement {
   const input = el("input", { type: "checkbox", class: "set-check" }) as HTMLInputElement;
@@ -98,6 +99,15 @@ export function openSettings(ctx: RouteCtx): void {
     el(
       "div",
       { class: "modal-actions" },
+      button("Replay Welcome Tour", {
+        hint: "Show the five-step town tour again",
+        onClick: () => {
+          close();
+          ctx.navigate("#/town");
+          // let the hashchange re-render settle before anchoring coach marks
+          setTimeout(() => startTour(ctx), 80);
+        },
+      }),
       button("Done", { onClick: () => close() }),
     ),
   );

@@ -463,3 +463,22 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 .settings-row .set-range { width: 100%; grid-column: 2; max-width: 12rem; justify-self: end; }
 .settings-row .set-out { grid-row: 1; grid-column: 3; min-width: 3.5rem; text-align: right; color: var(--gold); }
 .settings-row input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--gold); }
+
+/* ---------- welcome tour (P3) ---------- */
+.tour-overlay { position: fixed; inset: 0; z-index: 70; pointer-events: auto; }
+.tour-spot {
+  position: fixed; border: 3px solid var(--gold); border-radius: 10px;
+  box-shadow: 0 0 0 100vmax rgba(6, 4, 8, 0.72), 0 0 18px 2px rgba(201, 162, 39, 0.5);
+  pointer-events: none; transition: left 0.25s ease, top 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+.tour-card {
+  position: fixed; z-index: 71; max-width: min(92vw, 30rem); padding: var(--s3) var(--s4);
+  background: var(--ink); border: 2px solid var(--gold); border-radius: 12px; color: var(--parchment);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.tour-card.tour-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.tour-card h3 { margin: 0 0 var(--s2); color: var(--gold); }
+.tour-card p { margin: 0 0 var(--s3); line-height: 1.45; }
+.tour-card .modal-actions { justify-content: space-between; gap: var(--s2); }
+.tour-card .btn.primary { border-color: var(--gold); color: var(--gold); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }

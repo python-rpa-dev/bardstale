@@ -113,6 +113,7 @@ export interface GameState {
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
+  tourSeen?: boolean; // welcome coach-mark tour completed or skipped
   settings: Settings;
   activeGate?: ActiveGate;
   activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls

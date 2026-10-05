@@ -1,6 +1,7 @@
 import { el, button } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
+import { maybeStartTour } from "../ui/tour";
 
 interface Service {
   route: string;
@@ -54,4 +55,6 @@ export function renderTown(host: HTMLElement, ctx: RouteCtx): void {
       ),
     ),
   );
+  // first-run coach marks; no-op once the save records tourSeen
+  maybeStartTour(ctx);
 }

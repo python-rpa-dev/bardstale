@@ -3,6 +3,7 @@ import { el } from "./ui/dom";
 import { createRouter, navigateTo, type RouteCtx, type Router, type Screen } from "./ui/router";
 import { createStore } from "./state/save";
 import { createSfx } from "./core/sfx";
+ import { settingsGear } from "./ui/settings";
 import { loadManifest } from "./render/art";
 import { renderTitle } from "./screens/title";
 import { renderTown } from "./screens/town";
@@ -23,7 +24,7 @@ function applySettings(): void {
   document.body.classList.toggle("cb", st.colorblind);
   document.body.classList.toggle("reduce-motion", st.reduceMotion);
   document.documentElement.style.setProperty("--fs", String(st.fontScale));
-  sfx.setVolume(st.sfxVolume);
+   sfx.setVolume(st.sfxMuted ? 0 : st.sfxVolume);
 }
 
 let routerRef: Router | null = null;
@@ -63,7 +64,7 @@ const locLabel = el("span", { class: "loc" });
 const purseLabel = el("span", { class: "purse" });
 const screenHost = el("main", { id: "screen" });
 document.querySelector("#app")!.append(
-  el("header", { class: "hdr" }, locLabel, purseLabel),
+   el("header", { class: "hdr" }, locLabel, purseLabel, settingsGear(ctx)),
   screenHost,
 );
 

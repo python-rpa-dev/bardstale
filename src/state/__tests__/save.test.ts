@@ -29,6 +29,15 @@ describe("save round-trip", () => {
     expect(back).toEqual(s);
   });
 
+  it("backfills sfxMuted for v1 saves predating the mute control", () => {
+    const s = newGame(clockFrom("2026-10-04T12:00:00Z"));
+    const raw = JSON.parse(serialize(s)) as { settings: Record<string, unknown> };
+    delete raw.settings.sfxMuted; // a pre-M8 save on disk
+    const back = deserialize(JSON.stringify(raw));
+    expect(back?.settings.sfxMuted).toBe(false);
+    expect(back?.settings.sfxVolume).toBe(s.settings.sfxVolume);
+  });
+
   it("active expedition survives the round-trip (JSON-safe map)", () => {
     const s = newGame(clockFrom("2026-10-04T12:00:00Z"));
     const gate: ActiveGate = {

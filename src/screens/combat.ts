@@ -76,7 +76,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       slotImg(`monster.${f.mid}`, 96),
       el("b", { text: titleCase(f.mid) }),
       el("span", { class: "muted", text: `Lvl ${def.lvl}` }),
-      bar(f.hp, def.hp, dead ? "var(--danger)" : "var(--hp)")
+       bar(f.hp, def.hp, dead ? "var(--danger)" : "var(--hp)", "☠", `${titleCase(f.mid)} HP`)
     );
     return card;
   }
@@ -94,8 +94,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       },
       el("b", { text: p.name }),
       el("span", { class: "muted", text: `${titleCase(p.classId)} L${p.level}` }),
-      bar(p.hp, pcMax(p).hp, "var(--hp)"),
-      bar(p.sp, pcMax(p).sp, "var(--sp)"),
+       bar(p.hp, pcMax(p).hp, "var(--hp)", "♥", `${p.name} HP`),
+       bar(p.sp, pcMax(p).sp, "var(--sp)", "✦", `${p.name} SP`),
       ...p.statuses.map((s) => el("span", { class: `status-chip ${s.kind}`, text: `${s.kind} ${s.roundsLeft}` })),
       p.guard ? el("span", { class: "status-chip guard", text: "guard" }) : null,
       down ? el("span", { class: "down-label", text: "down" }) : null

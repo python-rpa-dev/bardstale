@@ -92,7 +92,9 @@ export interface Settings {
   reduceMotion: boolean;
   colorblind: boolean;
   fontScale: number;
-  sfxVolume: number;
+   sfxVolume: number;
+   /** Silence all SFX without losing the chosen volume. */
+   sfxMuted: boolean;
 }
 
 /** itemId → count. Equipment and consumables both stack by id. */
@@ -158,7 +160,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
-    settings: { quickBattle: false, reduceMotion: false, colorblind: false, fontScale: 1, sfxVolume: 0.5 },
+     settings: { quickBattle: false, reduceMotion: false, colorblind: false, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
 };
 }
 
@@ -199,7 +201,8 @@ function migrate(save: GameState & { version: number }): GameState | null {
   switch (save.version) {
     case 1: {
       const s = save as unknown as GameState;
-      for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
+       for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
+       s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       return s;
     }
     default:

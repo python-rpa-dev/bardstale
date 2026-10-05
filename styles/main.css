@@ -184,6 +184,11 @@ button, select, input { font: inherit; color: inherit; }
 /* reduce-motion kills transitions/shakes */
 body.reduce-motion *, body.reduce-motion *::after, body.reduce-motion *::before { transition: none !important; animation: none !important; }
 
+/* High contrast: derived tokens are substituted at :root, so override them here too. */
+body.hc { --ink: #000; --parchment: #fff; --text: #fff; --muted: #d6d6d6; --panel: #0a0a0a; --panel-edge: #ffd75e; --gold: #ffd75e; }
+body.hc .panel, body.hc .modal-card { border-width: 2px; }
+body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
 /* ---------- M4: service screens ---------- */
 .muted { color: color-mix(in srgb, var(--parchment) 55%, transparent); }
 .quote { font-style: italic; }

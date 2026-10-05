@@ -74,6 +74,11 @@ export function openSettings(ctx: RouteCtx): void {
         s.settings.reduceMotion = v;
       }),
     ),
+    checkRow("High Contrast", "brighter text and stronger panel borders", st.highContrast, (v) =>
+      ctx.commit((s) => {
+        s.settings.highContrast = v;
+      }),
+    ),
     checkRow("Colorblind Palette", "blue/orange meters with shape glyphs", st.colorblind, (v) =>
       ctx.commit((s) => {
         s.settings.colorblind = v;

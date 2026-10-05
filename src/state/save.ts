@@ -90,6 +90,8 @@ export interface ActiveGate {
 export interface Settings {
   quickBattle: boolean;
   reduceMotion: boolean;
+  /** Brighter text, stronger borders for low-vision readability. */
+  highContrast: boolean;
   colorblind: boolean;
   fontScale: number;
    sfxVolume: number;
@@ -161,7 +163,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
-     settings: { quickBattle: false, reduceMotion: false, colorblind: false, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
+    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
 };
 }
 
@@ -205,6 +207,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
       const s = save as unknown as GameState;
        for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
+      s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       return s;
     }
     default:

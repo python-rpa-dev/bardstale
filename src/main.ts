@@ -23,6 +23,7 @@ function applySettings(): void {
   const st = store.state.settings;
   document.body.classList.toggle("cb", st.colorblind);
   document.body.classList.toggle("reduce-motion", st.reduceMotion);
+  document.body.classList.toggle("hc", st.highContrast);
   document.documentElement.style.setProperty("--fs", String(st.fontScale));
    sfx.setVolume(st.sfxMuted ? 0 : st.sfxVolume);
 }
@@ -64,16 +65,25 @@ const LOC_NAMES: Record<string, string> = {
   combat: "Battle!",
 };
 
+const announcer = el("div", { id: "sr-announcer", class: "sr-only", "aria-live": "polite" });
 const locLabel = el("span", { class: "loc" });
 const purseLabel = el("span", { class: "purse" });
 const screenHost = el("main", { id: "screen" });
 document.querySelector("#app")!.append(
-   el("header", { class: "hdr" }, locLabel, purseLabel, settingsGear(ctx)),
+  el("header", { class: "hdr" }, locLabel, purseLabel, settingsGear(ctx)),
   screenHost,
+  announcer,
 );
 
+let lastAnnounced = "";
 function updateHeader(route: string): void {
-  locLabel.textContent = LOC_NAMES[route] ?? "Hollow Vale";
+  const locName = LOC_NAMES[route] ?? "Hollow Vale";
+  locLabel.textContent = locName;
+  if (locName !== lastAnnounced) {
+    // screen readers announce the new location on route change (polite live region)
+    lastAnnounced = locName;
+    announcer.textContent = locName;
+  }
   const s = store.state;
   purseLabel.replaceChildren(
     document.createTextNode("Purse "),

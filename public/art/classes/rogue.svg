@@ -1,11 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <rect x="3" y="3" width="90" height="90" rx="12" fill="#141019"/>
-  <rect x="6.5" y="6.5" width="83" height="83" rx="10" fill="none" stroke="#c9a227" stroke-width="3"/>
-  <path d="M54,16 C34,18 26,38 32,54 L38,58 L36,80 L70,80 L68,52 C70,34 68,18 54,16 Z" fill="#f2e8d5" fill-opacity="0.45" stroke="#141019" stroke-width="2"/>
-  <path d="M40,34 C34,40 34,50 38,56 L50,52 C46,44 46,38 50,34 Z" fill="#141019" fill-opacity="0.85"/>
-  <path d="M34,58 L66,54 L68,63 L37,67 Z" fill="#c0392b" stroke="#141019" stroke-width="1.5"/>
-  <path d="M60,62 L72,74 L58,69 Z" fill="#c0392b" stroke="#141019" stroke-width="1.5"/>
-  <path d="M28,52 L32,66 L24,66 Z" fill="#f2e8d5" stroke="#141019" stroke-width="1.5"/>
-  <rect x="24" y="66" width="8" height="3" rx="1" fill="#c9a227" stroke="#141019" stroke-width="1"/>
-  <rect x="26" y="69" width="4" height="8" fill="#141019" stroke="#c9a227" stroke-opacity="0.6" stroke-width="1"/>
+  <defs>
+    <radialGradient id="bgR" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#282031"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="cowlR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#453d52"/>
+      <stop offset="1" stop-color="#211c29"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgR)"/>
+  <ellipse cx="48" cy="89" rx="30" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- twin dagger tips at the bottom corners -->
+  <g stroke="#0d0a10" stroke-width="1.2">
+    <polygon points="8,96 11,74 14,96" fill="#b4b9c2"/>
+    <rect x="8.5" y="82" width="5" height="2.4" rx="0.8" fill="#c9a227"/>
+    <polygon points="82,96 85,74 88,96" fill="#b4b9c2"/>
+    <rect x="82.5" y="82" width="5" height="2.4" rx="0.8" fill="#c9a227"/>
+  </g>
+
+  <!-- leather doublet and cross strap -->
+  <path d="M26,96 c-1,-20 5,-32 14,-36 h16 c9,4 15,16 14,36 z" fill="#4a3b2e" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M34,68 L58,96 M62,68 L44,90" stroke="#33271c" stroke-width="4" fill="none"/>
+  <circle cx="48" cy="80" r="2.4" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+
+  <!-- deep cowl -->
+  <path d="M48,24 c-13,0 -21,11 -21,23 0,9 5,15 10,17 h22 c5,-2 10,-8 10,-17 0,-12 -8,-23 -21,-23 z" fill="url(#cowlR)" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M48,30 c-9,0 -15,7 -15,17 0,7 3,12 7,13 h16 c4,-1 7,-6 7,-13 0,-10 -6,-17 -15,-17 z" fill="#0d0a10"/>
+  <!-- shadowed eyes with a glint -->
+  <ellipse cx="43" cy="48.5" rx="2.6" ry="1.4" fill="#c9a227" opacity="0.9"/>
+  <ellipse cx="53" cy="48.5" rx="2.6" ry="1.4" fill="#c9a227" opacity="0.55"/>
+  <!-- scarf over the lower face -->
+  <path d="M36,55 c4,4 20,4 24,0 l-1,8 c-6,3 -16,3 -22,0 z" fill="#5a4f68" stroke="#0d0a10" stroke-width="1.3"/>
+  <path d="M37,58 c6,2.5 16,2.5 22,0" fill="none" stroke="#f2e8d5" stroke-opacity="0.18" stroke-width="1"/>
 </svg>

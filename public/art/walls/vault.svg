@@ -1,26 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#141019"/>
-  <rect width="64" height="64" fill="#8e44ad" fill-opacity="0.20"/>
-  <g stroke="#141019" stroke-width="2" opacity="0.55">
-    <path d="M0,16 H64 M0,32 H64 M0,48 H64"/>
-    <path d="M16,0 V16 M48,0 V16 M32,16 V32 M16,32 V48 M48,32 V48 M32,48 V64"/>
+  <defs>
+    <linearGradient id="vaultDeep" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1420"/>
+      <stop offset="1" stop-color="#0b080e"/>
+    </linearGradient>
+    <radialGradient id="vaultGlow" cx="0.5" cy="0.75" r="0.7">
+      <stop offset="0" stop-color="#c9a227" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#c9a227" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- recessed vault shadow behind the arch -->
+  <rect width="64" height="64" fill="url(#vaultDeep)"/>
+  <path d="M0,44 A32,32 0 0 1 64,44 L64,64 L0,64 Z" fill="#15101b"/>
+  <rect width="64" height="64" fill="url(#vaultGlow)"/>
+
+  <!-- barrel-vault ribs: main arch + two inner arcs (seamless at x=0/64) -->
+  <g fill="none">
+    <path d="M0,44 A32,32 0 0 1 64,44" stroke="#f2e8d5" stroke-opacity="0.20" stroke-width="4"/>
+    <path d="M0,44 A32,32 0 0 1 64,44" stroke="#0b080e" stroke-opacity="0.6" stroke-width="1.5"/>
+    <path d="M-1,47 A33,33 0 0 1 65,47" stroke="#f2e8d5" stroke-opacity="0.07" stroke-width="1.2"/>
+    <path d="M4,44 A28,28 0 0 1 60,44" stroke="#f2e8d5" stroke-opacity="0.10" stroke-width="1.6"/>
+    <path d="M9,44 A23,23 0 0 1 55,44" stroke="#f2e8d5" stroke-opacity="0.06" stroke-width="1.2"/>
   </g>
-  <g fill="#ffffff" fill-opacity="0.05">
-    <rect x="2" y="2" width="12" height="12"/>
-    <rect x="34" y="18" width="12" height="12"/>
-    <rect x="2" y="34" width="12" height="12"/>
-    <rect x="50" y="50" width="12" height="12"/>
+
+  <!-- voussoir joint lines radiating along the arch -->
+  <g stroke="#f2e8d5" stroke-opacity="0.13" stroke-width="1">
+    <path d="M4,30 L9.6,32.4"/>
+    <path d="M13,17.5 L17.6,21.4"/>
+    <path d="M50,8.5 L48.6,13.2" transform="translate(0,9)"/>
+    <path d="M60,30 L54.4,32.4"/>
+    <path d="M51,17.5 L46.4,21.4"/>
   </g>
-  <g fill="#000000" fill-opacity="0.22">
-    <rect x="34" y="2" width="12" height="12"/>
-    <rect x="18" y="34" width="12" height="12"/>
+
+  <!-- keystone with gold seal -->
+  <polygon points="28,12.6 36,12.6 37.5,20 26.5,20" fill="#2c2433" stroke="#f2e8d5" stroke-opacity="0.28" stroke-width="1"/>
+  <circle cx="32" cy="16.6" r="2.1" fill="#c9a227" opacity="0.85"/>
+  <circle cx="32" cy="16.6" r="3.4" fill="none" stroke="#c9a227" stroke-opacity="0.35" stroke-width="0.8"/>
+
+  <!-- arch-spring imposts -->
+  <g fill="#241d2b" stroke="#f2e8d5" stroke-opacity="0.16" stroke-width="1">
+    <rect x="-1" y="43" width="7" height="5"/>
+    <rect x="58" y="43" width="7" height="5"/>
   </g>
-  <circle cx="32" cy="32" r="17" fill="none" stroke="#c9a227" stroke-width="2.5" stroke-opacity="0.45"/>
-  <circle cx="32" cy="32" r="11" fill="none" stroke="#c9a227" stroke-width="2" stroke-opacity="0.3"/>
-  <g fill="#c9a227" fill-opacity="0.4">
-    <rect x="30.5" y="11" width="3" height="6"/>
-    <rect x="30.5" y="47" width="3" height="6"/>
-    <rect x="11" y="30.5" width="6" height="3"/>
-    <rect x="47" y="30.5" width="6" height="3"/>
+
+  <!-- dark passage below, faint water streaks -->
+  <rect y="48" width="64" height="16" fill="#0b080e" opacity="0.55"/>
+  <g stroke="#f2e8d5" stroke-opacity="0.05" stroke-width="1">
+    <path d="M12,49 L11,63"/>
+    <path d="M33,50 L33,63"/>
+    <path d="M52,49 L53,63"/>
   </g>
 </svg>

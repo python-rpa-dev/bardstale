@@ -1,12 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <g stroke="#f2e8d5" stroke-opacity="0.3" stroke-width="4" fill="none" stroke-linecap="round">
-    <path d="M24,58 C14,62 12,72 17,80"/>
-    <path d="M72,56 C82,60 84,70 79,78"/>
-    <path d="M48,84 C46,90 51,93 55,89"/>
+  <defs>
+    <radialGradient id="bgWrt" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#2b1f3a"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="cloakWrt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a3d78"/>
+      <stop offset="0.65" stop-color="#2c1e42"/>
+      <stop offset="1" stop-color="#141019" stop-opacity="0.15"/>
+    </linearGradient>
+    <radialGradient id="glowWrt" cx="0.5" cy="0.45" r="0.5">
+      <stop offset="0" stop-color="#8e44ad" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#8e44ad" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgWrt)"/>
+  <circle cx="48" cy="52" r="42" fill="url(#glowWrt)"/>
+
+  <!-- tattered cloak, pointed hood -->
+  <path d="M48,10 C31,17 23,36 26,56 c1.5,10 -3,17 -7,25 l6,-3 4,6 4,-7 5,7 4,-8 6,8 6,-8 4,8 5,-7 4,7 4,-6 6,3 c-4,-8 -8.5,-15 -7,-25 3,-20 -5,-39 -22,-46 z" fill="url(#cloakWrt)" stroke="#0d0a10" stroke-opacity="0.7" stroke-width="1.5"/>
+  <!-- inner hood shadow -->
+  <path d="M48,22 c-10,5 -15,16 -13,27 0.7,4 3,7 5,9 h16 c2,-2 4.3,-5 5,-9 2,-11 -3,-22 -13,-27 z" fill="#0d0a10"/>
+  <!-- glowing eyes -->
+  <ellipse cx="43" cy="46" rx="3" ry="2" fill="#b57ed6"/>
+  <ellipse cx="53" cy="46" rx="3" ry="2" fill="#b57ed6"/>
+  <circle cx="43" cy="46" r="6" fill="#8e44ad" opacity="0.35"/>
+  <circle cx="53" cy="46" r="6" fill="#8e44ad" opacity="0.35"/>
+
+  <!-- floating wisps -->
+  <g stroke="#b57ed6" stroke-opacity="0.4" stroke-width="1.2" fill="none">
+    <path d="M20,40 c-4,-6 -2,-12 3,-15 M76,40 c4,-6 2,-12 -3,-15"/>
+    <path d="M16,60 c-5,-2 -8,-7 -7,-12 M80,60 c5,-2 8,-7 7,-12"/>
   </g>
-  <path d="M48,12 C30,12 22,30 24,48 C26,62 20,74 26,84 L34,76 L40,86 L48,76 L56,86 L62,76 L70,84 C76,74 70,62 72,48 C74,30 66,12 48,12 Z" fill="#f2e8d5" fill-opacity="0.5"/>
-  <ellipse cx="48" cy="36" rx="11" ry="14" fill="#141019" fill-opacity="0.88"/>
-  <ellipse cx="44" cy="35" rx="3" ry="4" fill="#c0392b"/>
-  <ellipse cx="52" cy="35" rx="3" ry="4" fill="#c0392b"/>
-  <path d="M36,20 C40,15 56,15 60,20" fill="none" stroke="#f2e8d5" stroke-opacity="0.25" stroke-width="4"/>
+  <!-- dangling gold ring -->
+  <circle cx="48" cy="63" r="3.4" fill="none" stroke="#c9a227" stroke-width="1.6"/>
+  <path d="M48,58 v-2" stroke="#c9a227" stroke-opacity="0.6" stroke-width="1"/>
 </svg>

@@ -1,10 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <path d="M16,20 C16,25 14,27 10,29" fill="none" stroke="#c9a227" stroke-opacity="0.8" stroke-width="2.5" stroke-linecap="round"/>
-  <g fill="#c9a227" stroke="#141019" stroke-width="1.2">
-    <circle cx="11.5" cy="11.5" r="5"/>
-    <circle cx="20.5" cy="11.5" r="5"/>
-    <circle cx="11.5" cy="19" r="5"/>
-    <circle cx="20.5" cy="19" r="5"/>
+  <defs>
+    <linearGradient id="goldC" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c95a"/>
+      <stop offset="1" stop-color="#8a6d1a"/>
+    </linearGradient>
+  </defs>
+  <!-- hanging cord -->
+  <path d="M16,1.4 v3.2" stroke="#7a5230" stroke-width="1.4"/>
+  <circle cx="16" cy="5.6" r="1.8" fill="none" stroke="#c9a227" stroke-width="1.4"/>
+  <!-- horseshoe, open end up -->
+  <path d="M9.4,26.6 c-3,-2 -4.6,-5.4 -4.6,-9.2 C4.8,10.4 9.8,5.4 16,5.4 s11.2,5 11.2,12 c0,3.8 -1.6,7.2 -4.6,9.2 l-1.9,-2.9 c2.1,-1.5 3.3,-3.7 3.3,-6.3 0,-4.4 -3.2,-7.6 -8,-7.6 s-8,3.2 -8,7.6 c0,2.6 1.2,4.8 3.3,6.3 z" fill="url(#goldC)" stroke="#0d0a10" stroke-width="1.2"/>
+  <!-- nail holes -->
+  <g fill="#141019">
+    <circle cx="7.4" cy="15.4" r="0.85"/>
+    <circle cx="9.6" cy="10.4" r="0.85"/>
+    <circle cx="24.6" cy="15.4" r="0.85"/>
+    <circle cx="22.4" cy="10.4" r="0.85"/>
   </g>
-  <path d="M16,13 L18,15.5 L16,18 L14,15.5 Z" fill="#141019" fill-opacity="0.7"/>
+  <!-- heel studs -->
+  <g fill="#f2e8d5" opacity="0.75">
+    <circle cx="9.6" cy="23.6" r="0.7"/>
+    <circle cx="22.4" cy="23.6" r="0.7"/>
+  </g>
+  <!-- luck spark -->
+  <path d="M16,15.8 l0.8,-1.8 0.8,1.8 1.8,0.8 -1.8,0.8 -0.8,1.8 -0.8,-1.8 -1.8,-0.8 z" fill="#27ae60"/>
 </svg>

@@ -1,13 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <rect x="14" y="5" width="4" height="6" fill="#f2e8d5" fill-opacity="0.15" stroke="#141019" stroke-width="1.4"/>
-  <polygon points="16,9 25,17 16,29 7,17" fill="#f2e8d5" fill-opacity="0.15" stroke="#141019" stroke-width="1.5" stroke-linejoin="round"/>
-  <polygon points="16,13 22.5,18 16,27 9.5,18" fill="#27ae60"/>
-  <rect x="12.5" y="1" width="7" height="4" rx="1" fill="#c9a227" stroke="#141019" stroke-width="1"/>
-  <g fill="#f2e8d5" fill-opacity="0.9">
-    <rect x="12" y="17" width="8" height="6" rx="2"/>
-    <circle cx="13.5" cy="16.4" r="1.5"/>
-    <circle cx="16" cy="16" r="1.5"/>
-    <circle cx="18.5" cy="16.4" r="1.5"/>
-    <rect x="10.5" y="18" width="2.5" height="3.5" rx="1"/>
-  </g>
+  <defs>
+    <linearGradient id="elixE" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c95a"/>
+      <stop offset="1" stop-color="#9a6b14"/>
+    </linearGradient>
+  </defs>
+  <!-- squat square bottle -->
+  <path d="M13.2,3 h5.6 v4.6 c2.8,0.8 4.6,2.6 4.6,5.4 v12.6 c0,2 -1.4,3.4 -3.4,3.4 h-10 c-2,0 -3.4,-1.4 -3.4,-3.4 V13 c0,-2.8 1.8,-4.6 4.6,-5.4 z" fill="#dfe6ee" fill-opacity="0.16" stroke="#f2e8d5" stroke-opacity="0.75" stroke-width="1.3"/>
+  <!-- amber liquid -->
+  <rect x="10.4" y="13.6" width="11.2" height="12.8" rx="2" fill="url(#elixE)"/>
+  <ellipse cx="16" cy="13.8" rx="5.6" ry="1.2" fill="#e8c95a" opacity="0.85"/>
+  <!-- might chevron on the liquid -->
+  <path d="M16,15.4 l3.4,4 h-2 v4.4 h-2.8 v-4.4 h-2 z" fill="#c0392b" stroke="#141019" stroke-width="0.7"/>
+  <!-- glass gleam -->
+  <path d="M11.6,12 c-0.8,1 -1.2,2.2 -1.2,3.6 v5" fill="none" stroke="#f2e8d5" stroke-opacity="0.5" stroke-width="1"/>
+  <!-- gold cap with red wax -->
+  <rect x="12.4" y="0.9" width="7.2" height="3.6" rx="1" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+  <circle cx="16" cy="5.6" r="1.4" fill="#c0392b" stroke="#0d0a10" stroke-width="0.8"/>
 </svg>

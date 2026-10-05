@@ -1,5 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <path d="M8,7 L13,4 C15,7 17,7 19,4 L24,7 L27,14 L23,16 L23,28 L9,28 L9,16 L5,14 Z" fill="#f2e8d5" fill-opacity="0.3" stroke="#141019" stroke-width="1.8" stroke-linejoin="round"/>
-  <path d="M11,17 L11,25 M21,17 L21,25" stroke="#f2e8d5" stroke-opacity="0.35" stroke-width="2"/>
-  <circle cx="16" cy="20" r="1.8" fill="#c9a227"/>
+  <defs>
+    <linearGradient id="leatherL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a5f36"/>
+      <stop offset="1" stop-color="#4e3419"/>
+    </linearGradient>
+  </defs>
+  <!-- vest body -->
+  <path d="M7,7 c2.4,-2.6 4.4,-3.6 9,-3.6 s6.6,1 9,3.6 l-0.6,5.4 -2,0.4 v16.8 h-11.6 v-16.8 l-2,-0.4 z" fill="url(#leatherL)" stroke="#0d0a10" stroke-width="1.3"/>
+  <!-- V neck -->
+  <path d="M11,4.2 L16,9.5 L21,4.2" fill="none" stroke="#0d0a10" stroke-width="1.3"/>
+  <path d="M11.8,4.6 L16,9 L20.2,4.6" fill="none" stroke="#f2e8d5" stroke-opacity="0.3" stroke-width="0.8"/>
+  <!-- shoulder straps with buckles -->
+  <g>
+    <rect x="7.6" y="12.6" width="6.4" height="2.4" rx="0.8" fill="#3a2a17" stroke="#0d0a10" stroke-width="0.9"/>
+    <rect x="18" y="12.6" width="6.4" height="2.4" rx="0.8" fill="#3a2a17" stroke="#0d0a10" stroke-width="0.9"/>
+    <rect x="10" y="12.4" width="1.8" height="2.8" fill="#c9a227" stroke="#0d0a10" stroke-width="0.7"/>
+    <rect x="20.2" y="12.4" width="1.8" height="2.8" fill="#c9a227" stroke="#0d0a10" stroke-width="0.7"/>
+  </g>
+  <!-- stitching -->
+  <path d="M9.6,18 h12.8 M9.6,22 h12.8" stroke="#f2e8d5" stroke-opacity="0.4" stroke-width="0.9" stroke-dasharray="2 1.6"/>
+  <!-- center seam + wear scuffs -->
+  <path d="M16,10 v17" stroke="#0d0a10" stroke-opacity="0.5" stroke-width="0.9"/>
+  <path d="M12,25 l2,-1.4 M18.4,26 l2,-1.2" stroke="#f2e8d5" stroke-opacity="0.22" stroke-width="0.8"/>
 </svg>

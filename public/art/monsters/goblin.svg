@@ -1,21 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <path d="M30,30 L14,20 L30,40 Z" fill="#27ae60"/>
-  <path d="M66,30 L82,20 L66,40 Z" fill="#27ae60"/>
-  <circle cx="48" cy="34" r="16" fill="#27ae60"/>
-  <rect x="41" y="30" width="5" height="4" rx="2" fill="#141019"/>
-  <rect x="52" y="30" width="5" height="4" rx="2" fill="#141019"/>
-  <path d="M42,42 L54,42 L48,47 Z" fill="#141019" fill-opacity="0.6"/>
-  <path d="M36,48 L60,48 L65,76 L31,76 Z" fill="#27ae60"/>
-  <path d="M36,48 L60,48 L65,76 L31,76 Z" fill="#000000" fill-opacity="0.18"/>
-  <rect x="31" y="68" width="34" height="7" fill="#141019"/>
-  <rect x="45" y="67" width="7" height="9" fill="#c9a227"/>
-  <path d="M36,54 L24,66" stroke="#27ae60" stroke-width="8" stroke-linecap="round"/>
-  <path d="M60,54 L74,60" stroke="#27ae60" stroke-width="8" stroke-linecap="round"/>
-  <rect x="35" y="76" width="11" height="13" fill="#27ae60"/>
-  <rect x="53" y="76" width="11" height="13" fill="#27ae60"/>
-  <rect x="35" y="76" width="11" height="13" fill="#000000" fill-opacity="0.25"/>
-  <rect x="53" y="76" width="11" height="13" fill="#000000" fill-opacity="0.25"/>
-  <path d="M78,40 L82,54 L74,54 Z" fill="#f2e8d5" stroke="#141019" stroke-width="1.5"/>
-  <rect x="71" y="54" width="13" height="4" rx="1" fill="#c9a227" stroke="#141019" stroke-width="1"/>
-  <rect x="75" y="58" width="5" height="9" fill="#141019" stroke="#c9a227" stroke-opacity="0.6" stroke-width="1"/>
+  <defs>
+    <radialGradient id="bgGob" cx="0.5" cy="0.42" r="0.78">
+      <stop offset="0" stop-color="#232a26"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="skinGob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#57a06b"/>
+      <stop offset="1" stop-color="#28583a"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgGob)"/>
+  <ellipse cx="48" cy="89" rx="30" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- skinny shoulders in scavenged leather -->
+  <path d="M28,96 c-1,-16 4,-26 12,-30 h16 c8,4 13,14 12,30 z" fill="#4a3b2e" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M32,70 L52,96 M64,70 L48,90" stroke="#33271c" stroke-width="3.5" fill="none"/>
+  <!-- spiked pauldron -->
+  <ellipse cx="68" cy="70" rx="9" ry="7" fill="#5a5f6b" stroke="#0d0a10" stroke-width="1.4"/>
+  <g fill="#8b9099" stroke="#0d0a10" stroke-width="1">
+    <polygon points="66,63 68,56 70,63"/>
+    <polygon points="72,65 76,59 75,66"/>
+  </g>
+
+  <!-- protruding ears -->
+  <path d="M31,42 L12,30 18,48 32,52 Z" fill="#3c7f4e" stroke="#0d0a10" stroke-width="1.5"/>
+  <path d="M65,42 L84,30 78,48 64,52 Z" fill="#3c7f4e" stroke="#0d0a10" stroke-width="1.5"/>
+
+  <!-- oversized head -->
+  <path d="M48,22 c12,0 19,9 19,21 0,14 -9,25 -19,25 s-19,-11 -19,-25 c0,-12 7,-21 19,-21 z" fill="url(#skinGob)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- leather cap -->
+  <path d="M30,36 c2,-10 8,-15 18,-15 s16,5 18,15 c-6,-4 -30,-4 -36,0 z" fill="#5a4326" stroke="#0d0a10" stroke-width="1.4"/>
+  <circle cx="48" cy="24.5" r="2" fill="#c9a227" stroke="#0d0a10" stroke-width="0.9"/>
+  <!-- angry brows and gold eyes -->
+  <path d="M34,40 l10,3 M62,40 l-10,3" stroke="#1c3524" stroke-width="2.6" stroke-linecap="round"/>
+  <ellipse cx="41" cy="47" rx="3.6" ry="2.8" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+  <ellipse cx="55" cy="47" rx="3.6" ry="2.8" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+  <circle cx="41.6" cy="47" r="1.1" fill="#141019"/>
+  <circle cx="54.4" cy="47" r="1.1" fill="#141019"/>
+  <!-- big snaggle nose -->
+  <path d="M48,50 c-2,3 -3,6 -1,8 l4,-1 c0,-3 0,-5 -3,-7 z" fill="#2c5a38" stroke="#0d0a10" stroke-width="1.1"/>
+  <!-- wide fanged grin -->
+  <path d="M36,60 c6,5 18,5 24,0 l-2,-2.5 c-5,3 -13,3 -20,0 z" fill="#141019"/>
+  <g fill="#e8ddc4">
+    <polygon points="39,59.6 41,63 42.5,59.8"/>
+    <polygon points="53.5,59.8 55,63 57,59.6"/>
+    <polygon points="46,61.6 48,64.5 50,61.6"/>
+  </g>
 </svg>

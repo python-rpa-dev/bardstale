@@ -1,25 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#141019"/>
-  <g fill="#f2e8d5" fill-opacity="0.10">
-    <polygon points="1,1 30,2 29,19 2,20"/>
-    <polygon points="34,1 63,2 62,20 33,19"/>
-    <polygon points="1,24 18,23 19,43 2,44"/>
-    <polygon points="22,23 62,24 63,42 21,43"/>
-    <polygon points="2,48 40,47 39,63 1,62"/>
-    <polygon points="44,47 63,48 62,63 43,62"/>
+  <defs>
+    <linearGradient id="blockA" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#3a3542"/>
+      <stop offset="1" stop-color="#231f2b"/>
+    </linearGradient>
+    <linearGradient id="blockB" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#332e3d"/>
+      <stop offset="1" stop-color="#1f1b26"/>
+    </linearGradient>
+    <!-- ashlar courses: 32x16 blocks, staggered joints -->
+    <pattern id="ashlar" width="64" height="32" patternUnits="userSpaceOnUse">
+      <rect width="64" height="32" fill="#0c0910"/>
+      <!-- row 1: joints at x=0,32 -->
+      <polygon points="1.5,1.5 30.5,1 31,14.5 1,15" fill="url(#blockA)"/>
+      <polygon points="33.5,1 62.5,1.5 63,15 33,14.5" fill="url(#blockB)"/>
+      <!-- row 2: joints at x=16,48 -->
+      <polygon points="17.5,17.5 46.5,17 47,30.5 17,31" fill="url(#blockB)"/>
+      <polygon points="49.5,17 63.5,17.2 64,31 49,30.5" fill="url(#blockA)"/>
+      <polygon points="-14.5,17 14.5,17.2 15,31 -15,30.5" fill="url(#blockA)"/>
+      <!-- chisel bevels -->
+      <g stroke="#f2e8d5" stroke-opacity="0.12" stroke-width="1">
+        <path d="M2.5,2 L30,1.7"/>
+        <path d="M34.5,1.7 L62,2"/>
+        <path d="M18.5,17.7 L46,17.5"/>
+      </g>
+      <g stroke="#000000" stroke-opacity="0.45" stroke-width="1.2">
+        <path d="M2,13.8 L30,14.3"/>
+        <path d="M34,14.3 L62,13.8"/>
+        <path d="M18,30 L46,29.7"/>
+      </g>
+    </pattern>
+  </defs>
+
+  <rect width="64" height="64" fill="#0c0910"/>
+  <rect width="64" height="64" fill="url(#ashlar)"/>
+
+  <!-- chipped corners and pitting -->
+  <g fill="#0c0910" opacity="0.85">
+    <polygon points="31,2 33,1.5 32.5,4"/>
+    <polygon points="17,17 19.5,16.5 19,19.5 16.5,19"/>
+    <polygon points="47,30 48.5,28 49,31"/>
   </g>
-  <rect width="64" height="64" fill="#ffffff" fill-opacity="0.035"/>
-  <g fill="#000000" fill-opacity="0.25">
-    <polygon points="34,1 63,2 62,20 33,19"/>
-    <polygon points="22,23 62,24 63,42 21,43" fill-opacity="0.15"/>
-    <polygon points="44,47 63,48 62,63 43,62"/>
+  <g fill="#f2e8d5" opacity="0.06">
+    <circle cx="12" cy="9" r="1.1"/>
+    <circle cx="41" cy="7" r="0.9"/>
+    <circle cx="28" cy="24" r="1"/>
+    <circle cx="56" cy="23" r="0.8"/>
+    <circle cx="8" cy="42" r="0.9"/>
+    <circle cx="37" cy="56" r="1"/>
   </g>
-  <g fill="#ffffff" fill-opacity="0.05">
-    <polygon points="1,1 30,2 29,8 2,8"/>
-    <polygon points="2,48 40,47 40,53 2,54"/>
-  </g>
-  <g stroke="#141019" stroke-width="2" fill="none" opacity="0.7">
-    <path d="M12,6 L16,12 L13,16"/>
-    <path d="M50,30 L46,35 L50,39"/>
+  <!-- root-hair cracks creeping in mortar -->
+  <g stroke="#f2e8d5" stroke-opacity="0.09" stroke-width="0.7" fill="none">
+    <path d="M32,16 c-1,3 1,4 0,7 -1,2 1,3 0,5"/>
+    <path d="M48,47 c1,3 -1,5 0,8"/>
   </g>
 </svg>

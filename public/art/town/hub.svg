@@ -1,211 +1,253 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f2e8d5" stop-opacity="0.15"/>
-      <stop offset="1" stop-color="#141019" stop-opacity="0"/>
+    <linearGradient id="skyH" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#131022"/>
+      <stop offset="0.45" stop-color="#2b1d3a"/>
+      <stop offset="0.78" stop-color="#5c3348"/>
+      <stop offset="1" stop-color="#9a5a30"/>
     </linearGradient>
-    <pattern id="cobble" width="64" height="32" patternUnits="userSpaceOnUse">
-      <rect x="3" y="3" width="26" height="12" rx="5" fill="#f2e8d5" opacity="0.09"/>
-      <rect x="35" y="3" width="26" height="12" rx="5" fill="#f2e8d5" opacity="0.07"/>
-      <rect x="-13" y="18" width="26" height="12" rx="5" fill="#f2e8d5" opacity="0.08"/>
-      <rect x="19" y="18" width="26" height="12" rx="5" fill="#f2e8d5" opacity="0.10"/>
-      <rect x="51" y="18" width="26" height="12" rx="5" fill="#f2e8d5" opacity="0.07"/>
+    <radialGradient id="sunH" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e8b054" stop-opacity="0.75"/>
+      <stop offset="0.5" stop-color="#c9a227" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#c9a227" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowW" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e8b054" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e8b054" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6fa8ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#6fa8ff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="cobbleH" width="64" height="32" patternUnits="userSpaceOnUse">
+      <rect x="1" y="1" width="30" height="13" rx="2" fill="#f2e8d5" opacity="0.05"/>
+      <rect x="33" y="1" width="30" height="13" rx="2" fill="#f2e8d5" opacity="0.04"/>
+      <rect x="17" y="17" width="30" height="13" rx="2" fill="#f2e8d5" opacity="0.045"/>
+      <rect x="-15" y="17" width="30" height="13" rx="2" fill="#f2e8d5" opacity="0.05"/>
+      <rect x="49" y="17" width="30" height="13" rx="2" fill="#f2e8d5" opacity="0.05"/>
     </pattern>
   </defs>
 
-  <rect x="0" y="0" width="1600" height="760" fill="#141019"/>
-  <rect x="0" y="0" width="1600" height="760" fill="url(#sky)"/>
+  <!-- dusk sky -->
+  <rect width="1600" height="740" fill="url(#skyH)"/>
+  <g fill="#f2e8d5">
+    <circle cx="90" cy="110" r="2.2" opacity="0.5"/><circle cx="240" cy="64" r="1.8" opacity="0.4"/>
+    <circle cx="420" cy="150" r="2.3" opacity="0.5"/><circle cx="560" cy="90" r="1.6" opacity="0.35"/>
+    <circle cx="700" cy="180" r="2" opacity="0.45"/><circle cx="830" cy="58" r="2.4" opacity="0.6"/>
+    <circle cx="960" cy="140" r="1.8" opacity="0.4"/><circle cx="1090" cy="95" r="2" opacity="0.5"/>
+    <circle cx="1210" cy="170" r="1.6" opacity="0.35"/><circle cx="1480" cy="230" r="2" opacity="0.45"/>
+    <circle cx="300" cy="230" r="1.6" opacity="0.3"/><circle cx="640" cy="260" r="1.5" opacity="0.28"/>
+    <circle cx="900" cy="240" r="1.7" opacity="0.32"/><circle cx="1330" cy="60" r="1.5" opacity="0.3"/>
+  </g>
+  <!-- setting sun glow behind the ridge -->
+  <circle cx="430" cy="580" r="280" fill="url(#sunH)"/>
+  <!-- crescent moon -->
+  <circle cx="1360" cy="130" r="46" fill="#f2e8d5" opacity="0.9"/>
+  <circle cx="1378" cy="118" r="40" fill="#1a1430"/>
+  <circle cx="1360" cy="130" r="70" fill="none" stroke="#f2e8d5" stroke-opacity="0.08" stroke-width="14"/>
 
-  <g fill="#ffffff">
-    <circle cx="90" cy="120" r="2" opacity="0.5"/>
-    <circle cx="240" cy="70" r="1.8" opacity="0.4"/>
-    <circle cx="420" cy="150" r="2.2" opacity="0.55"/>
-    <circle cx="560" cy="90" r="1.6" opacity="0.35"/>
-    <circle cx="700" cy="180" r="2" opacity="0.45"/>
-    <circle cx="830" cy="60" r="2.4" opacity="0.6"/>
-    <circle cx="960" cy="140" r="1.8" opacity="0.4"/>
-    <circle cx="1090" cy="95" r="2" opacity="0.5"/>
-    <circle cx="1210" cy="170" r="1.6" opacity="0.35"/>
-    <circle cx="1330" cy="80" r="2.2" opacity="0.5"/>
-    <circle cx="1480" cy="130" r="2" opacity="0.45"/>
-    <circle cx="1550" cy="210" r="1.6" opacity="0.3"/>
-    <circle cx="300" cy="230" r="1.6" opacity="0.3"/>
-    <circle cx="640" cy="260" r="1.5" opacity="0.28"/>
-    <circle cx="900" cy="240" r="1.7" opacity="0.32"/>
-    <circle cx="1420" cy="250" r="1.5" opacity="0.28"/>
+  <!-- far mountains -->
+  <path d="M0,560 L140,430 L260,510 L420,390 L560,500 L720,420 L880,520 L1020,430 L1180,530 L1320,450 L1460,520 L1600,470 L1600,740 L0,740 Z" fill="#241d2e"/>
+  <path d="M420,390 L380,432 L402,428 L420,442 L440,426 L458,432 Z M720,420 L690,452 L710,448 L722,460 L742,446 L756,452 Z" fill="#f2e8d5" opacity="0.14"/>
+  <!-- near ridge with pine fringe -->
+  <path d="M0,640 L180,580 L380,632 L560,575 L760,638 L940,585 L1140,638 L1320,585 L1600,632 L1600,740 L0,740 Z" fill="#1a1526"/>
+  <g fill="#141019">
+    <path d="M60,622 l10,-26 10,26 z M84,626 l8,-20 8,20 z M300,616 l9,-24 9,24 z M520,600 l9,-22 9,22 z M700,624 l8,-20 8,20 z M980,606 l9,-22 9,22 z M1240,616 l9,-22 9,22 z M1500,614 l9,-24 9,24 z"/>
   </g>
 
-  <path d="M0,620 L140,540 L300,600 L460,530 L640,610 L820,545 L1000,615 L1180,540 L1360,600 L1500,545 L1600,590 L1600,760 L0,760 Z" fill="#f2e8d5" opacity="0.07"/>
-  <path d="M0,690 L180,630 L380,680 L560,625 L760,685 L940,635 L1140,685 L1320,635 L1600,680 L1600,760 L0,760 Z" fill="#f2e8d5" opacity="0.10"/>
-  <rect x="0" y="700" width="1600" height="60" fill="#141019" opacity="0.35"/>
+  <!-- town wall band -->
+  <rect x="0" y="672" width="1600" height="68" fill="#211b29"/>
+  <line x1="8" y1="665" x2="1592" y2="665" stroke="#211b29" stroke-width="14" stroke-dasharray="22 30"/>
+  <rect x="0" y="734" width="1600" height="6" fill="#f2e8d5" opacity="0.06"/>
 
+  <!-- ground plaza -->
+  <rect y="738" width="1600" height="162" fill="#191420"/>
+  <rect y="738" width="1600" height="162" fill="url(#cobbleH)"/>
+
+  <!-- ============ GUILD @ x=200 ============ -->
   <g>
-    <polygon points="90,495 200,398 310,495" fill="#141019"/>
-    <polygon points="90,495 200,398 310,495" fill="#f2e8d5" opacity="0.10"/>
-    <rect x="105" y="485" width="190" height="275" fill="#f2e8d5" opacity="0.16"/>
-    <g fill="#141019" opacity="0.8">
-      <rect x="113" y="485" width="8" height="275"/>
-      <rect x="151" y="485" width="8" height="275"/>
-      <rect x="241" y="485" width="8" height="275"/>
-      <rect x="279" y="485" width="8" height="275"/>
-      <rect x="105" y="485" width="190" height="10"/>
-      <rect x="105" y="615" width="190" height="8"/>
+    <ellipse cx="205" cy="640" rx="130" ry="70" fill="url(#glowW)" opacity="0.5"/>
+    <rect x="120" y="580" width="170" height="160" fill="#2e2531" stroke="#0d0a10" stroke-width="2"/>
+    <polygon points="104,584 306,584 205,498" fill="#3d2622" stroke="#0d0a10" stroke-width="2"/>
+    <path d="M104,584 L205,498 L306,584" fill="none" stroke="#f2e8d5" stroke-opacity="0.15" stroke-width="2"/>
+    <!-- timber framing -->
+    <g stroke="#3a2a17" stroke-width="6">
+      <path d="M120,634 h170 M120,680 h170 M160,580 v160 M250,580 v160"/>
     </g>
-    <circle cx="200" cy="545" r="16" fill="#c9a227" opacity="0.35" stroke="#141019" stroke-width="3"/>
-    <rect x="130" y="645" width="26" height="26" fill="#c9a227" opacity="0.5" stroke="#141019" stroke-width="2"/>
-    <rect x="244" y="645" width="26" height="26" fill="#c9a227" opacity="0.5" stroke="#141019" stroke-width="2"/>
-    <path d="M185,760 V690 A15,15 0 0 1 215,690 V760 Z" fill="#141019" stroke="#c9a227" stroke-width="2.5" stroke-opacity="0.8"/>
-    <rect x="224" y="636" width="44" height="5" fill="#141019"/>
-    <path d="M236,641 L264,641 L264,688 L250,676 L236,688 Z" fill="#c9a227" stroke="#141019" stroke-width="1.5"/>
-    <path d="M243,652 L250,660 L257,652" fill="none" stroke="#141019" stroke-width="3"/>
+    <!-- lit windows -->
+    <g fill="#e8b054">
+      <rect x="134" y="600" width="18" height="22"/><rect x="196" y="600" width="18" height="22"/>
+      <rect x="258" y="600" width="18" height="22"/><rect x="134" y="648" width="18" height="22"/>
+      <rect x="258" y="648" width="18" height="22"/>
+    </g>
+    <!-- arched door -->
+    <path d="M186,740 v-46 a19,19 0 0 1 38,0 v46 z" fill="#1c1512" stroke="#c9a227" stroke-opacity="0.5" stroke-width="2"/>
+    <!-- guild banner on pole -->
+    <path d="M312,740 V520" stroke="#5a4326" stroke-width="6"/>
+    <polygon points="312,528 366,540 312,556" fill="#c9a227" stroke="#0d0a10" stroke-width="1.5"/>
+    <polygon points="312,562 358,572 312,586" fill="#8f2318" stroke="#0d0a10" stroke-width="1.5"/>
+    <!-- hanging sign: crossed swords -->
+    <path d="M96,740 V560 h34 M130,560 v22" stroke="#5a4326" stroke-width="4" fill="none"/>
+    <rect x="108" y="582" width="44" height="34" rx="4" fill="#3a2a17" stroke="#c9a227" stroke-width="2"/>
+    <g stroke="#b4b9c2" stroke-width="3">
+      <path d="M116,590 L144,608 M144,590 L116,608"/>
+    </g>
   </g>
 
+  <!-- ============ TEMPLE @ x=480 ============ -->
   <g>
-    <rect x="410" y="560" width="140" height="200" fill="#141019"/>
-    <rect x="410" y="560" width="140" height="200" fill="#f2e8d5" opacity="0.18"/>
-    <path d="M418,562 A62,62 0 0 1 542,562 Z" fill="#f2e8d5" opacity="0.7"/>
-    <g stroke="#141019" stroke-width="3" opacity="0.3">
-      <path d="M480,502 L480,562"/>
-      <path d="M450,514 L442,562"/>
-      <path d="M510,514 L518,562"/>
+    <rect x="402" y="600" width="156" height="140" fill="#b8ac90" stroke="#0d0a10" stroke-width="2"/>
+    <!-- columns -->
+    <g fill="#cfc4a8">
+      <rect x="414" y="606" width="16" height="134"/><rect x="450" y="606" width="16" height="134"/>
+      <rect x="494" y="606" width="16" height="134"/><rect x="530" y="606" width="16" height="134"/>
     </g>
-    <circle cx="480" cy="497" r="6" fill="#c9a227" stroke="#141019" stroke-width="1.5"/>
-    <g>
-      <rect x="418" y="575" width="12" height="170" fill="#f2e8d5" opacity="0.55"/>
-      <rect x="452" y="575" width="12" height="170" fill="#f2e8d5" opacity="0.55"/>
-      <rect x="486" y="575" width="12" height="170" fill="#f2e8d5" opacity="0.55"/>
-      <rect x="520" y="575" width="12" height="170" fill="#f2e8d5" opacity="0.55"/>
+    <g stroke="#8a7f62" stroke-width="2">
+      <path d="M422,606 v134 M458,606 v134 M502,606 v134 M538,606 v134"/>
     </g>
-    <circle cx="480" cy="612" r="13" fill="#c9a227" stroke="#141019" stroke-width="2"/>
-    <g fill="#c9a227">
-      <rect x="477" y="591" width="6" height="8"/>
-      <rect x="477" y="625" width="6" height="8"/>
-      <rect x="459" y="609" width="8" height="6"/>
-      <rect x="493" y="609" width="8" height="6"/>
+    <!-- pediment -->
+    <polygon points="392,604 568,604 480,532" fill="#cfc4a8" stroke="#0d0a10" stroke-width="2"/>
+    <circle cx="480" cy="576" r="14" fill="#c9a227" stroke="#0d0a10" stroke-width="2"/>
+    <g stroke="#c9a227" stroke-width="3">
+      <path d="M480,552 v-8 M480,600 v8 M456,576 h-8 M504,576 h8"/>
     </g>
-    <path d="M466,760 V672 A14,14 0 0 1 494,672 V760 Z" fill="#141019" stroke="#f2e8d5" stroke-width="2" stroke-opacity="0.4"/>
-    <rect x="396" y="748" width="168" height="12" fill="#f2e8d5" opacity="0.22"/>
-    <rect x="406" y="736" width="148" height="12" fill="#f2e8d5" opacity="0.28"/>
+    <!-- dark doorway + candle glow -->
+    <path d="M466,740 v-52 a14,14 0 0 1 28,0 v52 z" fill="#1c1512"/>
+    <circle cx="480" cy="700" r="26" fill="url(#glowW)"/>
+    <!-- steps -->
+    <g fill="#a89c82">
+      <rect x="430" y="740" width="100" height="8"/><rect x="418" y="748" width="124" height="8"/>
+    </g>
   </g>
 
+  <!-- ============ SHOP @ x=730 ============ -->
   <g>
-    <rect x="665" y="650" width="130" height="110" fill="#f2e8d5" opacity="0.14" stroke="#141019" stroke-width="2"/>
-    <rect x="660" y="618" width="9" height="142" fill="#f2e8d5" opacity="0.3" stroke="#141019" stroke-width="1.5"/>
-    <rect x="791" y="618" width="9" height="142" fill="#f2e8d5" opacity="0.3" stroke="#141019" stroke-width="1.5"/>
-    <g>
-      <rect x="648" y="615" width="20" height="33" fill="#f2e8d5" opacity="0.75"/>
-      <rect x="669" y="615" width="20" height="33" fill="#141019"/>
-      <rect x="690" y="615" width="20" height="33" fill="#f2e8d5" opacity="0.75"/>
-      <rect x="711" y="615" width="20" height="33" fill="#141019"/>
-      <rect x="732" y="615" width="20" height="33" fill="#f2e8d5" opacity="0.75"/>
-      <rect x="753" y="615" width="20" height="33" fill="#141019"/>
-      <rect x="774" y="615" width="20" height="33" fill="#f2e8d5" opacity="0.75"/>
-      <rect x="795" y="615" width="20" height="33" fill="#141019"/>
+    <ellipse cx="730" cy="690" rx="100" ry="50" fill="url(#glowW)" opacity="0.45"/>
+    <rect x="662" y="608" width="138" height="132" fill="#332a38" stroke="#0d0a10" stroke-width="2"/>
+    <!-- overhanging upper storey -->
+    <rect x="652" y="560" width="158" height="52" fill="#3b2f42" stroke="#0d0a10" stroke-width="2"/>
+    <polygon points="644,562 818,562 731,506" fill="#3d2622" stroke="#0d0a10" stroke-width="2"/>
+    <!-- striped awning -->
+    <rect x="656" y="640" width="150" height="20" fill="#c9bda0"/>
+    <g fill="#8f2318">
+      <rect x="666" y="640" width="15" height="20"/><rect x="696" y="640" width="15" height="20"/>
+      <rect x="726" y="640" width="15" height="20"/><rect x="756" y="640" width="15" height="20"/>
+      <rect x="786" y="640" width="15" height="20"/>
     </g>
-    <rect x="644" y="606" width="172" height="9" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-    <circle cx="690" cy="690" r="4" fill="#c9a227"/>
-    <circle cx="716" cy="690" r="4" fill="#c9a227"/>
-    <circle cx="742" cy="690" r="4" fill="#c0392b"/>
-    <circle cx="768" cy="690" r="4" fill="#c9a227"/>
-    <rect x="652" y="696" width="156" height="14" fill="#f2e8d5" opacity="0.3" stroke="#141019" stroke-width="1.5"/>
-    <rect x="658" y="710" width="144" height="50" fill="#f2e8d5" opacity="0.12"/>
+    <!-- display window and door -->
+    <rect x="676" y="668" width="44" height="36" fill="#e8b054" stroke="#5a4326" stroke-width="3"/>
+    <path d="M760,740 v-44 a15,15 0 0 1 30,0 v44 z" fill="#1c1512" stroke="#c9a227" stroke-opacity="0.5" stroke-width="2"/>
+    <rect x="684" y="576" width="16" height="20" fill="#e8b054"/><rect x="762" y="576" width="16" height="20" fill="#e8b054"/>
+    <!-- hanging barrel sign -->
+    <path d="M812,596 h30 M842,596 v26" stroke="#5a4326" stroke-width="4" fill="none"/>
+    <rect x="830" y="622" width="26" height="32" rx="6" fill="#5a4326" stroke="#c9a227" stroke-width="2"/>
+    <path d="M830,632 h26 M830,644 h26" stroke="#c9a227" stroke-width="1.5"/>
   </g>
 
+  <!-- ============ TAVERN @ x=980 ============ -->
   <g>
-    <polygon points="880,555 980,468 1080,555" fill="#141019"/>
-    <polygon points="880,555 980,468 1080,555" fill="#f2e8d5" opacity="0.10"/>
-    <rect x="1020" y="486" width="26" height="54" fill="#f2e8d5" opacity="0.25" stroke="#141019" stroke-width="2"/>
-    <g stroke="#f2e8d5" stroke-opacity="0.3" stroke-width="5" fill="none" stroke-linecap="round">
-      <path d="M1033,476 C1026,464 1040,456 1032,444"/>
-      <path d="M1038,438 C1030,428 1044,418 1037,408"/>
+    <ellipse cx="985" cy="680" rx="130" ry="70" fill="url(#glowW)" opacity="0.6"/>
+    <rect x="892" y="596" width="188" height="144" fill="#3a2b24" stroke="#0d0a10" stroke-width="2"/>
+    <polygon points="878,600 1094,600 986,522" fill="#4a2f2c" stroke="#0d0a10" stroke-width="2"/>
+    <!-- chimney + smoke -->
+    <rect x="1032" y="536" width="26" height="64" fill="#2e2531" stroke="#0d0a10" stroke-width="2"/>
+    <path d="M1045,528 c-8,-10 6,-16 -2,-28 M1052,520 c-7,-9 5,-14 -1,-24" fill="none" stroke="#f2e8d5" stroke-opacity="0.13" stroke-width="5"/>
+    <!-- warm windows -->
+    <g fill="#e8b054">
+      <rect x="908" y="620" width="22" height="26"/><rect x="952" y="620" width="22" height="26"/>
+      <rect x="1038" y="620" width="22" height="26"/><rect x="908" y="672" width="22" height="26"/>
+      <rect x="1038" y="672" width="22" height="26"/>
     </g>
-    <rect x="895" y="545" width="170" height="215" fill="#f2e8d5" opacity="0.13"/>
-    <g fill="#141019">
-      <rect x="895" y="545" width="9" height="215" opacity="0.6"/>
-      <rect x="1056" y="545" width="9" height="215" opacity="0.6"/>
-      <rect x="895" y="610" width="170" height="7" opacity="0.7"/>
-    </g>
-    <rect x="912" y="640" width="30" height="30" fill="#c9a227" opacity="0.55" stroke="#141019" stroke-width="2"/>
-    <rect x="1012" y="640" width="30" height="30" fill="#c9a227" opacity="0.55" stroke="#141019" stroke-width="2"/>
-    <path d="M962,760 V688 A18,18 0 0 1 998,688 V760 Z" fill="#141019" stroke="#f2e8d5" stroke-width="2" stroke-opacity="0.35"/>
-    <circle cx="990" cy="724" r="3" fill="#c9a227"/>
-    <rect x="1060" y="578" width="42" height="6" fill="#141019" opacity="0.85"/>
-    <path d="M1100,584 L1100,598" stroke="#141019" stroke-width="3"/>
-    <circle cx="1098" cy="618" r="18" fill="#141019" stroke="#c9a227" stroke-width="3.5"/>
-    <circle cx="1098" cy="618" r="7" fill="#c9a227" opacity="0.85"/>
+    <!-- big welcoming door -->
+    <path d="M958,740 v-56 a28,28 0 0 1 56,0 v56 z" fill="#e8b054" stroke="#5a4326" stroke-width="3"/>
+    <path d="M986,684 v56" stroke="#5a4326" stroke-width="2.5"/>
+    <!-- swinging mug sign -->
+    <path d="M1096,740 V560 h-36 M1060,560 v20" stroke="#5a4326" stroke-width="5" fill="none"/>
+    <rect x="1040" y="580" width="40" height="34" rx="4" fill="#3a2a17" stroke="#c9a227" stroke-width="2"/>
+    <path d="M1052,588 h12 v14 c0,4 -12,4 -12,0 z M1064,590 a5,5 0 0 1 0,10" fill="#c9a227"/>
+    <!-- light pool spilling onto plaza -->
+    <ellipse cx="986" cy="762" rx="70" ry="14" fill="#e8b054" opacity="0.22"/>
   </g>
 
+  <!-- ============ GATE @ x=1230 (in the wall) ============ -->
   <g>
-    <path d="M1105,760 L1112,640 L1130,558 L1160,468 L1200,400 L1242,378 L1292,410 L1332,482 L1352,572 L1360,662 L1362,760 Z" fill="#f2e8d5" opacity="0.12"/>
-    <polygon points="1160,468 1200,400 1242,378 1220,520 1170,560" fill="#141019" opacity="0.22"/>
-    <polygon points="1292,410 1332,482 1352,572 1300,560" fill="#141019" opacity="0.28"/>
-    <path d="M1184,760 V636 A46,46 0 0 1 1276,636 V760 Z" fill="#f2e8d5" opacity="0.25"/>
-    <g stroke="#141019" stroke-width="3">
-      <path d="M1230,592 L1230,604"/>
-      <path d="M1204,616 L1197,607"/>
-      <path d="M1256,616 L1263,607"/>
+    <rect x="1140" y="620" width="190" height="120" fill="#282133" stroke="#0d0a10" stroke-width="2"/>
+    <!-- crenellations -->
+    <g fill="#282133">
+      <rect x="1146" y="604" width="20" height="18"/><rect x="1178" y="604" width="20" height="18"/>
+      <rect x="1282" y="604" width="20" height="18"/><rect x="1314" y="604" width="20" height="18"/>
     </g>
-    <path d="M1196,760 V640 A34,34 0 0 1 1264,640 V760 Z" fill="#141019"/>
-    <path d="M1196,760 V640 A34,34 0 0 1 1264,640 V760 Z" fill="#000000" opacity="0.5"/>
+    <!-- flanking round towers -->
+    <rect x="1136" y="560" width="52" height="180" fill="#312a3d" stroke="#0d0a10" stroke-width="2"/>
+    <polygon points="1128,562 1196,562 1162,498" fill="#3d2622" stroke="#0d0a10" stroke-width="2"/>
+    <rect x="1282" y="560" width="52" height="180" fill="#312a3d" stroke="#0d0a10" stroke-width="2"/>
+    <polygon points="1274,562 1342,562 1308,498" fill="#3d2622" stroke="#0d0a10" stroke-width="2"/>
+    <!-- tower lanterns -->
+    <circle cx="1162" cy="600" r="20" fill="url(#glowW)"/>
+    <rect x="1156" y="594" width="12" height="16" rx="3" fill="#e8b054" stroke="#0d0a10" stroke-width="1.5"/>
+    <circle cx="1308" cy="600" r="20" fill="url(#glowW)"/>
+    <rect x="1302" y="594" width="12" height="16" rx="3" fill="#e8b054" stroke="#0d0a10" stroke-width="1.5"/>
+    <!-- arch + portcullis -->
+    <path d="M1190,740 v-62 a45,45 0 0 1 90,0 v62 z" fill="#0d0a10" stroke="#f2e8d5" stroke-opacity="0.2" stroke-width="3"/>
+    <g stroke="#5a5f6b" stroke-width="3">
+      <path d="M1204,740 v-92 M1220,740 v-104 M1235,740 v-108 M1250,740 v-104 M1266,740 v-92"/>
+      <path d="M1192,690 h86 M1190,716 h90"/>
+    </g>
+    <!-- far lantern beyond the gate -->
+    <circle cx="1235" cy="712" r="14" fill="url(#glowW)"/>
+    <rect x="1231" y="706" width="9" height="12" rx="2" fill="#e8b054"/>
   </g>
 
+  <!-- ============ CODEX @ x=1450 ============ -->
   <g>
-    <polygon points="1378,446 1450,350 1522,446" fill="#141019"/>
-    <polygon points="1378,446 1450,350 1522,446" fill="#f2e8d5" opacity="0.10"/>
-    <polygon points="1450,330 1457,340 1450,350 1443,340" fill="#c9a227" stroke="#141019" stroke-width="1"/>
-    <rect x="1392" y="440" width="116" height="320" fill="#f2e8d5" opacity="0.17" stroke="#141019" stroke-width="2"/>
-    <g fill="#141019" opacity="0.5">
-      <rect x="1392" y="520" width="116" height="6"/>
-      <rect x="1392" y="600" width="116" height="6"/>
-      <rect x="1392" y="680" width="116" height="6"/>
+    <ellipse cx="1455" cy="660" rx="90" ry="70" fill="url(#glowB)" opacity="0.8"/>
+    <rect x="1398" y="560" width="114" height="180" fill="#2b2436" stroke="#0d0a10" stroke-width="2"/>
+    <!-- tiled roof + dome + finial -->
+    <polygon points="1386,562 1524,562 1455,512" fill="#274d8a" stroke="#0d0a10" stroke-width="2"/>
+    <path d="M1425,512 a30,30 0 0 1 60,0 z" fill="#312a3d" stroke="#0d0a10" stroke-width="2"/>
+    <path d="M1455,482 v-22" stroke="#c9a227" stroke-width="4"/>
+    <circle cx="1455" cy="456" r="6" fill="#c9a227" stroke="#0d0a10" stroke-width="1.5"/>
+    <!-- arched windows glowing arcane blue -->
+    <g fill="#6fa8ff">
+      <path d="M1416,700 v-40 a11,11 0 0 1 22,0 v40 z"/>
+      <path d="M1444,700 v-40 a11,11 0 0 1 22,0 v40 z"/>
+      <path d="M1472,700 v-40 a11,11 0 0 1 22,0 v40 z"/>
     </g>
-    <circle cx="1450" cy="492" r="13" fill="#c9a227" opacity="0.3" stroke="#141019" stroke-width="3"/>
-    <rect x="1416" y="556" width="20" height="34" fill="#c9a227" opacity="0.4" stroke="#141019" stroke-width="1.5"/>
-    <rect x="1464" y="556" width="20" height="34" fill="#c9a227" opacity="0.4" stroke="#141019" stroke-width="1.5"/>
-    <polygon points="1418,656 1447,649 1447,682 1418,689" fill="#f2e8d5" opacity="0.85" stroke="#141019" stroke-width="2"/>
-    <polygon points="1482,656 1453,649 1453,682 1482,689" fill="#f2e8d5" opacity="0.85" stroke="#141019" stroke-width="2"/>
-    <rect x="1446" y="647" width="8" height="37" fill="#c9a227" stroke="#141019" stroke-width="1"/>
+    <!-- open-book emblem -->
+    <circle cx="1455" cy="608" r="20" fill="#1c1624" stroke="#c9a227" stroke-width="2"/>
+    <path d="M1443,602 c5,-3 9,-3 12,0 3,-3 7,-3 12,0 v12 c-5,-3 -9,-3 -12,0 -3,-3 -7,-3 -12,0 z" fill="#e8ddc4"/>
+    <!-- door -->
+    <path d="M1440,740 v-30 a15,15 0 0 1 30,0 v30 z" fill="#1c1512" stroke="#6fa8ff" stroke-opacity="0.5" stroke-width="2"/>
   </g>
 
-  <rect x="0" y="760" width="1600" height="140" fill="#141019"/>
-  <rect x="0" y="760" width="1600" height="140" fill="#f2e8d5" opacity="0.08"/>
-  <rect x="0" y="760" width="1600" height="140" fill="url(#cobble)"/>
-
+  <!-- ============ foreground props ============ -->
+  <!-- lamp posts -->
   <g>
-    <g transform="translate(340,0)">
-      <circle cx="0" cy="650" r="20" fill="#ffffff" opacity="0.06"/>
-      <rect x="-4" y="668" width="8" height="92" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-      <rect x="-9" y="662" width="18" height="7" fill="#141019"/>
-      <ellipse cx="0" cy="648" rx="7" ry="13" fill="#c9a227"/>
-      <ellipse cx="0" cy="651" rx="3" ry="6" fill="#ffffff" opacity="0.5"/>
-    </g>
-    <g transform="translate(605,0)">
-      <circle cx="0" cy="650" r="20" fill="#ffffff" opacity="0.06"/>
-      <rect x="-4" y="668" width="8" height="92" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-      <rect x="-9" y="662" width="18" height="7" fill="#141019"/>
-      <ellipse cx="0" cy="648" rx="7" ry="13" fill="#c9a227"/>
-      <ellipse cx="0" cy="651" rx="3" ry="6" fill="#ffffff" opacity="0.5"/>
-    </g>
-    <g transform="translate(855,0)">
-      <circle cx="0" cy="650" r="20" fill="#ffffff" opacity="0.06"/>
-      <rect x="-4" y="668" width="8" height="92" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-      <rect x="-9" y="662" width="18" height="7" fill="#141019"/>
-      <ellipse cx="0" cy="648" rx="7" ry="13" fill="#c9a227"/>
-      <ellipse cx="0" cy="651" rx="3" ry="6" fill="#ffffff" opacity="0.5"/>
-    </g>
-    <g transform="translate(1120,0)">
-      <circle cx="0" cy="650" r="20" fill="#ffffff" opacity="0.06"/>
-      <rect x="-4" y="668" width="8" height="92" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-      <rect x="-9" y="662" width="18" height="7" fill="#141019"/>
-      <ellipse cx="0" cy="648" rx="7" ry="13" fill="#c9a227"/>
-      <ellipse cx="0" cy="651" rx="3" ry="6" fill="#ffffff" opacity="0.5"/>
-    </g>
-    <g transform="translate(1340,0)">
-      <circle cx="0" cy="650" r="20" fill="#ffffff" opacity="0.06"/>
-      <rect x="-4" y="668" width="8" height="92" fill="#141019" stroke="#f2e8d5" stroke-width="1.5" stroke-opacity="0.3"/>
-      <rect x="-9" y="662" width="18" height="7" fill="#141019"/>
-      <ellipse cx="0" cy="648" rx="7" ry="13" fill="#c9a227"/>
-      <ellipse cx="0" cy="651" rx="3" ry="6" fill="#ffffff" opacity="0.5"/>
-    </g>
+    <path d="M120,790 V640 M112,648 h16" stroke="#5a4326" stroke-width="6"/>
+    <circle cx="120" cy="632" r="26" fill="url(#glowW)"/>
+    <rect x="111" y="622" width="18" height="22" rx="4" fill="#e8b054" stroke="#0d0a10" stroke-width="2"/>
+    <path d="M850,790 V640 M842,648 h16" stroke="#5a4326" stroke-width="6"/>
+    <circle cx="850" cy="632" r="26" fill="url(#glowW)"/>
+    <rect x="841" y="622" width="18" height="22" rx="4" fill="#e8b054" stroke="#0d0a10" stroke-width="2"/>
   </g>
+  <!-- barrels beside the tavern -->
+  <g stroke="#0d0a10" stroke-width="2">
+    <rect x="1106" y="706" width="30" height="40" rx="6" fill="#5a4326"/>
+    <path d="M1106,718 h30 M1106,734 h30" stroke="#c9a227" stroke-width="2"/>
+    <rect x="1140" y="718" width="26" height="28" rx="5" fill="#4e3720"/>
+  </g>
+  <!-- bunting between guild and temple -->
+  <path d="M312,540 Q396,586 470,540" fill="none" stroke="#f2e8d5" stroke-opacity="0.25" stroke-width="2"/>
+  <g fill="#c9a227" opacity="0.7">
+    <polygon points="336,556 344,556 340,568"/><polygon points="368,561 376,561 372,573"/>
+    <polygon points="400,562 408,562 404,574"/><polygon points="432,559 440,559 436,571"/>
+  </g>
+
+  <!-- road leading to the gate -->
+  <path d="M1198,740 L1282,740 L1450,900 L1030,900 Z" fill="#f2e8d5" opacity="0.05"/>
+  <path d="M1198,740 L1282,740 L1450,900 L1030,900 Z" fill="url(#cobbleH)"/>
+
+  <!-- dusk vignette -->
+  <rect width="1600" height="900" fill="#141019" opacity="0.12"/>
+  <path d="M0,0 H1600 V900 H0 Z M80,450 A720,380 0 1 0 1520,450 A720,380 0 1 0 80,450 Z" fill="#0d0a10" opacity="0.25" fill-rule="evenodd"/>
 </svg>

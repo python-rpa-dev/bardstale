@@ -1,6 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <path d="M16,3 L19,18 L13,18 Z" fill="#f2e8d5" stroke="#141019" stroke-width="1.5" stroke-linejoin="round"/>
-  <rect x="10" y="18" width="12" height="3.5" rx="1.5" fill="#c9a227" stroke="#141019" stroke-width="1"/>
-  <rect x="14" y="21.5" width="4" height="6.5" fill="#141019" stroke="#c9a227" stroke-opacity="0.6" stroke-width="1"/>
-  <circle cx="16" cy="29" r="2" fill="#c9a227" stroke="#141019" stroke-width="1"/>
+  <defs>
+    <linearGradient id="steelD" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6e9ee"/>
+      <stop offset="0.55" stop-color="#a9aeb8"/>
+      <stop offset="1" stop-color="#71767f"/>
+    </linearGradient>
+  </defs>
+  <!-- blade pointing up-right -->
+  <polygon points="27,3 24.5,10.5 15.5,19.8 12.2,16.5 21.5,7.5" fill="url(#steelD)" stroke="#0d0a10" stroke-width="1.2"/>
+  <path d="M25.4,6 L14.6,17.4" stroke="#f2e8d5" stroke-opacity="0.65" stroke-width="1"/>
+  <!-- crossguard -->
+  <polygon points="9,17.5 14.5,23 11.8,25.7 6.3,20.2" fill="#c9a227" stroke="#0d0a10" stroke-width="1.2"/>
+  <path d="M8.2,19 L12.6,23.4" stroke="#8a6d1a" stroke-width="1"/>
+  <!-- grip with wrap -->
+  <polygon points="7.5,22.5 9.8,20.2 12.6,23 8.2,26.2" fill="#4a3320" stroke="#0d0a10" stroke-width="1.1"/>
+  <path d="M7.6,24.4 l3,-2.4 M9,25.8 l3,-2.4" stroke="#f2e8d5" stroke-opacity="0.25" stroke-width="0.8"/>
+  <!-- pommel -->
+  <circle cx="6.4" cy="27.2" r="2.1" fill="#c9a227" stroke="#0d0a10" stroke-width="1.1"/>
+  <circle cx="5.9" cy="26.7" r="0.6" fill="#f2e8d5" opacity="0.7"/>
 </svg>

@@ -1,21 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <g stroke="#f2e8d5" stroke-opacity="0.5" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M38,42 L18,28 L10,42"/>
-    <path d="M36,50 L12,46 L4,58"/>
-    <path d="M37,58 L16,68 L10,82"/>
-    <path d="M41,64 L30,80 L26,90"/>
-    <path d="M58,42 L78,28 L86,42"/>
-    <path d="M60,50 L84,46 L92,58"/>
-    <path d="M59,58 L80,68 L86,82"/>
-    <path d="M55,64 L66,80 L70,90"/>
+  <defs>
+    <radialGradient id="bgSpd" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#271f30"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="abdSpd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2f42"/>
+      <stop offset="1" stop-color="#191320"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgSpd)"/>
+  <!-- faint web threads in the corners -->
+  <g stroke="#f2e8d5" stroke-opacity="0.08" stroke-width="1" fill="none">
+    <path d="M0,14 C14,16 22,8 26,0 M0,30 C18,30 30,20 34,0"/>
+    <path d="M96,14 C82,16 74,8 70,0 M96,30 C78,30 66,20 62,0"/>
   </g>
-  <ellipse cx="48" cy="63" rx="18" ry="16" fill="#141019" stroke="#f2e8d5" stroke-opacity="0.55" stroke-width="3"/>
-  <path d="M48,54 L54,63 L48,72 L42,63 Z" fill="#f2e8d5" fill-opacity="0.3"/>
-  <circle cx="48" cy="41" r="12" fill="#141019" stroke="#f2e8d5" stroke-opacity="0.55" stroke-width="3"/>
+  <ellipse cx="48" cy="89" rx="34" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- eight angular legs -->
+  <g stroke="#2b2331" stroke-width="3.6" fill="none" stroke-linecap="round">
+    <path d="M38,48 L22,36 L14,50 L6,44"/>
+    <path d="M37,54 L19,50 L11,63 L3,60"/>
+    <path d="M39,60 L24,64 L18,77 L9,76"/>
+    <path d="M42,66 L32,76 L30,87 L22,90"/>
+    <path d="M58,48 L74,36 L82,50 L90,44"/>
+    <path d="M59,54 L77,50 L85,63 L93,60"/>
+    <path d="M57,60 L72,64 L78,77 L87,76"/>
+    <path d="M54,66 L64,76 L66,87 L74,90"/>
+  </g>
+  <g stroke="#f2e8d5" stroke-opacity="0.14" stroke-width="1.1" fill="none">
+    <path d="M38,48 L22,36 L14,50 L6,44 M58,48 L74,36 L82,50 L90,44"/>
+  </g>
+
+  <!-- bulbous abdomen -->
+  <circle cx="48" cy="66" r="18.5" fill="url(#abdSpd)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- pale marking: hourglass + chevrons -->
+  <g fill="#f2e8d5" opacity="0.3">
+    <polygon points="48,56 43,62 48,64 53,62"/>
+    <polygon points="48,76 43,70 48,68 53,70"/>
+    <path d="M41,79 l7,-4 7,4 -2.5,-5.5 2.5,-5.5 -7,4 z" opacity="0.5"/>
+  </g>
+
+  <!-- cephalothorax -->
+  <circle cx="48" cy="43" r="11" fill="#372e3e" stroke="#0d0a10" stroke-width="1.6"/>
+  <!-- eye cluster -->
   <g fill="#c0392b">
-    <circle cx="44" cy="38" r="2.5"/>
-    <circle cx="52" cy="38" r="2.5"/>
-    <circle cx="41" cy="43" r="2"/>
-    <circle cx="55" cy="43" r="2"/>
+    <circle cx="43" cy="38" r="1.9"/><circle cx="53" cy="38" r="1.9"/>
+    <circle cx="39.5" cy="42" r="1.4"/><circle cx="56.5" cy="42" r="1.4"/>
+    <circle cx="45.5" cy="43.5" r="1.2"/><circle cx="50.5" cy="43.5" r="1.2"/>
   </g>
+  <circle cx="48" cy="40" r="9" fill="#c0392b" opacity="0.16"/>
+  <!-- fangs -->
+  <path d="M44,52 l-1.5,6 3,-4 z M52,52 l1.5,6 -3,-4 z" fill="#b98f7e" stroke="#0d0a10" stroke-width="0.8"/>
 </svg>

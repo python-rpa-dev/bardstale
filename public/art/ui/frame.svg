@@ -1,22 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g fill="#141019">
-    <rect x="0" y="0" width="64" height="10"/>
-    <rect x="0" y="54" width="64" height="10"/>
-    <rect x="0" y="0" width="10" height="64"/>
-    <rect x="54" y="0" width="10" height="64"/>
+  <defs>
+    <linearGradient id="goldFr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c95a"/>
+      <stop offset="1" stop-color="#8a6d1a"/>
+    </linearGradient>
+    <!-- one corner ornament, mirrored to all four -->
+    <g id="cornerFr">
+      <path d="M4,20 C4,10 10,4 20,4 c-5,3 -8,6 -9.5,11 -0.7,2.4 -2.4,4.1 -4.5,4.9 z" fill="url(#goldFr)" stroke="#0d0a10" stroke-width="1"/>
+      <path d="M6,18 C6,11 11,6 18,6 c-4,2.5 -6.5,5 -7.8,9 -0.5,1.6 -1.8,2.6 -3.2,3 z" fill="#c9a227" opacity="0.5"/>
+      <circle cx="7.5" cy="7.5" r="2.4" fill="#f2e8d5" stroke="#8a6d1a" stroke-width="1"/>
+      <path d="M13,13 c2.5,0.5 4.5,2.5 5,5 l-2.2,2.2 c-0.6,-2.4 -2.6,-4.4 -5,-5 z" fill="#c9a227" stroke="#0d0a10" stroke-width="0.8"/>
+    </g>
+  </defs>
+
+  <!-- edge bands: dark leather with gold double-line -->
+  <rect x="0.6" y="0.6" width="62.8" height="62.8" fill="none" stroke="#1c1624" stroke-width="1.2"/>
+  <rect x="1.5" y="1.5" width="61" height="61" fill="none" stroke="url(#goldFr)" stroke-width="2"/>
+  <rect x="4.5" y="4.5" width="55" height="55" fill="none" stroke="#c9a227" stroke-opacity="0.55" stroke-width="1"/>
+
+  <!-- edge midpoint diamonds -->
+  <g fill="#c9a227" stroke="#0d0a10" stroke-width="0.8">
+    <polygon points="32,1.6 34.4,4 32,6.4 29.6,4"/>
+    <polygon points="32,57.6 34.4,60 32,62.4 29.6,60"/>
+    <polygon points="1.6,32 4,29.6 6.4,32 4,34.4"/>
+    <polygon points="57.6,32 60,29.6 62.4,32 60,34.4"/>
   </g>
-  <rect x="2.5" y="2.5" width="59" height="59" fill="none" stroke="#c9a227" stroke-width="2"/>
-  <rect x="7.5" y="7.5" width="49" height="49" fill="none" stroke="#c9a227" stroke-width="1.6" stroke-opacity="0.85"/>
-  <g fill="#c9a227" stroke="#141019" stroke-width="1">
-    <polygon points="5,1.5 8.5,5 5,8.5 1.5,5"/>
-    <polygon points="59,1.5 62.5,5 59,8.5 55.5,5"/>
-    <polygon points="5,55.5 8.5,59 5,62.5 1.5,59"/>
-    <polygon points="59,55.5 62.5,59 59,62.5 55.5,59"/>
-  </g>
-  <g fill="#c9a227" fill-opacity="0.7">
-    <rect x="30.5" y="1.5" width="3" height="7" rx="1.5"/>
-    <rect x="30.5" y="55.5" width="3" height="7" rx="1.5"/>
-    <rect x="1.5" y="30.5" width="7" height="3" rx="1.5"/>
-    <rect x="55.5" y="30.5" width="7" height="3" rx="1.5"/>
-  </g>
+
+  <!-- corner ornaments -->
+  <use href="#cornerFr"/>
+  <use href="#cornerFr" transform="translate(64,0) scale(-1,1)"/>
+  <use href="#cornerFr" transform="translate(0,64) scale(1,-1)"/>
+  <use href="#cornerFr" transform="translate(64,64) scale(-1,-1)"/>
+
+  <!-- inner hairline -->
+  <rect x="7.5" y="7.5" width="49" height="49" fill="none" stroke="#f2e8d5" stroke-opacity="0.14" stroke-width="1"/>
 </svg>

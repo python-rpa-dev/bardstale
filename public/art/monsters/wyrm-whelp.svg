@@ -1,15 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <path d="M46,38 L10,16 L18,58 Z" fill="#f2e8d5" fill-opacity="0.28" stroke="#c9a227" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M50,38 L86,16 L78,58 Z" fill="#f2e8d5" fill-opacity="0.28" stroke="#c9a227" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M30,70 C18,76 16,84 26,87" fill="none" stroke="#c9a227" stroke-opacity="0.55" stroke-width="6" stroke-linecap="round"/>
-  <ellipse cx="48" cy="63" rx="21" ry="15" fill="#c9a227" fill-opacity="0.5" stroke="#141019" stroke-width="2"/>
-  <path d="M52,58 C62,50 60,38 56,32" fill="none" stroke="#c9a227" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
-  <path d="M54,26 L76,30 L58,40 Z" fill="#c9a227" fill-opacity="0.75" stroke="#141019" stroke-width="1.5"/>
-  <path d="M56,24 L52,14" stroke="#f2e8d5" stroke-opacity="0.6" stroke-width="3.5" stroke-linecap="round"/>
-  <circle cx="62" cy="30" r="2.5" fill="#c0392b"/>
-  <g stroke="#f2e8d5" stroke-opacity="0.3" stroke-width="3" fill="none">
-    <path d="M40,58 C44,62 44,66 40,70"/>
-    <path d="M49,59 C53,63 53,67 49,71"/>
-    <path d="M58,58 C62,62 62,66 58,70"/>
+  <defs>
+    <radialGradient id="bgWyr" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#2e1d1c"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="scaleWyr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a34a30"/>
+      <stop offset="1" stop-color="#4a1d16"/>
+    </linearGradient>
+    <radialGradient id="emberWyr" cx="0.5" cy="0.7" r="0.7">
+      <stop offset="0" stop-color="#f2c063"/>
+      <stop offset="0.5" stop-color="#e0645c"/>
+      <stop offset="1" stop-color="#8f2318" stop-opacity="0.2"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgWyr)"/>
+  <ellipse cx="48" cy="89" rx="32" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- small wings framing the bust -->
+  <path d="M26,72 C12,64 8,46 16,32 c-1,10 3,19 11,25 l-3,-13 c-1,8 1,15 6,20 z" fill="#5a1f1c" stroke="#0d0a10" stroke-width="1.4"/>
+  <path d="M70,72 C84,64 88,46 80,32 c1,10 -3,19 -11,25 l3,-13 c1,8 -1,15 -6,20 z" fill="#5a1f1c" stroke="#0d0a10" stroke-width="1.4"/>
+  <g stroke="#f2e8d5" stroke-opacity="0.2" stroke-width="1" fill="none">
+    <path d="M26,72 C16,64 13,52 16,38 M23,69 l-4,-14"/>
+    <path d="M70,72 C80,64 83,52 80,38 M73,69 l4,-14"/>
+  </g>
+
+  <!-- scaled neck rising from below -->
+  <path d="M36,96 c-2,-18 2,-30 8,-36 h12 c7,7 11,19 9,36 z" fill="url(#scaleWyr)" stroke="#0d0a10" stroke-width="1.6"/>
+  <g stroke="#f2e8d5" stroke-opacity="0.22" stroke-width="1" fill="none">
+    <path d="M40,92 q8,-3 16,0 M40,84 q8,-3 16,0 M41,76 q7,-3 14,0"/>
+  </g>
+
+  <!-- head in three-quarter view, snout to the left -->
+  <path d="M52,30 c11,0 18,8 18,18 0,12 -8,20 -18,20 -6,0 -11,-2.5 -14,-7 L22,54 l13,-11 c-1,-9 6,-13 17,-13 z" fill="url(#scaleWyr)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- open jaw with ember glow -->
+  <path d="M24,54 L38,48 c-1,6 1,11 6,14 l-16,-1 z" fill="#0d0a10"/>
+  <circle cx="33" cy="54" r="7" fill="url(#emberWyr)" opacity="0.9"/>
+  <path d="M28,50 l-4,-3 M28,56 l-5,1" stroke="#f2c063" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- teeth -->
+  <g fill="#e8ddc4">
+    <polygon points="27,51 29,55 30.5,51"/>
+    <polygon points="33,56.5 35,60 36.5,56"/>
+  </g>
+  <!-- nostril -->
+  <circle cx="27" cy="47" r="1.4" fill="#0d0a10"/>
+  <!-- golden slit eye -->
+  <ellipse cx="48" cy="43" rx="3.6" ry="3" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+  <path d="M48,40.5 v5" stroke="#141019" stroke-width="1.4"/>
+  <!-- horns sweeping back -->
+  <path d="M56,32 c-2,-7 2,-13 9,-15 -3,5 -2,10 1,13 z M64,38 c0,-6 4,-10 10,-10 -4,4 -5,8 -3,11 z" fill="#d8cdb2" stroke="#0d0a10" stroke-width="1.2"/>
+  <!-- ridge spikes down the skull -->
+  <g fill="#d8cdb2" stroke="#0d0a10" stroke-width="0.9">
+    <polygon points="63,50 68,47 66,53"/>
+    <polygon points="66,58 71,56 68,61"/>
   </g>
 </svg>

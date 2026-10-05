@@ -302,7 +302,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (btn) btn.textContent = "Auto-Walk";
   }
 
-  /** BFS to the stairs at 8 steps/sec; halts on encounter, trap or an unopened chest ahead. */
+  /** BFS to the stairs at 8 steps/sec; halts on encounter, trap or an unopened chest ahead. Descends and keeps walking across floors. */
   function toggleAuto(): void {
     const wasRunning = autoTimer !== null;
     stopAuto(); // a Halt click cancels and does not restart
@@ -348,9 +348,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         ctx.navigate("#/combat");
         return;
       }
-      if (out.descended || out.finished || out.trapMsg || out.avoided || out.encounter) {
+      if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
+      if (out.finished || out.trapMsg || out.avoided || out.encounter) {
         stopAuto();
-        if (out.descended) log("You descend. The air changes.");
         if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
       }
     }, 125); // 8 steps per second
@@ -585,7 +585,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     button("Turn L", { hint: "A — turn 90° left", onClick: () => turn(3) }),
     button("Turn R", { hint: "D — turn 90° right", onClick: () => turn(1) }),
     button("Look", { hint: "L — describe what you face; again to open chests / reveal secrets", onClick: () => doLook() }),
-    button("Auto-Walk", { cls: "auto-btn", hint: "BFS path to the stairs at 8 steps/sec", onClick: () => toggleAuto() }),
+    button("Auto-Walk", { cls: "auto-btn", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, traps, chests", onClick: () => toggleAuto() }),
     button("Item", { hint: "Use a consumable outside combat", onClick: () => openItems() }),
     button("Spell", { hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
     button("Leave", { cls: "danger", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
@@ -603,7 +603,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         el("div", { class: "panel mini-card" },
           el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
           miniCanvas,
-          el("p", { class: "muted legend", text: "■ stairs · ? chest — explored cells only" }),
+          el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine — explored cells only" }),
         ),
         partyHost,
         logEl,

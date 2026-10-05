@@ -103,6 +103,9 @@ describe("daily rotation", () => {
     expect(after).toHaveLength(3);
     expect(after).not.toEqual(before); // daily seed differs → board changed
     expect(b.state.dayKey).toBe("2026-10-05");
+    expect(b.rotatedDay).toBe(true); // load detected the new day → boot toast hook fires
+    const c = createStore({ storage, now: clockFrom("2026-10-05T18:00:00Z") });
+    expect(c.rotatedDay).toBe(false); // already rolled today — no repeat toast
   });
 
   it("completed bounties are never re-offered after rollover", () => {

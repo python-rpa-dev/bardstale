@@ -1,5 +1,5 @@
 import "../styles/main.css";
-import { el } from "./ui/dom";
+import { el, toast } from "./ui/dom";
 import { createRouter, navigateTo, type RouteCtx, type Router, type Screen } from "./ui/router";
 import { createStore } from "./state/save";
 import { createSfx } from "./core/sfx";
@@ -105,3 +105,4 @@ routerRef = router;
 await loadManifest();
 applySettings();
 router.start();
+if (store.rotatedDay) toast("A new day dawns — today's bounties and gate omens have turned.");

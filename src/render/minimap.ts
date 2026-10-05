@@ -27,9 +27,11 @@ export function renderMinimap(canvas: HTMLCanvasElement, input: MinimapInput): v
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const stairsCells: number[] = [];
+  const shrineCells: number[] = [];
   for (const [id, kind] of map.entities) {
     if (!visited.has(id)) continue;
     if (kind === "stairs") stairsCells.push(id);
+    if (kind === "shrine") shrineCells.push(id);
   }
 
   for (let y = 0; y < h; y++) {
@@ -48,6 +50,15 @@ export function renderMinimap(canvas: HTMLCanvasElement, input: MinimapInput): v
     const y = Math.floor(id / w) * CELL;
     ctx.fillStyle = "#d9a441";
     ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+  }
+
+  // Teal shrine dots.
+  for (const id of shrineCells) {
+    const x = (id % w) * CELL;
+    const y = Math.floor(id / w) * CELL;
+    ctx.fillStyle = "#4fb3a5";
+    ctx.fillRect(x + 1, y + 2, CELL - 2, CELL - 4);
+    ctx.fillRect(x + 2, y + 1, CELL - 4, CELL - 2);
   }
 
   // Chests: "?" while unopened (only once the cell is revealed), dimmed box after looting.

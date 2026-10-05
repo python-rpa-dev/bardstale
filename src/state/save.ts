@@ -170,9 +170,9 @@ export function newGame(now: () => Date = () => new Date()): GameState {
  * Offers live one local day; a completed offer's slot is replaced by the next
  * unoffered entry of the fresh shuffle. Mutates in place.
  */
-export function rotateDaily(state: GameState, now: () => Date): void {
+export function rotateDaily(state: GameState, now: () => Date): boolean {
   const today = dayKey(now());
-  if (state.dayKey === today) return;
+  if (state.dayKey === today) return false;
   state.dayKey = today;
   const rng = mulberry32(dailySeed(today));
   const pool = shuffledPool(rng);
@@ -186,6 +186,7 @@ export function rotateDaily(state: GameState, now: () => Date): void {
     fresh.push({ ...b, kills: 0, done: false });
   }
   state.bounties.offers = fresh;
+  return true;
 }
 
 // ---------- Persistence ----------
@@ -233,6 +234,8 @@ export interface Store {
   saveNow(): void;
   deleteSave(): void;
   hasSave(): boolean;
+  /** True when this load rolled the save into a new day — bounty board turned. */
+  readonly rotatedDay: boolean;
 }
 
 export interface StoreOptions {
@@ -247,7 +250,8 @@ export function createStore(opts: StoreOptions = {}): Store {
   const now = opts.now ?? (() => new Date());
 
   let state = deserialize(storage.getItem(SAVE_KEY)) ?? newGame(now);
-  rotateDaily(state, now);
+  const rotatedDay = rotateDaily(state, now);
+  if (rotatedDay) storage.setItem(SAVE_KEY, serialize(state)); // persist the rolled dayKey so a rollover isn't replayed every load
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const saveNow = () => {
@@ -271,5 +275,6 @@ export function createStore(opts: StoreOptions = {}): Store {
       state = newGame(now);
     },
     hasSave: () => deserialize(storage.getItem(SAVE_KEY)) !== null,
+    rotatedDay,
   };
 }

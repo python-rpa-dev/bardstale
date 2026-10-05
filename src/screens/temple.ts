@@ -10,6 +10,23 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
   host.append(
     el("h1", { text: "Temple of the Quiet Light" }),
     el("p", { class: "muted quote", text: "Your heroes never die forever." }),
+    (() => {
+      const hurt = s.party.filter((p) => p.hp > 0 && p.hp < pcMax(p).hp);
+      const total = hurt.reduce((n, p) => n + TEMPLE.healCost(p), 0);
+      return button(hurt.length ? `Heal All — ${total} g` : "Heal All", {
+        hint: hurt.length
+          ? `Restore the HP of all ${hurt.length} wounded heroes for ${total} gold.`
+          : "Everyone is already at full HP.",
+        disabled: hurt.length === 0 || s.gold + s.bank < total,
+        onClick: () => {
+          ctx.commit((st) => {
+            if (!payFromPurseOrBank(st, total)) return;
+            for (const p of st.party) if (p.hp > 0 && p.hp < pcMax(p).hp) p.hp = pcMax(p).hp;
+          });
+          ctx.refresh();
+        },
+      });
+    })(),
     el(
       "div",
       { class: "temple-rows" },

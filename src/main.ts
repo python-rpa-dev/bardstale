@@ -35,6 +35,10 @@ const ctx: RouteCtx = {
     store.commit(mutator);
     applySettings(); // settings may have changed in this mutation
   },
+  replaceState(next) {
+    store.load(next); // cancels pending debounced writes so autosave cannot clobber an import
+    applySettings();
+  },
   sfx,
   navigate: navigateTo,
   refresh: () => routerRef?.refresh(),

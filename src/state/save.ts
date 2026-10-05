@@ -232,6 +232,8 @@ export interface Store {
   get state(): GameState;
   /** Single entry point for every mutation; schedules the debounced write. */
   commit(mutator: (s: GameState) => void): void;
+  /** Wholesale state replacement (save import): persists immediately, cancelling any pending debounced write. */
+  load(next: GameState): void;
   saveNow(): void;
   deleteSave(): void;
   hasSave(): boolean;
@@ -269,6 +271,10 @@ export function createStore(opts: StoreOptions = {}): Store {
       mutator(state);
       clearTimeout(timer);
       timer = setTimeout(saveNow, 300); // debounced 300 ms after every mutation
+    },
+    load(next) {
+      state = next;
+      saveNow(); // clearTimeout kills a pending commit's timer — an import must never be clobbered by it
     },
     saveNow,
     deleteSave() {

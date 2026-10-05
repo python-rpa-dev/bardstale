@@ -9,6 +9,8 @@ export interface RouteCtx {
   refresh(): void;
   /** Wipe the save and start a fresh game (title screen). */
   newGame(): void;
+  /** Replace the entire save state (import) and persist immediately. */
+  replaceState(state: GameState): void;
   hasSave(): boolean;
 }
 

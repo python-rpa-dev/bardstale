@@ -1,5 +1,6 @@
+import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
-import type { GameState, Pc, Settings } from "./save";
+import type { ActiveGate, GameState, Pc, Settings, StatusMark } from "./save";
 
 /**
  * Save-code import. Export is just `serialize(state)` — the state carries its
@@ -12,6 +13,7 @@ export type ImportResult = { ok: true; state: GameState } | { ok: false; error: 
 
 const CLASS_IDS = new Set<string>(CLASSES.map((c) => c.id));
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const FAMILY_SET = new Set<string>(FAMILIES);
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -29,44 +31,49 @@ function boolOr(v: unknown, fallback: boolean): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
 
+/** Membership guards so validated strings narrow to their union types — no casts on parsed data. */
+function isClassId(v: string): v is ClassId {
+  return CLASS_IDS.has(v);
+}
+function isFamily(v: string): v is Family {
+  return FAMILY_SET.has(v);
+}
 const fail = (error: string): ImportResult => ({ ok: false, error });
+
+/** A finite stat within sane bounds, or null — narrows without casting. */
+function stat(v: unknown): number | null {
+  return num(v) && v >= 0 && v <= 1_000_000 ? v : null;
+}
+function nonNegInt(v: unknown): number {
+  return int(v) && v >= 0 ? v : 0;
+}
 
 function parsePc(raw: Record<string, unknown>): Pc | null {
   if (!str(raw.id) || !str(raw.name)) return null;
-  if (!str(raw.classId) || !CLASS_IDS.has(raw.classId as ClassId)) return null;
-  if (!int(raw.level) || (raw.level as number) < 1 || (raw.level as number) > 99) return null;
-  for (const k of ["xp", "hp", "sp", "points"] as const) {
-    if (!num(raw[k]) || (raw[k] as number) < 0 || (raw[k] as number) > 1_000_000) return null;
-  }
+  if (!str(raw.classId) || !isClassId(raw.classId)) return null;
+  const level = int(raw.level) && raw.level >= 1 && raw.level <= 99 ? raw.level : null;
+  if (level === null) return null;
+  const xp = stat(raw.xp);
+  const hp = stat(raw.hp);
+  const sp = stat(raw.sp);
+  const points = stat(raw.points);
+  if (xp === null || hp === null || sp === null || points === null) return null;
   const a = isObj(raw.alloc) ? raw.alloc : {};
-  const alloc = {
-    atk: int(a.atk) && (a.atk as number) >= 0 ? (a.atk as number) : 0,
-    def: int(a.def) && (a.def as number) >= 0 ? (a.def as number) : 0,
-    dex: int(a.dex) && (a.dex as number) >= 0 ? (a.dex as number) : 0,
-    mnd: int(a.mnd) && (a.mnd as number) >= 0 ? (a.mnd as number) : 0,
-  };
+  const alloc = { atk: nonNegInt(a.atk), def: nonNegInt(a.def), dex: nonNegInt(a.dex), mnd: nonNegInt(a.mnd) };
   const g = isObj(raw.gear) ? raw.gear : {};
   const gear: Pc["gear"] = {};
   for (const slot of ["weapon", "armor", "trinket"] as const) {
     if (str(g[slot])) gear[slot] = g[slot];
   }
-  return {
-    id: raw.id,
-    classId: raw.classId as ClassId,
-    name: raw.name.slice(0, 40),
-    level: raw.level as number,
-    xp: raw.xp as number,
-    hp: raw.hp as number,
-    sp: raw.sp as number,
-    points: raw.points as number,
-    alloc,
-    gear,
-    statuses: Array.isArray(raw.statuses)
-      ? (raw.statuses as unknown[]).filter(
-          (s) => isObj(s) && str(s.id) && int(s.rounds),
-        ) as Pc["statuses"]
-      : [],
-  };
+  const statuses: StatusMark[] = [];
+  if (Array.isArray(raw.statuses)) {
+    for (const mark of raw.statuses) {
+      if (!isObj(mark)) continue;
+      const kind = mark.kind === "poison" || mark.kind === "wound" ? mark.kind : null;
+      if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
+    }
+  }
+  return { id: raw.id, classId: raw.classId, name: raw.name.slice(0, 40), level, xp, hp, sp, points, alloc, gear, statuses };
 }
 
 /** Light structural check — enough that the dungeon screen can render it. */
@@ -76,7 +83,7 @@ function validGate(raw: unknown): boolean {
   return (
     str(g.gateId) &&
     int(g.floor) &&
-    (g.floor as number) >= 0 &&
+    g.floor >= 0 &&
     num(g.seed) &&
     isObj(g.pos) &&
     int(g.pos.x) &&
@@ -118,22 +125,30 @@ export function importSave(raw: string): ImportResult {
   if (!isObj(parsed.bounties) || !Array.isArray(parsed.bounties.offers) || !Array.isArray(parsed.bounties.completed)) {
     return fail("Bounty board is missing or malformed.");
   }
-  for (const o of parsed.bounties.offers as unknown[]) {
-    if (!isObj(o) || !str(o.family) || !int(o.count) || (o.count as number) < 1 || !num(o.gold)) {
+  const offers: GameState["bounties"]["offers"] = [];
+  for (const o of parsed.bounties.offers) {
+    if (!isObj(o) || !str(o.family) || !isFamily(o.family) || !int(o.count) || o.count < 1 || !num(o.gold)) {
       return fail("A bounty offer is malformed.");
     }
+    offers.push({
+      family: o.family,
+      count: o.count,
+      gold: o.gold,
+      kills: int(o.kills) && o.kills >= 0 ? o.kills : 0,
+      done: boolOr(o.done, false),
+    });
   }
 
   const inventory: GameState["inventory"] = {};
   if (isObj(parsed.inventory)) {
     for (const [k, v] of Object.entries(parsed.inventory)) {
-      if (int(v) && (v as number) >= 0) inventory[k] = v;
+      if (int(v) && v >= 0) inventory[k] = v;
     }
   }
   const runs: GameState["runs"] = {};
   if (isObj(parsed.runs)) {
     for (const [k, v] of Object.entries(parsed.runs)) {
-      if (int(v) && (v as number) >= 0) runs[k] = v;
+      if (int(v) && v >= 0) runs[k] = v;
     }
   }
 
@@ -147,8 +162,12 @@ export function importSave(raw: string): ImportResult {
     sfxMuted: boolOr(rs.sfxMuted, false),
   };
 
-  if ("activeGate" in parsed && !validGate(parsed.activeGate)) {
-    return fail("The active expedition is corrupt — finish or abandon it before exporting.");
+  let gate: ActiveGate | undefined; // pass-through after the structural check below
+  if ("activeGate" in parsed) {
+    if (!validGate(parsed.activeGate)) {
+      return fail("The active expedition is corrupt — finish or abandon it before exporting.");
+    }
+    gate = parsed.activeGate as ActiveGate; // subtrees (map, flags, loot) are tolerated by screens via ??= defaults
   }
 
   const state: GameState = {
@@ -158,11 +177,11 @@ export function importSave(raw: string): ImportResult {
     bank: parsed.bank,
     party,
     inventory,
-    codex: Array.isArray(parsed.codex) ? (parsed.codex.filter(str) as string[]) : [],
-    medals: Array.isArray(parsed.medals) ? (parsed.medals.filter(str) as string[]) : [],
+    codex: Array.isArray(parsed.codex) ? parsed.codex.filter(str) : [],
+    medals: Array.isArray(parsed.medals) ? parsed.medals.filter(str) : [],
     bounties: {
-      offers: parsed.bounties.offers as GameState["bounties"]["offers"],
-      completed: (parsed.bounties.completed as unknown[]).filter(str) as string[],
+      offers,
+      completed: parsed.bounties.completed.filter(str),
       ...(str(parsed.bounties.active) ? { active: parsed.bounties.active } : {}),
     },
     dayKey: parsed.dayKey,
@@ -170,7 +189,7 @@ export function importSave(raw: string): ImportResult {
     settings,
     ...(boolOr(parsed.reviveToken, false) ? { reviveToken: true } : {}),
     ...(boolOr(parsed.tourSeen, false) ? { tourSeen: true } : {}),
-    ...("activeGate" in parsed ? { activeGate: parsed.activeGate as GameState["activeGate"] } : {}),
+    ...(gate ? { activeGate: gate } : {}),
     // activeCombat is intentionally dropped: a mid-fight RNG stream from
     // another machine can desync this one's screens; the fight resolves or ends.
   };

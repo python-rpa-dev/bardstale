@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { bountyId } from "../../data/bounties";
 import { SAVE_KEY, createStore, deserialize, newGame, serialize, type ActiveGate } from "../save";
 
@@ -128,5 +128,26 @@ describe("daily rotation", () => {
     a.saveNow();
     const b = createStore({ storage, now: clockFrom("2026-10-04T23:59:00Z") });
     expect(b.state.bounties.offers.map((o) => bountyId(o))).toEqual(before);
+  });
+});
+
+describe("store load (import)", () => {
+  it("replaces state and cancels a pending debounced write", () => {
+    vi.useFakeTimers();
+    try {
+      const storage = new MemoryStorage();
+      const store = createStore({ storage, now: clockFrom("2026-10-05T12:00:00Z") });
+      store.commit((s) => {
+        s.gold = 10;
+      }); // schedules a save at +300 ms — the pre-import state
+      const imported = newGame(clockFrom("2026-10-05T12:00:00Z"));
+      imported.gold = 999;
+      store.load(imported);
+      expect((JSON.parse(storage.getItem(SAVE_KEY)!) as { gold: number }).gold).toBe(999);
+      vi.advanceTimersByTime(500); // the old pending write must not resurrect over the import
+      expect((JSON.parse(storage.getItem(SAVE_KEY)!) as { gold: number }).gold).toBe(999);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

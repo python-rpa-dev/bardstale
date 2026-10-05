@@ -1,7 +1,7 @@
 import { el, button, modal } from "./dom";
 import type { RouteCtx } from "./router";
 import { startTour } from "./tour";
-import { SAVE_KEY, serialize } from "../state/save";
+import { serialize } from "../state/save";
 import { copyText, importSave } from "../state/saveio";
 
 function checkRow(labelText: string, hint: string, checked: boolean, onChange: (v: boolean) => void): HTMLElement {
@@ -149,7 +149,7 @@ export function openSettings(ctx: RouteCtx): void {
               return;
             }
             // wholesale state swap → full re-init beats diffing every screen
-            localStorage.setItem(SAVE_KEY, serialize(res.state));
+            ctx.replaceState(res.state);
             say("Save loaded — reloading…");
             setTimeout(() => location.reload(), 150);
           },

@@ -147,4 +147,21 @@ describe("importSave", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toMatch(/day key/i);
   });
+  it("normalizes junk fields on bounty offers instead of trusting them", () => {
+    const code = tampered(okState(), (r) => {
+      r.bounties.offers[0] = { family: "undead", count: 5, gold: 20, kills: "many", done: "yes", junk: [1] };
+    });
+    const res = importSave(code);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.state.bounties.offers[0]).toEqual({ family: "undead", count: 5, gold: 20, kills: 0, done: false });
+    }
+  });
+
+  it("rejects an offer whose family is not in the bestiary", () => {
+    const code = tampered(okState(), (r) => {
+      r.bounties.offers[1].family = "dragons";
+    });
+    expect(importSave(code).ok).toBe(false);
+  });
 });

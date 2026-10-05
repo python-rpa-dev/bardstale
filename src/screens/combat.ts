@@ -27,6 +27,7 @@ import { applyDefeat, beginCombat, claimVictory, resolveFlee, syncPartyFromComba
 /** Mount token: pending foe-turn timeouts die when the screen re-renders. */
 let mountEpoch = 0;
 let defeatSeedShown = Number.NaN; // one defeat modal per fight, survives re-renders
+let victorySeedShown = Number.NaN; // one victory sting per fight, same guard
 
 const titleCase = (id: string): string => id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 
@@ -281,9 +282,13 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
           ctx.commit((d) => {
             summary = claimVictory(d);
           });
-          if (summary && Object.keys(summary.levelsByPc).length) ctx.sfx.levelup();
+          if (summary?.newMedals.length) ctx.sfx.fanfare();
+          else if (summary && Object.keys(summary.levelsByPc).length) ctx.sfx.levelup();
           else ctx.sfx.click();
-          if (summary?.bountyDone) toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
+          if (summary?.bountyDone) {
+            toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
+            ctx.sfx.coin();
+          }
           for (const fam of summary?.newMedals ?? []) {
             const med = medalForFamily(fam);
             modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));
@@ -352,10 +357,14 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       host.append(el("p", { class: "turn-hint muted", text: "The foes move…" }));
     }
   } else if (cs.phase === "won") {
+    if (cs.seed !== victorySeedShown) {
+      victorySeedShown = cs.seed;
+      ctx.sfx.victory();
+    }
     host.append(victoryPanel());
   } else if (cs.phase === "lost" && cs.seed !== defeatSeedShown) {
     defeatSeedShown = cs.seed;
-    ctx.sfx.thud();
+    ctx.sfx.defeat();
     defeatPanel();
   }
 

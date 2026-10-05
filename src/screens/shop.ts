@@ -45,9 +45,12 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
             hint: `Buy ${def.name} (${effectText(def)}) for ${def.price} gold.`,
             disabled: s.gold + s.bank < def.price,
             onClick: () => {
+              let paid = false;
               ctx.commit((st) => {
-                if (payFromPurseOrBank(st, def.price)) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
+                paid = payFromPurseOrBank(st, def.price);
+                if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
               });
+              if (paid) ctx.sfx.coin();
               ctx.refresh();
             },
           }),
@@ -80,6 +83,7 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
                     if ((st.inventory[iid] ?? 0) <= 0) delete st.inventory[iid];
                     st.gold += sellPrice(def);
                   });
+                  ctx.sfx.coin();
                   ctx.refresh();
                 },
               }),

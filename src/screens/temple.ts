@@ -19,10 +19,15 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
           : "Everyone is already at full HP.",
         disabled: hurt.length === 0 || s.gold + s.bank < total,
         onClick: () => {
+          let paid = false;
           ctx.commit((st) => {
-            if (!payFromPurseOrBank(st, total)) return;
-            for (const p of st.party) if (p.hp > 0 && p.hp < pcMax(p).hp) p.hp = pcMax(p).hp;
+            paid = payFromPurseOrBank(st, total);
+            if (paid) for (const p of st.party) if (p.hp > 0 && p.hp < pcMax(p).hp) p.hp = pcMax(p).hp;
           });
+          if (paid) {
+            ctx.sfx.coin();
+            ctx.sfx.heal();
+          }
           ctx.refresh();
         },
       });
@@ -66,14 +71,18 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                 ? button("Revive — by token", {
                     hint: "A rescued villager's kin press a temple token into your hand. One revive on the house.",
                     onClick: () => {
+                      let revived = false;
                       ctx.commit((st) => {
                         const p = st.party.find((x) => x.id === pc.id);
                         if (p && st.reviveToken) {
                           p.hp = 1;
                           st.reviveToken = false; // one token, one life
+                          revived = true;
                         }
                       });
+                      if (!revived) return;
                       toast("The temple accepts the rescue token — no fee.");
+                      ctx.sfx.levelup();
                       ctx.refresh();
                     },
                   })
@@ -81,10 +90,17 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                     hint: `Restore to 1 HP for ${TEMPLE.reviveCost} gold.`,
                     disabled: affordable < TEMPLE.reviveCost,
                     onClick: () => {
+                      let revived = false;
                       ctx.commit((st) => {
                         const p = st.party.find((x) => x.id === pc.id);
-                        if (p && payFromPurseOrBank(st, TEMPLE.reviveCost)) p.hp = 1;
+                        if (p && payFromPurseOrBank(st, TEMPLE.reviveCost)) {
+                          p.hp = 1;
+                          revived = true;
+                        }
                       });
+                      if (!revived) return;
+                      ctx.sfx.coin();
+                      ctx.sfx.levelup();
                       ctx.refresh();
                     },
                   })
@@ -92,10 +108,18 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                   hint: `Restore HP to ${max.hp} for ${healCost} gold (2 × level).`,
                   disabled: pc.hp >= max.hp || affordable < healCost,
                   onClick: () => {
+                    let healed = false;
                     ctx.commit((st) => {
                       const p = st.party.find((x) => x.id === pc.id);
-                      if (p && payFromPurseOrBank(st, TEMPLE.healCost(p))) p.hp = pcMax(p).hp;
+                      if (p && payFromPurseOrBank(st, TEMPLE.healCost(p))) {
+                        p.hp = pcMax(p).hp;
+                        healed = true;
+                      }
                     });
+                    if (healed) {
+                      ctx.sfx.coin();
+                      ctx.sfx.heal();
+                    }
                     ctx.refresh();
                   },
                 }),
@@ -103,10 +127,15 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
               hint: `Remove all poison and wounds for ${TEMPLE.cureCost} gold.`,
               disabled: pc.statuses.length === 0 || affordable < TEMPLE.cureCost,
               onClick: () => {
+                let cured = false;
                 ctx.commit((st) => {
                   const p = st.party.find((x) => x.id === pc.id);
-                  if (p && payFromPurseOrBank(st, TEMPLE.cureCost)) p.statuses = [];
+                  if (p && payFromPurseOrBank(st, TEMPLE.cureCost)) {
+                    p.statuses = [];
+                    cured = true;
+                  }
                 });
+                if (cured) ctx.sfx.coin();
                 ctx.refresh();
               },
             }),

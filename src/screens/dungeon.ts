@@ -100,6 +100,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function finishRun(loot: { gold: number; items: Record<string, number> }, gateName: string): void {
     stopAuto();
     const rare = ctx.state().activeGate?.rareSpawn; // read before endExpedition clears the run
+    ctx.sfx.victory();
     ctx.commit((d) => endExpedition(d));
     const rows = Object.entries(loot.items).map(([id, n]) => `${itemById(id).name} ×${n}`);
     const close = modal(
@@ -193,13 +194,17 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       ctx.sfx.thud();
       shake();
     }
+    if (out.avoided) ctx.sfx.avoided();
+    else if (out.trapMsg) ctx.sfx.trap();
+    if (out.encounter) ctx.sfx.encounter(); // foes drop in before the screen flips
+    if (out.descended) ctx.sfx.descend();
     return out;
   }
 
   /** Look / Use on what you face — walls included, so secret alcoves are findable. */
   function look(interact = false): void {
     const msgs: string[] = [];
-    let sfxKind: "heal" | "click" | null = null;
+    const sfxKinds: ("heal" | "chest" | "coin" | "secret")[] = [];
     ctx.commit((d) => {
       const ag = agOf(d);
       const [dx, dy] = DIR_VECS[ag.dir];
@@ -223,6 +228,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           d.inventory["lucky-charm"] = (d.inventory["lucky-charm"] ?? 0) + 1;
           ag.loot.items["lucky-charm"] = (ag.loot.items["lucky-charm"] ?? 0) + 1;
           msgs.push("A hollow stone swings aside. In the alcove: a Lucky Charm!");
+          sfxKinds.push("secret");
         } else {
           lastLookCell = faceCell;
           msgs.push("The stonework here sounds hollow. (Look again — or press E — to feel along the seams.)");
@@ -247,13 +253,14 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           d.bank += gold; // expedition gold banks — never lost on a wipe
           ag.loot.gold += gold;
           msgs.push(`The chest yields ${gold} gold (banked).`);
+          sfxKinds.push("chest", "coin");
           if (rng() < 0.25) {
             const drop = CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)];
             d.inventory[drop] = (d.inventory[drop] ?? 0) + 1;
             ag.loot.items[drop] = (ag.loot.items[drop] ?? 0) + 1;
             msgs.push(`Also: ${itemById(drop).name}.`);
           }
-          sfxKind = "click";
+          // sound handled via sfxKinds above
         } else {
           lastLookCell = targetCell;
           msgs.push("A chest, iron-bound. (Look again — or press E — to open it.)");
@@ -271,7 +278,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             p.hp = m.hp;
             p.sp = m.sp;
           }
-          sfxKind = "heal";
+          sfxKinds.push("heal");
           msgs.push("The shrine's quiet light knits flesh and spirit. Fully restored — its power now sleeps on this floor.");
         } else {
           msgs.push("The shrine is dark. Its power sleeps until you descend deeper.");
@@ -289,8 +296,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     });
 
     for (const m of msgs) log(m);
-    if (sfxKind === "heal") ctx.sfx.heal();
-    else if (sfxKind === "click") ctx.sfx.click();
+    for (const k of sfxKinds) ctx.sfx[k]();
   }
 
   function stopAuto(): void {

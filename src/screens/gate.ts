@@ -96,6 +96,7 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
                     ctx.commit((d) => startExpedition(d, g.id));
                     const n = ctx.state().activeGate?.runNumber ?? 1;
                     toast(`Run #${n} begins. Steel yourselves.`);
+                    ctx.sfx.descend();
                     ctx.navigate("#/dungeon");
                   },
                 }),

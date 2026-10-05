@@ -32,6 +32,7 @@ export function renderTavern(host: HTMLElement, ctx: RouteCtx): void {
             p.sp = max.sp;
           }
         });
+        ctx.sfx.heal();
         toast("The party rests by the fire. HP and SP fully restored.");
         ctx.refresh();
       },

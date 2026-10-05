@@ -330,6 +330,15 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 /* ---------- The Depths (M5) ---------- */
 .dungeon-grid { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: 1rem; align-items: start; }
 @media (max-width: 62rem) { .dungeon-grid { grid-template-columns: 1fr; } }
+
+.dpad { display: none; grid-template-columns: repeat(3, 5rem); justify-content: center; gap: var(--s2); margin-top: var(--s2); }
+.dpad button { height: 3.25rem; font-size: 1.15rem; touch-action: manipulation; }
+.dpad button:nth-child(1) { grid-area: 1 / 2; }
+.dpad button:nth-child(2) { grid-area: 2 / 1; }
+.dpad button:nth-child(3) { grid-area: 2 / 2; font-size: 0.85rem; }
+.dpad button:nth-child(4) { grid-area: 2 / 3; }
+.dpad button:nth-child(5) { grid-area: 3 / 2; }
+@media (pointer: coarse) { .dpad { display: grid; } }
 .view-col, .side-col { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
 .view-canvas {
   display: block;
@@ -462,7 +471,7 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 
 /* ---------- settings (M8) ---------- */
 .hdr .gear { font-size: 1.2rem; line-height: 1; padding: var(--s1) var(--s3); }
-.settings { display: flex; flex-direction: column; gap: var(--s3); min-width: min(90vw, 24rem); }
+.settings { display: flex; flex-direction: column; gap: var(--s3); }
 .settings-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s2) var(--s3); text-align: left; cursor: pointer; }
 .settings-row small { display: block; font-weight: 400; }
 .settings-row .set-range { width: 100%; grid-column: 2; max-width: 12rem; justify-self: end; }

@@ -602,9 +602,24 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   drawRare();
   const ag = ctx.state().activeGate!;
   const def = gateById(ag.gateId);
+  // On-screen movement pad; CSS reveals it only on touch (coarse pointer) devices.
+  const padBtn = (label: string, aria: string, fn: () => void): HTMLElement => {
+    const b = button(label, { onClick: () => fn() });
+    b.setAttribute("aria-label", aria);
+    return b;
+  };
+  const dpad = el(
+    "div",
+    { class: "dpad", role: "group", "aria-label": "Movement controls" },
+    padBtn("▲", "Move forward", () => doMove(false)),
+    padBtn("◀", "Turn left", () => turn(3)),
+    padBtn("Look", "Look at what is ahead", () => doLook(false)),
+    padBtn("▶", "Turn right", () => turn(1)),
+    padBtn("▼", "Step back", () => doMove(true)),
+  );
   host.append(
     el("div", { class: "dungeon-grid" },
-      el("div", { class: "view-col" }, viewCanvas, cmdBar),
+      el("div", { class: "view-col" }, viewCanvas, cmdBar, dpad),
       el("div", { class: "side-col" },
         el("div", { class: "panel mini-card" },
           el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),

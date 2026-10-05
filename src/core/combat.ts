@@ -202,7 +202,8 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
   cs.calls = rng.calls();
   const names = foeIds.map((id, i) => `${titleCase(id)}${foeIds.filter((x) => x === id).length > 1 ? ` ${i + 1}` : ""}`);
   pushLog(cs, `A ${names.join(", ")} block the way!`);
-  return cs;
+   normalizeActiveTurn(cs);
+   return cs;
 }
 
 // ---------- damage application (shared by foes and breath) ----------
@@ -403,6 +404,23 @@ function finishTurn(cs: CombatState, evs: CombatEvent[]): CombatEvent[] {
   return evs;
 }
 
+/** Invariant repair: while phase is "input", turnPtr must point to a living combatant.
+ *  A party member already downed in the dungeon can hold initiative at fight start;
+ *  without this, every verb and quickResolve would spin forever on their empty turn. */
+export function normalizeActiveTurn(cs: CombatState): void {
+  if (cs.phase !== "input") return;
+  checkEnd(cs); // a fully downed party entering the fight loses immediately
+  if (cs.phase !== "input") return;
+  const order = effectiveOrder(cs);
+  for (let ptr = 0; ptr < order.length; ptr++) {
+    const [side, idx] = order[ptr];
+    if (side === "pc" ? pcAlive(cs.pcs[idx]) : foeAlive(cs.foes[idx])) {
+      cs.turnPtr = ptr;
+      return;
+    }
+  }
+}
+
 function endOfRound(cs: CombatState): void {
   const rng = countedStream(cs.seed, cs.calls);
   // status ticks
@@ -584,9 +602,13 @@ export function quickResolve(cs: CombatState): CombatEvent[] {
   let guardCap = 600; // hard stop for degenerate stalemates (all miss forever)
   while (cs.phase === "input" && guardCap-- > 0) {
     const [side, idx] = effectiveOrder(cs)[cs.turnPtr];
+    if (side === "pc" ? !pcAlive(cs.pcs[idx]) : !foeAlive(cs.foes[idx])) {
+      finishTurn(cs, []); // stale pointer onto a downed combatant — advance, never stall
+      continue;
+    }
     if (side === "pc") {
       const target = aliveFoeIdxs(cs)[0];
-      all.push(...(target !== undefined ? pcAttack(cs, idx, target) : []));
+      all.push(...(target !== undefined ? pcAttack(cs, idx, target) : finishTurn(cs, [])));
     } else {
       all.push(...foeAct(cs, idx));
     }

@@ -295,7 +295,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   function defeatPanel(): () => void {
-    return modal(
+    const close = modal(
       "The Party Falls…",
       el(
         "div",
@@ -305,6 +305,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         button("Stumble Home", {
           hint: "Return to town broken but breathing.",
           onClick: () => {
+            close(); // otherwise the backdrop lingers over town and swallows every click
             ctx.commit((d) => applyDefeat(d));
             ctx.sfx.thud();
             ctx.navigate("#/town");
@@ -312,6 +313,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         })
       )
     );
+    return close;
   }
 
   // fled: resolve immediately and drop back into the dungeon

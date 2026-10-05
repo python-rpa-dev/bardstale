@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { foeDef, startCombat } from "../../core/combat";
+import { foeDef, normalizeActiveTurn, quickResolve, startCombat } from "../../core/combat";
 import { BESTIARY, monsterById } from "../../data/bestiary";
 import { itemById } from "../../data/items";
 import { makePc } from "../save";
@@ -72,5 +72,51 @@ describe("rare spawns", () => {
     expect(seen.includes(gift!.id)).toBe(false);
     expect(hermitGift({ seed: 9 }, seen)!.id).toBe(gift!.id); // deterministic
     expect(hermitGift({ seed: 9 }, all)).toBeNull();
+  });
+});
+
+describe("turn-pointer invariant (soft-lock regression)", () => {
+  it("startCombat never leaves the turn on a combatant downed before the fight", () => {
+    const down = makePc("fighter", 0);
+    down.hp = 0; // carried into the next room already bleeding out
+    let sawDownFirst = false;
+    for (let seed = 0; seed < 24; seed++) {
+      const cs = startCombat([down, makePc("cleric", 1)], ["cave-rat"], { seed });
+      if (cs.order[0][0] === "pc" && cs.order[0][1] === 0) sawDownFirst = true;
+      expect(cs.phase).toBe("input");
+      const [side, idx] = cs.order[cs.turnPtr];
+      expect(side === "pc" ? cs.pcs[idx].hp > 0 : cs.foes[idx].hp > 0).toBe(true);
+    }
+    expect(sawDownFirst).toBe(true); // the loop actually exercised the fixed path
+  });
+
+  it("a fully downed party entering a fight loses immediately", () => {
+    const a = makePc("fighter", 0);
+    a.hp = 0;
+    const b = makePc("cleric", 1);
+    b.hp = 0;
+    expect(startCombat([a, b], ["cave-rat"], { seed: 3 }).phase).toBe("lost");
+  });
+
+  it("quickResolve repairs a stale pointer instead of spinning forever", () => {
+    const cs = startCombat(party(), ["cave-rat", "spider"], { seed: 11 });
+    // force the legacy stall state: turn sits on a PC who is downed — pre-fix this returned [] with phase stuck at "input"
+    const ptr = cs.order.findIndex(([side]) => side === "pc");
+    cs.pcs[cs.order[ptr][1]].hp = 0;
+    cs.turnPtr = ptr;
+    const evs = quickResolve(cs);
+    expect(evs.length).toBeGreaterThan(0); // the fight moved: someone acted
+    expect(cs.phase === "won" || cs.phase === "lost").toBe(true);
+  });
+
+  it("normalizeActiveTurn moves a stale pointer off a downed combatant", () => {
+    const cs = startCombat(party(), ["cave-rat"], { seed: 5 });
+    const ptr = cs.order.findIndex(([side]) => side === "pc");
+    cs.pcs[cs.order[ptr][1]].hp = 0;
+    cs.turnPtr = ptr;
+    normalizeActiveTurn(cs);
+    expect(cs.phase).toBe("input");
+    const [side, idx] = cs.order[cs.turnPtr];
+    expect(side === "pc" ? cs.pcs[idx].hp > 0 : cs.foes[idx].hp > 0).toBe(true);
   });
 });

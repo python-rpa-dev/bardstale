@@ -70,16 +70,18 @@ export function bar(value: number, max: number, color: string, glyph = "", label
   );
 }
 
-let modalStack: HTMLElement | null = null;
+let modalOpen: (() => void) | null = null; // close() of the one open modal, if any
 
-/** Modal dialog. Returns a close() handle; Esc and the card's buttons can call it. */
+/** Modal dialog. Returns a close() handle; Esc and the card's buttons can call it.
+ *  Opening while one is shown replaces it — never stack (Tab can reach triggers behind the backdrop). */
 export function modal(title: string, node: Node): () => void {
+  modalOpen?.();
   const backdrop = el("div", { class: "modal-backdrop" });
   const close = () => {
     backdrop.remove();
     document.removeEventListener("keydown", onKey);
     previous?.focus();
-    if (modalStack === backdrop) modalStack = null;
+    if (modalOpen === close) modalOpen = null;
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") close();
@@ -97,7 +99,7 @@ export function modal(title: string, node: Node): () => void {
   backdrop.append(card);
   document.body.append(backdrop);
   document.addEventListener("keydown", onKey);
-  modalStack = backdrop;
+  modalOpen = close;
   (card.querySelector(".btn") as HTMLElement | null)?.focus();
   return close;
 }

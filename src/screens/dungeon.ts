@@ -39,6 +39,12 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     return;
   }
 
+  // A live fight owns the screen (covers reloads mid-battle and fresh ambushes).
+  if (ctx.state().activeCombat) {
+    ctx.navigate("#/combat");
+    return;
+  }
+
   let tex: ViewTextures = { wall: null, floorTint: null, ceilTint: null };
   const viewCanvas = el("canvas", { class: "view-canvas", "aria-label": "First-person dungeon view" });
   const miniCanvas = el("canvas", { class: "minimap-canvas", "aria-label": "Minimap of explored cells" });
@@ -333,6 +339,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       if (out.encounter) {
         toast(`Ambush! ${out.encounter.join(", ")} bar the way.`);
         log(`Shadows detach from the walls — ${out.encounter.join(", ")}.`);
+        stopAuto();
+        ctx.navigate("#/combat");
+        return;
       }
       if (out.descended || out.finished || out.trapMsg || out.avoided || out.encounter) {
         stopAuto();
@@ -448,6 +457,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       ctx.sfx.hit();
       toast(`Ambush! ${out.encounter.join(", ")} bar the way.`);
       log(`Shadows detach from the walls — ${out.encounter.join(", ")}.`);
+      refreshParty();
+      drawView();
+      ctx.navigate("#/combat");
+      return;
     }
     refreshParty();
     drawView();

@@ -1,5 +1,5 @@
 import "../styles/main.css";
-import { el, button } from "./ui/dom";
+import { el } from "./ui/dom";
 import { createRouter, navigateTo, type RouteCtx, type Router, type Screen } from "./ui/router";
 import { createStore } from "./state/save";
 import { createSfx } from "./core/sfx";
@@ -13,6 +13,7 @@ import { renderTavern } from "./screens/tavern";
 import { renderCodex } from "./screens/codex";
 import { renderGate } from "./screens/gate";
 import { renderDungeon } from "./screens/dungeon";
+import { renderCombat } from "./screens/combat";
 
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
@@ -44,15 +45,6 @@ const ctx: RouteCtx = {
   hasSave: () => store.hasSave(),
 };
 
-/** Placeholder for milestones not yet implemented (M5–M6 fill these in). */
-const underConstruction: Screen = (host, c) => {
-  host.append(
-    el("div", { class: "panel" },
-      el("p", { text: "The builders are at work on this part of town." }),
-      button("Back to Town", { hint: "Return to Hollow Vale", onClick: () => c.navigate("#/town") }),
-    ),
-  );
-};
 
 const LOC_NAMES: Record<string, string> = {
   title: "Hollow Vale",
@@ -95,7 +87,7 @@ const routes: Record<string, Screen> = {
   codex: renderCodex,
   gate: renderGate,
   dungeon: renderDungeon,
-  combat: underConstruction,
+  combat: renderCombat,
 };
 
 const wrapped: Record<string, Screen> = {};

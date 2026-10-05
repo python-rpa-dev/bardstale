@@ -1,6 +1,7 @@
 import { classById, type ClassId } from "../data/classes";
 import { bountyId, offersForDay, shuffledPool, type BountyDef } from "../data/bounties";
 import { dailySeed, dayKey, hashStr, mulberry32 } from "../core/rng";
+import type { CombatState } from "../core/combat";
 
 export const SAVE_KEY = "bardstale.save.v1";
 
@@ -77,7 +78,7 @@ export interface ActiveGate {
   flags: Record<string, boolean>; // shrine-f<N>, merchant, hermit, villager…
   steps: number; // per-floor event counter — seeds deterministic trap/encounter rolls, survives reloads
   loot: { gold: number; items: Record<string, number> }; // this run's tally for the end-of-run summary
-  pendingMonsters?: string[]; // encounter awaiting combat (consumed by M6)
+  pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
 }
 
 // ---------- Root state ----------
@@ -107,6 +108,7 @@ export interface GameState {
   runs: Record<string, number>; // gateId → expedition count
   settings: Settings;
   activeGate?: ActiveGate;
+  activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls
 }
 
 export const STARTING_GOLD = 50;

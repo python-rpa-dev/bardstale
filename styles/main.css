@@ -5,6 +5,7 @@
   --parchment: #f2e8d5;
   --gold: #c9a227;
   --hp: #c0392b;
+  --danger: #e0645c;
   --sp: #2e6fd8;
   --rare: #8e44ad;
   --uncommon: #27ae60;
@@ -29,6 +30,7 @@
 /* Colorblind mode: red/green pair → blue/orange, glyphs reveal (never hue-only). */
 body.cb {
   --hp: #1f6fd8;
+  --danger: #d85a1f;
   --sp: #e07b00;
   --uncommon: #0a7ea4;
 }
@@ -364,3 +366,78 @@ body.reduce-motion *, body.reduce-motion *::after, body.reduce-motion *::before 
 .dlog p { margin: 0 0 0.3rem; }
 .dlog p:last-child { margin-bottom: 0; }
 button.danger { color: #e0645c; border-color: #7e2f2a; }
+
+/* ---------- M6: battle screen ---------- */
+.foe-row { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-block: 0.5rem 1rem; }
+.foe-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 9.5rem;
+  padding: 0.6rem;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.foe-card.targeted { border-color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent); }
+.foe-card.dead { opacity: 0.45; cursor: default; filter: grayscale(1); }
+.pc-row { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-bottom: 0.9rem; }
+.pc-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 10.5rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--panel);
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.pc-chip.active { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 35%, transparent); }
+.pc-chip.down { opacity: 0.45; filter: grayscale(1); }
+.down-label { color: var(--danger); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.status-chip {
+  display: inline-block;
+  margin-right: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--sp) 22%, var(--panel));
+}
+.status-chip.poison { background: color-mix(in srgb, #58c26b 25%, var(--panel)); }
+.status-chip.wound { background: color-mix(in srgb, var(--danger) 25%, var(--panel)); }
+.status-chip.guard { background: color-mix(in srgb, var(--gold) 22%, var(--panel)); }
+.combat-log {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  margin-block: 0.4rem 0.9rem;
+}
+.combat-log p { margin: 0 0 0.3rem; }
+.combat-log p:last-child { margin-bottom: 0; }
+.turn-hint { text-align: center; font-size: 0.9rem; margin: 0.4rem 0 0.6rem; }
+.spell-list, .item-list { display: grid; gap: 0.45rem; }
+.combat-end { text-align: center; padding-block: 1rem; }
+.xp-list { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.25rem; justify-items: center; }
+.gold-line { color: var(--gold); margin: 0.4rem 0 0.8rem; }
+.warn { color: #e0a94f; font-size: 0.85rem; }
+.float-num {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.5rem;
+  font-weight: 700;
+  pointer-events: none;
+  animation: float-up 0.9s ease-out forwards;
+}
+.float-num.damage { color: #e0645c; }
+.float-num.heal { color: #58c26b; }
+@keyframes float-up {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-1.6rem); opacity: 0; }
+}

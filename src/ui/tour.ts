@@ -82,7 +82,8 @@ export function startTour(ctx: RouteCtx): void {
     while (next >= 0 && next < STEPS.length && STEPS[next].target && !STEPS[next].target!()) {
       next += next > i ? 1 : -1;
     }
-    if (next < 0 || next >= STEPS.length) { finish(); return; }
+    if (next < 0) return; // ArrowLeft at the first step is a no-op, not an exit
+    if (next >= STEPS.length) { finish(); return; }
     i = next;
     const step = STEPS[i];
     titleEl.textContent = step.title;
@@ -129,7 +130,7 @@ export function startTour(ctx: RouteCtx): void {
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") finish();
-    else if (e.key === "Enter" || e.key === "ArrowRight") show(i + 1);
+    else if ((e.key === "Enter" && !(e.target as HTMLElement).closest?.(".tour-card")) || e.key === "ArrowRight") show(i + 1);
     else if (e.key === "ArrowLeft") show(i - 1);
   };
   const onHash = () => finish(); // targets are town-only; a route change ends the tour

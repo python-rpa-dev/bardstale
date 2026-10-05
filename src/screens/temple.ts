@@ -1,4 +1,4 @@
-import { el, button, bar } from "../ui/dom";
+import { el, button, bar, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { classById } from "../data/classes";
@@ -45,17 +45,32 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
             "div",
             { class: "temple-actions" },
             downed
-              ? button(`Revive — ${TEMPLE.reviveCost} g`, {
-                  hint: `Restore to 1 HP for ${TEMPLE.reviveCost} gold.`,
-                  disabled: affordable < TEMPLE.reviveCost,
-                  onClick: () => {
-                    ctx.commit((st) => {
-                      const p = st.party.find((x) => x.id === pc.id);
-                      if (p && payFromPurseOrBank(st, TEMPLE.reviveCost)) p.hp = 1;
-                    });
-                    ctx.refresh();
-                  },
-                })
+              ? s.reviveToken
+                ? button("Revive — by token", {
+                    hint: "A rescued villager's kin press a temple token into your hand. One revive on the house.",
+                    onClick: () => {
+                      ctx.commit((st) => {
+                        const p = st.party.find((x) => x.id === pc.id);
+                        if (p && st.reviveToken) {
+                          p.hp = 1;
+                          st.reviveToken = false; // one token, one life
+                        }
+                      });
+                      toast("The temple accepts the rescue token — no fee.");
+                      ctx.refresh();
+                    },
+                  })
+                : button(`Revive — ${TEMPLE.reviveCost} g`, {
+                    hint: `Restore to 1 HP for ${TEMPLE.reviveCost} gold.`,
+                    disabled: affordable < TEMPLE.reviveCost,
+                    onClick: () => {
+                      ctx.commit((st) => {
+                        const p = st.party.find((x) => x.id === pc.id);
+                        if (p && payFromPurseOrBank(st, TEMPLE.reviveCost)) p.hp = 1;
+                      });
+                      ctx.refresh();
+                    },
+                  })
               : button(`Heal — ${healCost} g`, {
                   hint: `Restore HP to ${max.hp} for ${healCost} gold (2 × level).`,
                   disabled: pc.hp >= max.hp || affordable < healCost,

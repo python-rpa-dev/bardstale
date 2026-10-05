@@ -441,3 +441,16 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
   from { transform: translateY(0); opacity: 1; }
   to { transform: translateY(-1.6rem); opacity: 0; }
 }
+
+/* ---------- Rare spawns (M7) ---------- */
+.rare-host { margin-bottom: var(--s3); }
+.rare-card {
+  border-color: var(--rare);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.rare-card p { margin: 0; flex: 1; min-width: 16rem; }
+.rare-line { border-left: 2px solid var(--rare); padding-left: 0.5rem; margin-block: 0.5rem; }

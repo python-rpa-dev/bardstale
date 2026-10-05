@@ -23,6 +23,7 @@ export function beginCombat(d: GameState): void {
     critFoe: m === "cursed" ? 0.12 : 0.06, // cursed: enemy crits 6% → 12%
     spellCostMod: m === "storm" ? 2 : 0, // storm: −2 SP per cast (floor 1)
     riches: m === "riches",
+    hollows: m === "hollows", // undead +1 level, vermin −1 (foeDef scaling)
     healDiscount: d.medals.includes("undead"), // undead medal: heal −2 SP
     guardedStart: d.medals.includes("giant"), // giant medal: start Guarded
     fleeGuaranteed: d.medals.includes("humanoid"), // humanoid medal: always escape intact

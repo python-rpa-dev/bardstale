@@ -2,11 +2,12 @@
 
 import { generateFloor, MAP_H, MAP_W, type EntityKind, type GeneratedFloor } from "../core/mapgen";
 import { bountyId } from "../data/bounties";
+import { ITEMS } from "../data/items";
 import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/rng";
 import { gateById, gateIndex } from "../data/gates";
 import { dayNumber, modifierForGate } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
-import type { ActiveGate, FloorMapSave, GameState } from "./save";
+import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
 
 /** Per-floor rng seed derived from the run seed. */
 export function floorSeed(runSeed: number, floor: number): number {
@@ -77,6 +78,8 @@ export function startExpedition(s: GameState, gateId: string): void {
     loot: { gold: 0, items: {} },
   };
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
+  const rare = rollRare(seed);
+  if (rare) ag.rareSpawn = rare;
   s.activeGate = ag;
   reveal(ag);
 }
@@ -139,4 +142,54 @@ export function activeBountyFamily(s: GameState): Family | null {
   if (!id) return null;
   const offer = s.bounties.offers.find((o) => bountyId(o) === id);
   return offer ? offer.family : null;
+}
+
+// ---------- Rare spawns (plan M7): one-off expedition events ----------
+
+/** Chance that a wandering event joins a run. */
+export const RARE_CHANCE = 0.08;
+
+const RARE_KINDS: RareKind[] = ["merchant", "hermit", "villager"];
+
+/** Deterministic rare-spawn roll for a run seed — null on most runs. */
+export function rollRare(runSeed: number): RareKind | null {
+  const rng = mulberry32(hashStr(`${runSeed}:rare`));
+  if (rng() >= RARE_CHANCE) return null;
+  return RARE_KINDS[Math.floor(rng() * RARE_KINDS.length)];
+}
+
+/** Flavor line for the return toast and the loot summary card. */
+export function describeRare(kind: RareKind): string {
+  switch (kind) {
+    case "merchant":
+      return "A wandering merchant traded with your party below.";
+    case "hermit":
+      return "A hermit's blessing left a fresh page in the codex.";
+    case "villager":
+      return "You freed a trapped villager — the temple will remember.";
+  }
+}
+
+export interface Ware {
+  id: string;
+  price: number; // flat −25% off shop price
+}
+
+/** Deterministic merchant stock for a run: three uncommon/rare goods at −25%. */
+export function merchantWares(ag: Pick<ActiveGate, "seed">): Ware[] {
+  const pool = ITEMS.filter((i) => i.rarity !== "common");
+  const rng = mulberry32(hashStr(`${ag.seed}:wares`));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 3).map((d) => ({ id: d.id, price: Math.max(1, Math.floor(d.price * 0.75)) }));
+}
+
+/** Hermit's gift: one random codex-unseen bestiary member; null when the book is full. */
+export function hermitGift(ag: Pick<ActiveGate, "seed">, codex: string[]): MonsterDef | null {
+  const unseen = BESTIARY.filter((m) => !codex.includes(m.id));
+  if (!unseen.length) return null;
+  const rng = mulberry32(hashStr(`${ag.seed}:hermit`));
+  return unseen[Math.floor(rng() * unseen.length)];
 }

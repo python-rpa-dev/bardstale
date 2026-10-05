@@ -1,7 +1,7 @@
 /** Turn-based combat simulation. Pure: no DOM, rng passed in as (seed, calls) so the
  *  stream survives reloads and Quick Resolve replays the exact same rolls. */
 
-import { monsterById } from "../data/bestiary";
+import { monsterById, type MonsterDef } from "../data/bestiary";
 import { itemById } from "../data/items";
 import { spellById } from "../data/spells";
 import { xpMult } from "../data/progression";
@@ -16,6 +16,20 @@ export interface CombatFoe {
   mid: string; // bestiary id
   hp: number;
   lastBreathRound: number; // wyrm-whelp breath bookkeeping (0 = never)
+  lvlShift?: number; // "hollows" modifier: undead +1 / vermin −1 effective level
+}
+
+/** Effective def view for a foe with the "hollows" ±1 level shift: hp/atk scale ±12% per level. */
+export function foeDef(f: Pick<CombatFoe, "mid" | "lvlShift">): MonsterDef {
+  const d = monsterById(f.mid);
+  if (!f.lvlShift) return d;
+  const k = 1 + 0.12 * f.lvlShift;
+  return {
+    ...d,
+    lvl: Math.max(1, d.lvl + f.lvlShift),
+    hp: Math.max(1, Math.round(d.hp * k)),
+    atk: Math.max(1, Math.round(d.atk * k)),
+  };
 }
 
 /** A party member snapshot plus combat-only flags. The Pc fields are the source of
@@ -145,6 +159,7 @@ export interface StartOpts {
   critFoe?: number; // default 0.06; "cursed" passes 0.12
   spellCostMod?: number; // "storm": 2
   riches?: boolean;
+  hollows?: boolean; // "hollows": undead +1 level, vermin −1 (see foeDef)
   healDiscount?: boolean; // undead medal
   guardedStart?: boolean; // giant medal: every PC starts with a free half-hit
   fleeGuaranteed?: boolean; // humanoid medal
@@ -169,14 +184,18 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
     tauntPc: null,
     fleeGuaranteed: !!opts.fleeGuaranteed,
     pcs: pcs.map((p) => ({ ...p, statuses: [...p.statuses], guard: false, guardedFree: !!opts.guardedStart, atkBuff: 0 })),
-    foes: foeIds.map((mid) => ({ mid, hp: monsterById(mid).hp, lastBreathRound: 0 })),
+    foes: foeIds.map((mid) => {
+      const fam = monsterById(mid).family;
+      const shift = opts.hollows ? (fam === "undead" ? 1 : fam === "vermin" ? -1 : 0) : 0;
+      return { mid, hp: Math.max(1, Math.round(monsterById(mid).hp * (1 + 0.12 * shift))), lastBreathRound: 0, lvlShift: shift || undefined };
+    }),
     phase: "input",
     log: [],
   };
   // Initiative once at start: DEX + rng(0..5); ties favor PCs (stable by side then index).
   const entries: { side: CombatSide; idx: number; init: number }[] = [
     ...cs.pcs.map((p, i) => ({ side: "pc" as CombatSide, idx: i, init: effectiveStats(p).dex + randInt(rng, 0, 5) })),
-    ...cs.foes.map((f, i) => ({ side: "foe" as CombatSide, idx: i, init: monsterById(f.mid).dex + randInt(rng, 0, 5) })),
+    ...cs.foes.map((f, i) => ({ side: "foe" as CombatSide, idx: i, init: foeDef(f).dex + randInt(rng, 0, 5) })),
   ];
   entries.sort((a, b) => b.init - a.init || (a.side === b.side ? 0 : a.side === "pc" ? -1 : 1));
   cs.order = entries.map((e) => [e.side, e.idx]);
@@ -212,7 +231,7 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
   if (!p || !f || !pcAlive(p) || !foeAlive(f)) return evs;
   const rng = countedStream(cs.seed, cs.calls);
   const a = pcStats(cs, pcIdx);
-  const fd = monsterById(f.mid);
+  const fd = foeDef(f);
   // Rogue first-strike: during round 1 before any foe has acted, rogue attacks auto-crit.
   const firstStrike = p.classId === "rogue" && cs.round === 1 && !cs.foesActed;
   const critRoll = rng();
@@ -273,7 +292,7 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
     for (const t of targets) {
       if (!targets.length || t === undefined) continue;
       const f = cs.foes[t];
-      const fd = monsterById(f.mid);
+      const fd = foeDef(f);
       let base: number;
       let critChance = 0.06;
       if (spellId === "magic-missile") base = 6 + mnd;
@@ -396,14 +415,14 @@ function endOfRound(cs: CombatState): void {
   }
   // troll regen
   for (const f of cs.foes) {
-    const fd = monsterById(f.mid);
+    const fd = foeDef(f);
     if (foeAlive(f) && fd.special?.kind === "regen") {
       f.hp = Math.min(fd.hp, f.hp + fd.special.hpPerRound);
     }
   }
   // wraith drain: each living wraith siphons SP from a random living PC
   for (const f of cs.foes) {
-    const fd = monsterById(f.mid);
+    const fd = foeDef(f);
     if (!foeAlive(f) || fd.special?.kind !== "drain") continue;
     const victims = alivePcIdxs(cs);
     if (!victims.length) break;
@@ -439,7 +458,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
   for (const p of cs.pcs) {
     let xp = 0;
     for (const f of cs.foes) {
-      const fd = monsterById(f.mid);
+      const fd = foeDef(f);
       const mult = xpMult(fd.lvl, avg);
       if (mult < 0.5) tooWeak = true;
       xp += fd.xp * mult;
@@ -450,7 +469,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
   let gold = 0;
   const rogueAlive = cs.pocketLuck && cs.pcs.some((p) => p.classId === "rogue" && pcAlive(p));
   for (const f of cs.foes) {
-    const fd = monsterById(f.mid);
+    const fd = foeDef(f);
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
     if (cs.riches) g = Math.floor(g * 1.5);
     if (rogueAlive) g += 3;
@@ -466,7 +485,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   if (cs.phase !== "input") return evs;
   const f = cs.foes[foeIdx];
   if (!f || !foeAlive(f)) return finishTurn(cs, evs);
-  const fd = monsterById(f.mid);
+  const fd = foeDef(f);
   const rng = countedStream(cs.seed, cs.calls);
 
   // wyrm breath: every `everyRounds` rounds instead of a bite

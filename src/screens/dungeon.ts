@@ -11,9 +11,12 @@ import type { GameState } from "../state/save";
 import {
   activeBountyFamily,
   descendFloor,
+  describeRare,
   endExpedition,
   entityAt,
   gridFromSave,
+  hermitGift,
+  merchantWares,
   reveal,
   rollEncounter,
   stepRng,
@@ -96,6 +99,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   /** End the run and show the loot summary. */
   function finishRun(loot: { gold: number; items: Record<string, number> }, gateName: string): void {
     stopAuto();
+    const rare = ctx.state().activeGate?.rareSpawn; // read before endExpedition clears the run
     ctx.commit((d) => endExpedition(d));
     const rows = Object.entries(loot.items).map(([id, n]) => `${itemById(id).name} ×${n}`);
     const close = modal(
@@ -106,7 +110,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           el("li", { text: `${loot.gold} gold banked` }),
           ...(rows.length ? rows.map((r) => el("li", { text: r })) : [el("li", { class: "muted", text: "No items recovered" })]),
         ),
-        button("Back to Town", { onClick: () => { close(); ctx.navigate("#/town"); } }),
+        rare ? el("p", { class: "muted rare-line", text: describeRare(rare) }) : null,
+        button("Back to Town", { onClick: () => { close(); if (rare) toast(describeRare(rare)); ctx.navigate("#/town"); } }),
       ),
     );
   }
@@ -379,8 +384,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           button("Leave", {
             onClick: () => {
               close();
+              const rare = ctx.state().activeGate?.rareSpawn; // toast the run's event on abandon too
               ctx.commit((d) => endExpedition(d));
-              toast("You leave the depths behind.");
+              toast(rare ? `You leave the depths behind. ${describeRare(rare)}` : "You leave the depths behind.");
               ctx.navigate("#/town");
             },
           }),
@@ -475,6 +481,103 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     drawView();
   }
 
+  // ---------- Rare spawns (M7): one-off run events surfaced as a card ----------
+  const rareHost = el("div", { class: "rare-host" });
+
+  /** Merchant cart: three uncommon/rare goods at −25%, purse gold, each buyable once. */
+  function openMerchant(): void {
+    stopAuto();
+    const s = ctx.state();
+    const ag = s.activeGate!;
+    const wares = merchantWares(ag);
+    const close = modal(
+      "The Wandering Merchant",
+      el("div", {},
+        el("p", { class: "muted", text: "Rare goods at a quarter off. The cart leaves when the expedition does." }),
+        ...wares.map((w) => {
+          const def = itemById(w.id);
+          const bought = !!ag.flags[`ware-${w.id}`];
+          return el("div", { class: "sell-row" },
+            el("span", { class: "temple-id", text: `${def.name} — ${w.price} g` }),
+            button(bought ? "Sold" : "Buy", {
+              disabled: bought || s.gold < w.price,
+              hint: bought ? "Already in your packs" : `Pay from purse (${s.gold} g)`,
+              onClick: () => {
+                ctx.commit((d) => {
+                  const a = d.activeGate!;
+                  if (a.flags[`ware-${w.id}`] || d.gold < w.price) return;
+                  d.gold -= w.price;
+                  d.inventory[w.id] = (d.inventory[w.id] ?? 0) + 1;
+                  a.flags[`ware-${w.id}`] = true;
+                });
+                ctx.sfx.click();
+                refreshParty();
+                toast(`Bought ${def.name} for ${w.price} g.`);
+                close(); // rebuild affordability on reopen
+              },
+            }),
+          );
+        }),
+      ),
+    );
+  }
+
+  function rareCard(): HTMLElement | null {
+    const s = ctx.state();
+    const ag = s.activeGate;
+    if (!ag?.rareSpawn || ag.flags["rare-done"]) return null;
+    if (ag.rareSpawn === "merchant") {
+      return el("div", { class: "panel rare-card" },
+        el("p", { text: "A wandering merchant waits among the pillars, lantern swaying." }),
+        button("Trade", { hint: "Three rare goods at −25%; closes when the expedition ends", onClick: () => openMerchant() }),
+      );
+    }
+    if (ag.rareSpawn === "hermit") {
+      return el("div", { class: "panel rare-card" },
+        el("p", { text: "A hermit beckons from a shadowed alcove, finger to lips." }),
+        button("Listen", {
+          hint: "Free identify — one unknown creature joins the codex",
+          onClick: () => {
+            stopAuto();
+            let giftName = "";
+            ctx.commit((d) => {
+              const a = d.activeGate!;
+              const gift = hermitGift(a, d.codex);
+              if (gift && !d.codex.includes(gift.id)) d.codex.push(gift.id);
+              a.flags["rare-done"] = true;
+              giftName = gift ? titleCase(gift.id) : "";
+            });
+            ctx.sfx.heal();
+            toast(giftName ? `The hermit whispers of ${giftName} — the codex grows by one page.` : "The hermit studies you, then waves you on; the book holds no secrets from you.");
+            drawRare();
+          },
+        }),
+      );
+    }
+    return el("div", { class: "panel rare-card" },
+      el("p", { text: "A villager is trapped beneath fallen rubble, calling for help." }),
+      button("Dig Them Out", {
+        hint: "Their kin keep a temple token — one revive on the house",
+        onClick: () => {
+          stopAuto();
+          ctx.commit((d) => {
+            d.activeGate!.flags["rare-done"] = true;
+            d.reviveToken = true;
+          });
+          ctx.sfx.levelup();
+          toast("The villager gasps free. The temple will remember this.");
+          drawRare();
+        },
+      }),
+    );
+  }
+
+  function drawRare(): void {
+    rareHost.replaceChildren();
+    const card = rareCard();
+    if (card) rareHost.append(card);
+  }
+
   // ---------- layout ----------
   const cmdBar = el("div", { class: "cmd-bar" },
     button("Forward", { hint: "W / ↑ — step ahead (traps spring, encounters roll)", onClick: () => doMove(false) }),
@@ -489,6 +592,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   );
 
   host.append(el("h2", { class: "sr-only", text: "The Depths" }));
+  host.append(rareHost);
+  drawRare();
   const ag = ctx.state().activeGate!;
   const def = gateById(ag.gateId);
   host.append(

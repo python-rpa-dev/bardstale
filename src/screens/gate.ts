@@ -4,7 +4,9 @@ import { el, button, modal, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { GATES, gateById, gateIndex } from "../data/gates";
 import { dayNumber, modifierForGate } from "../data/modifiers";
-import { endExpedition, startExpedition } from "../state/expedition";
+import { bountyId } from "../data/bounties";
+import { BESTIARY } from "../data/bestiary";
+import { describeRare, endExpedition, startExpedition } from "../state/expedition";
 
 export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
@@ -33,8 +35,9 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
                     button("Withdraw", {
                       onClick: () => {
                         close();
+                        const rare = ctx.state().activeGate?.rareSpawn; // return toast names the run's event
                         ctx.commit((d) => endExpedition(d));
-                        toast("You slip out of the maze.");
+                        toast(rare ? `You slip out of the maze. ${describeRare(rare)}` : "You slip out of the maze.");
                         ctx.navigate("#/town");
                       },
                     }),
@@ -57,6 +60,10 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
   const cards = GATES.map((g) => {
     const mod = modifierForGate(gateIndex(g.id), dayNumber());
     const runs = s.runs[g.id] ?? 0;
+    const offer = s.bounties.offers.find((o) => bountyId(o) === s.bounties.active) ?? null;
+    // Bounty badge only lights up when the gate's level band actually contains bounty game.
+    const bountyHere =
+      offer && BESTIARY.some((m) => m.family === offer.family && m.lvl >= g.levels[0] && m.lvl <= g.levels[1]) ? offer : null;
     return el("div", { class: "panel gate-card" },
       el("h3", { text: g.name }),
       el("p", { class: "muted", text: `Monsters level ${g.levels[0]}–${g.levels[1]} · ${g.floors} floors` }),
@@ -74,10 +81,28 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
         disabled: !!ag,
         onClick: () => {
           ctx.sfx.click();
-          ctx.commit((d) => startExpedition(d, g.id));
-          const n = ctx.state().activeGate?.runNumber ?? 1;
-          toast(`Run #${n} begins. Steel yourselves.`);
-          ctx.navigate("#/dungeon");
+          const close = modal(
+            `Enter ${g.name}?`,
+            el("div", {},
+              el("p", { text: `Monsters level ${g.levels[0]}–${g.levels[1]} · ${g.floors} floors · run #${runs + 1}.` }),
+              el("p", { class: "muted", text: mod.id === "none" ? "Fair Weather — no tricks below." : mod.rumor.replace("{gate}", g.name) }),
+              bountyHere
+                ? el("p", {}, el("span", { class: "badge badge-mod", text: `Bounty here: ${bountyHere.count} × ${bountyHere.family} for ${bountyHere.gold} g` }))
+                : null,
+              el("div", { class: "modal-actions" },
+                button("Descend", {
+                  onClick: () => {
+                    close();
+                    ctx.commit((d) => startExpedition(d, g.id));
+                    const n = ctx.state().activeGate?.runNumber ?? 1;
+                    toast(`Run #${n} begins. Steel yourselves.`);
+                    ctx.navigate("#/dungeon");
+                  },
+                }),
+                button("Not Yet", { onClick: () => close() }),
+              ),
+            ),
+          );
         },
       }),
     );

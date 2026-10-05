@@ -7,10 +7,10 @@ import { slotImg } from "../render/art";
 import { ITEMS } from "../data/items";
 import { pcMax } from "../state/save";
 import { spellsKnownAt } from "../data/spells";
-import { monsterById } from "../data/bestiary";
 import { medalForFamily } from "../data/medals";
 import {
   foeAct,
+  foeDef,
   pcAttack,
   pcCast,
   pcGuard,
@@ -57,7 +57,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
 
   function foeCard(idx: number): HTMLElement {
     const f = cs!.foes[idx];
-    const def = monsterById(f.mid);
+    const def = foeDef(f); // hollows-shifted level/hp when the modifier is up
     const dead = f.hp <= 0;
     const card = el(
       "div",

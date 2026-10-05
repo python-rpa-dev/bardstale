@@ -63,6 +63,9 @@ export interface FloorMapSave {
   entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret")
 }
 
+/** One-off expedition event rolled at run start (8% chance). */
+export type RareKind = "merchant" | "hermit" | "villager";
+
 export interface ActiveGate {
   gateId: string;
   runNumber: number;
@@ -78,6 +81,7 @@ export interface ActiveGate {
   flags: Record<string, boolean>; // shrine-f<N>, merchant, hermit, villager…
   steps: number; // per-floor event counter — seeds deterministic trap/encounter rolls, survives reloads
   loot: { gold: number; items: Record<string, number> }; // this run's tally for the end-of-run summary
+  rareSpawn?: RareKind; // one-off event present for this whole run (see screens/dungeon event card)
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
 }
 
@@ -106,6 +110,7 @@ export interface GameState {
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
+  reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   settings: Settings;
   activeGate?: ActiveGate;
   activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls

@@ -1,6 +1,8 @@
 import { el, button, modal } from "./dom";
 import type { RouteCtx } from "./router";
 import { startTour } from "./tour";
+import { SAVE_KEY, serialize } from "../state/save";
+import { copyText, importSave } from "../state/saveio";
 
 function checkRow(labelText: string, hint: string, checked: boolean, onChange: (v: boolean) => void): HTMLElement {
   const input = el("input", { type: "checkbox", class: "set-check" }) as HTMLInputElement;
@@ -47,6 +49,19 @@ export function openSettings(ctx: RouteCtx): void {
   const st = ctx.state().settings;
   const panel = el("div", { class: "settings" });
   let close: () => void;
+
+  const saveTa = el("textarea", {
+    class: "save-code",
+    rows: "4",
+    spellcheck: "false",
+    "aria-label": "Save code (JSON)",
+  }) as HTMLTextAreaElement;
+  saveTa.value = serialize(ctx.state());
+  const saveMsg = el("p", { class: "save-msg", role: "status" });
+  const say = (text: string, bad = false): void => {
+    saveMsg.textContent = text;
+    saveMsg.classList.toggle("err", bad);
+  };
 
   panel.append(
     checkRow("Quick Battle", "auto-attack each round until you intervene", st.quickBattle, (v) =>
@@ -95,6 +110,51 @@ export function openSettings(ctx: RouteCtx): void {
       ctx.commit((s) => {
         s.settings.sfxMuted = v;
       }),
+    ),
+    el(
+      "div",
+      {},
+      el("b", { text: "Save Data" }),
+      el("small", { class: "dim", text: " — copy this code as a backup, or paste one below and import" }),
+      saveTa,
+      saveMsg,
+      el(
+        "div",
+        { class: "modal-actions" },
+        button("Copy", {
+          hint: "Put the save code on the clipboard",
+          onClick: () => {
+            void copyText(saveTa.value).then((ok) =>
+              say(ok ? "Code copied to clipboard." : "Clipboard blocked — select the code and press Ctrl+C.", !ok),
+            );
+          },
+        }),
+        button("Download", {
+          hint: "Save the code as a .json file",
+          onClick: () => {
+            const url = URL.createObjectURL(new Blob([saveTa.value], { type: "application/json" }));
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `hollowvale-${ctx.state().dayKey}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
+        }),
+        button("Import", {
+          hint: "Replace the current save with the pasted code",
+          onClick: () => {
+            const res = importSave(saveTa.value.trim());
+            if (!res.ok) {
+              say(res.error, true);
+              return;
+            }
+            // wholesale state swap → full re-init beats diffing every screen
+            localStorage.setItem(SAVE_KEY, serialize(res.state));
+            say("Save loaded — reloading…");
+            setTimeout(() => location.reload(), 150);
+          },
+        }),
+      ),
     ),
     el(
       "div",

@@ -480,9 +480,11 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 }
 .turn-hint { text-align: center; font-size: 0.9rem; margin: 0.4rem 0 0.6rem; }
 .spell-list, .item-list { display: grid; gap: 0.45rem; }
-.combat-end { text-align: center; padding-block: 1rem; }
-.xp-list { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.25rem; justify-items: center; }
-.gold-line { color: var(--gold); margin: 0.4rem 0 0.8rem; }
+.combat-end { text-align: center; padding-block: 0.5rem; }
+.victory-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.6rem; margin: 0.3rem 0; }
+.victory-line h2 { margin: 0; font-size: 1.05rem; }
+.xp-chip { padding: 0.1rem 0.55rem; border-radius: 999px; background: color-mix(in srgb, var(--gold) 14%, var(--panel)); font-size: 0.8rem; white-space: nowrap; }
+.gold-line { color: var(--gold); font-weight: 600; white-space: nowrap; }
 .warn { color: #e0a94f; font-size: 0.85rem; }
 .float-num {
   position: absolute;

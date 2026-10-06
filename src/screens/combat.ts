@@ -263,39 +263,39 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
 
   function victoryPanel(): HTMLElement {
     const v = cs!.victory!;
-    const rows: HTMLElement[] = [];
-    for (const p of cs!.pcs) {
-      const xp = v.xpByPc[p.id] ?? 0;
-      rows.push(el("li", {}, el("b", { text: p.name }), el("span", { text: ` +${xp} XP` })));
-    }
     let summary: ReturnType<typeof claimVictory> = null;
+    // one compact line: heading, per-hero XP chips, banked gold, and the claim action inline
     return el(
       "div",
       { class: "combat-end victory" },
-      el("h2", { text: "Victory!" }),
       v.tooWeak ? el("p", { class: "warn", text: "These foes were far too weak — the XP tax bit hard." }) : null,
-      el("ul", { class: "xp-list" }, ...rows),
-      el("p", { class: "gold-line", text: `+${v.gold} gold (banked)` }),
-      button("Claim and Continue", {
-        hint: "Bank the gold, stamp the codex, count bounty kills.",
-        onClick: () => {
-          ctx.commit((d) => {
-            summary = claimVictory(d);
-          });
-          if (summary?.newMedals.length) ctx.sfx.fanfare();
-          else if (summary && Object.keys(summary.levelsByPc).length) ctx.sfx.levelup();
-          else ctx.sfx.click();
-          if (summary?.bountyDone) {
-            toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
-            ctx.sfx.coin();
-          }
-          for (const fam of summary?.newMedals ?? []) {
-            const med = medalForFamily(fam);
-            modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));
-          }
-          ctx.navigate("#/dungeon");
-        },
-      })
+      el(
+        "div",
+        { class: "victory-line" },
+        el("h2", { text: "Victory!" }),
+        ...cs!.pcs.map((p) => el("span", { class: "xp-chip", text: `${p.name} +${v.xpByPc[p.id] ?? 0}` })),
+        el("span", { class: "gold-line", text: `+${v.gold} g banked` }),
+        button("Claim and Continue", {
+          hint: "Bank the gold, stamp the codex, count bounty kills.",
+          onClick: () => {
+            ctx.commit((d) => {
+              summary = claimVictory(d);
+            });
+            if (summary?.newMedals.length) ctx.sfx.fanfare();
+            else if (summary && Object.keys(summary.levelsByPc).length) ctx.sfx.levelup();
+            else ctx.sfx.click();
+            if (summary?.bountyDone) {
+              toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
+              ctx.sfx.coin();
+            }
+            for (const fam of summary?.newMedals ?? []) {
+              const med = medalForFamily(fam);
+              modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));
+            }
+            ctx.navigate("#/dungeon");
+          },
+        })
+      )
     );
   }
 

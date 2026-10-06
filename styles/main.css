@@ -340,6 +340,21 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .dpad button:nth-child(5) { grid-area: 3 / 2; }
 @media (pointer: coarse) { .dpad { display: grid; } }
 .view-col, .side-col { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+/* Keep the map + command bar always visible: the info column pins to the viewport and scrolls itself. */
+.side-col .party-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.side-col .pc-id { font-size: 0.82rem; } /* keeps "Name Class · Lv N" on one line at half-width cards */
+@media (min-width: 62rem) {
+  :root { --hdr-h: 6.75rem; } /* measured grid top (header + app padding); sticky pins if font scale grows it */
+  .side-col {
+    position: sticky;
+    top: var(--s3);
+    max-height: calc(100vh - var(--hdr-h) - var(--s3));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .side-col > * { flex-shrink: 0; } /* scroll the column instead of squashing cards and log */
+}
 .view-canvas {
   display: block;
   width: 100%;

@@ -65,8 +65,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   const agOf = (d: GameState) => d.activeGate!;
 
   function log(msg: string): void {
+    const stuck = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 16; // at the tail (tolerance must stay under one line so a real scroll-up always escapes)
     logEl.append(el("p", { text: msg }));
     while (logEl.children.length > 24) logEl.removeChild(logEl.firstChild!);
+    if (stuck) logEl.scrollTop = logEl.scrollHeight; // follow new lines unless they scrolled up to read history
   }
 
   function drawView(): void {

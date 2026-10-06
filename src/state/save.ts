@@ -107,8 +107,7 @@ export type Inventory = Record<string, number>;
 export interface GameState {
   version: 1;
   seed: string;
-  gold: number; // town purse (spendable)
-  bank: number; // safe reserve — expedition gold banks here, never lost on wipe
+  gold: number; // all-purpose coin — spendable anywhere, and safe from wipes (only unclaimed run loot is forfeited)
   party: Pc[];
   inventory: Inventory;
   codex: string[]; // stamped bestiary ids
@@ -157,7 +156,6 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     version: 1,
     seed,
     gold: STARTING_GOLD,
-    bank: 0,
     party: (["fighter", "mage", "cleric", "rogue"] as ClassId[]).map((c) => makePc(c, 1)),
     inventory: { "potion-hp": 2 },
     codex: [],
@@ -211,6 +209,9 @@ function migrate(save: GameState & { version: number }): GameState | null {
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
+      const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
+      if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
+      delete (s as Partial<{ bank: number }>).bank;
       return s;
     }
     default:

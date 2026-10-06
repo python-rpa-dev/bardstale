@@ -87,19 +87,17 @@ export const TEMPLE = {
   reviveCost: 25,
 };
 
-/** Spend from purse first, then bank. False when the party cannot pay. */
-export function payFromPurseOrBank(state: GameState, cost: number): boolean {
-  if (state.gold + state.bank < cost) return false;
-  const fromGold = Math.min(state.gold, cost);
-  state.gold -= fromGold;
-  state.bank -= cost - fromGold;
+/** Spend gold. False when the party cannot pay; nothing is deducted then. */
+export function pay(state: GameState, cost: number): boolean {
+  if (state.gold < cost) return false;
+  state.gold -= cost;
   return true;
 }
 
 
-/** Recruit a fresh level-1 PC of the class; false when party full or purse+bank short. */
+/** Recruit a fresh level-1 PC of the class; false when party full or gold short. */
 export function recruitPc(state: GameState, classId: ClassId): boolean {
-  if (state.party.length >= 4 || !payFromPurseOrBank(state, RECRUIT_COST)) return false;
+  if (state.party.length >= 4 || !pay(state, RECRUIT_COST)) return false;
   const ordinal = state.party.filter((p) => p.classId === classId).length + 1;
   state.party.push(makePc(classId, ordinal));
   return true;

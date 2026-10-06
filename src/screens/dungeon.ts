@@ -113,7 +113,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       el("div", {},
         el("p", { text: `You emerge from ${gateName}, blinking at the sun.` }),
         el("ul", {},
-          el("li", { text: `${loot.gold} gold banked` }),
+          el("li", { text: `${loot.gold} gold claimed` }),
           ...(rows.length ? rows.map((r) => el("li", { text: r })) : [el("li", { class: "muted", text: "No items recovered" })]),
         ),
         rare ? el("p", { class: "muted rare-line", text: describeRare(rare) }) : null,
@@ -255,9 +255,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           lastLookCell = -1;
           const rng = stepRng(ag);
           const gold = randInt(rng, 6 + ag.floor * 4, 12 + ag.floor * 8);
-          d.bank += gold; // expedition gold banks — never lost on a wipe
+          d.gold += gold; // expedition gold is safe from a wipe — only unclaimed items are forfeited
           ag.loot.gold += gold;
-          msgs.push(`The chest yields ${gold} gold (banked).`);
+          msgs.push(`The chest yields ${gold} gold.`);
           sfxKinds.push("chest", "coin");
           if (rng() < 0.25) {
             const drop = CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)];
@@ -501,7 +501,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   // ---------- Rare spawns (M7): one-off run events surfaced as a card ----------
   const rareHost = el("div", { class: "rare-host" });
 
-  /** Merchant cart: three uncommon/rare goods at −25%, purse gold, each buyable once. */
+  /** Merchant cart: three uncommon/rare goods at −25%, paid in gold, each buyable once. */
   function openMerchant(): void {
     stopAuto();
     const s = ctx.state();
@@ -518,7 +518,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             el("span", { class: "temple-id", text: `${def.name} — ${w.price} g` }),
             button(bought ? "Sold" : "Buy", {
               disabled: bought || s.gold < w.price,
-              hint: bought ? "Already in your packs" : `Pay from purse (${s.gold} g)`,
+              hint: bought ? "Already in your packs" : `Pay ${w.price} g (${s.gold} g in hand)`,
               onClick: () => {
                 ctx.commit((d) => {
                   const a = d.activeGate!;

@@ -81,10 +81,10 @@ const LOC_NAMES: Record<string, string> = {
 
 const announcer = el("div", { id: "sr-announcer", class: "sr-only", "aria-live": "polite" });
 const locLabel = el("span", { class: "loc" });
-const purseLabel = el("span", { class: "purse" });
+const goldLabel = el("span", { class: "gold" });
 const screenHost = el("main", { id: "screen" });
 document.querySelector("#app")!.append(
-  el("header", { class: "hdr" }, locLabel, purseLabel, settingsGear(ctx)),
+  el("header", { class: "hdr" }, locLabel, goldLabel, settingsGear(ctx)),
   screenHost,
   announcer,
 );
@@ -99,10 +99,9 @@ function updateHeader(route: string): void {
     announcer.textContent = locName;
   }
   const s = store.state;
-  purseLabel.replaceChildren(
-    document.createTextNode("Purse "),
+  goldLabel.replaceChildren(
+    document.createTextNode("Gold "),
     el("b", { text: String(s.gold) }),
-    document.createTextNode(` · Bank ${s.bank}`),
   );
 }
 

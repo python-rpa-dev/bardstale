@@ -3,7 +3,7 @@ import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { classById } from "../data/classes";
 import { pcMax } from "../state/save";
-import { TEMPLE, payFromPurseOrBank } from "../state/party";
+import { TEMPLE, pay } from "../state/party";
 
 export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
@@ -17,11 +17,11 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
         hint: hurt.length
           ? `Restore the HP of all ${hurt.length} wounded heroes for ${total} gold.`
           : "Everyone is already at full HP.",
-        disabled: hurt.length === 0 || s.gold + s.bank < total,
+        disabled: hurt.length === 0 || s.gold < total,
         onClick: () => {
           let paid = false;
           ctx.commit((st) => {
-            paid = payFromPurseOrBank(st, total);
+            paid = pay(st, total);
             if (paid) for (const p of st.party) if (p.hp > 0 && p.hp < pcMax(p).hp) p.hp = pcMax(p).hp;
           });
           if (paid) {
@@ -39,7 +39,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
         const max = pcMax(pc);
         const downed = pc.hp <= 0;
         const healCost = TEMPLE.healCost(pc);
-        const affordable = s.gold + s.bank;
+        const affordable = s.gold;
         return el(
           "div",
           { class: `temple-row${downed ? " downed" : ""}` },
@@ -93,7 +93,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                       let revived = false;
                       ctx.commit((st) => {
                         const p = st.party.find((x) => x.id === pc.id);
-                        if (p && payFromPurseOrBank(st, TEMPLE.reviveCost)) {
+                        if (p && pay(st, TEMPLE.reviveCost)) {
                           p.hp = 1;
                           revived = true;
                         }
@@ -111,7 +111,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                     let healed = false;
                     ctx.commit((st) => {
                       const p = st.party.find((x) => x.id === pc.id);
-                      if (p && payFromPurseOrBank(st, TEMPLE.healCost(p))) {
+                      if (p && pay(st, TEMPLE.healCost(p))) {
                         p.hp = pcMax(p).hp;
                         healed = true;
                       }
@@ -130,7 +130,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                 let cured = false;
                 ctx.commit((st) => {
                   const p = st.party.find((x) => x.id === pc.id);
-                  if (p && payFromPurseOrBank(st, TEMPLE.cureCost)) {
+                  if (p && pay(st, TEMPLE.cureCost)) {
                     p.statuses = [];
                     cured = true;
                   }

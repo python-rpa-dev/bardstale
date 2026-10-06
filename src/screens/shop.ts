@@ -2,7 +2,7 @@ import { el, button } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { ITEMS, itemById, sellPrice, type ItemDef } from "../data/items";
-import { payFromPurseOrBank } from "../state/party";
+import { pay } from "../state/party";
 
 export function useText(def: ItemDef): string {
   const u = def.use!;
@@ -29,7 +29,7 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
   host.append(
     el("h1", { text: "General Store" }),
-    el("p", { class: "muted", text: "Purse and bank are spent in that order. Sell prices are half." }),
+    el("p", { class: "muted", text: `Gold in hand: ${s.gold} g. Sell prices are half.` }),
     el(
       "div",
       { class: "shop-grid" },
@@ -43,11 +43,11 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
           el("span", { class: "price", text: `${def.price} g` }),
           button("Buy", {
             hint: `Buy ${def.name} (${effectText(def)}) for ${def.price} gold.`,
-            disabled: s.gold + s.bank < def.price,
+            disabled: s.gold < def.price,
             onClick: () => {
               let paid = false;
               ctx.commit((st) => {
-                paid = payFromPurseOrBank(st, def.price);
+                paid = pay(st, def.price);
                 if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
               });
               if (paid) ctx.sfx.coin();

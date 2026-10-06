@@ -38,6 +38,16 @@ describe("save round-trip", () => {
     expect(back?.settings.sfxVolume).toBe(s.settings.sfxVolume);
   });
 
+  it("merges a v1 save's separate bank reserve into gold on load", () => {
+    const s = newGame(clockFrom("2026-10-04T12:00:00Z"));
+    const raw = JSON.parse(serialize(s)) as Record<string, unknown> & { gold: number };
+    raw.gold = 80;
+    raw.bank = 40; // a pre-merge save on disk
+    const back = deserialize(JSON.stringify(raw));
+    expect(back?.gold).toBe(120);
+    expect(back && "bank" in back).toBe(false);
+  });
+
   it("active expedition survives the round-trip (JSON-safe map)", () => {
     const s = newGame(clockFrom("2026-10-04T12:00:00Z"));
     const gate: ActiveGate = {

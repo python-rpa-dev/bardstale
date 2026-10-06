@@ -264,7 +264,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
   function victoryPanel(): HTMLElement {
     const v = cs!.victory!;
     let summary: ReturnType<typeof claimVictory> = null;
-    // one compact line: heading, per-hero XP chips, banked gold, and the claim action inline
+    // one compact line: heading, per-hero XP chips, gold won, and the claim action inline
     return el(
       "div",
       { class: "combat-end victory" },
@@ -274,9 +274,9 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         { class: "victory-line" },
         el("h2", { text: "Victory!" }),
         ...cs!.pcs.map((p) => el("span", { class: "xp-chip", text: `${p.name} +${v.xpByPc[p.id] ?? 0}` })),
-        el("span", { class: "gold-line", text: `+${v.gold} g banked` }),
+        el("span", { class: "gold-line", text: `+${v.gold} g` }),
         button("Claim and Continue", {
-          hint: "Bank the gold, stamp the codex, count bounty kills.",
+          hint: "Claim the gold, stamp the codex, count bounty kills.",
           onClick: () => {
             ctx.commit((d) => {
               summary = claimVictory(d);
@@ -306,7 +306,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         "div",
         {},
         el("p", { text: "Darkness takes you. The temple bells will wake you at first light — everyone at 1 HP." }),
-        el("p", { class: "warn", text: "Unbanked loot from this run is forfeited. Banked gold is safe." }),
+        el("p", { class: "warn", text: "Loot not yet claimed is forfeited — gold already in hand is safe." }),
         button("Stumble Home", {
           hint: "Return to town broken but breathing.",
           onClick: () => {

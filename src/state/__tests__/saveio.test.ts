@@ -25,7 +25,6 @@ const sampleGate = (party: { id: string; hp: number; sp: number }[]): ActiveGate
 const okState = () => {
   const s = newGame(clock);
   s.gold = 87;
-  s.bank = 40;
   return s;
 };
 
@@ -74,7 +73,7 @@ describe("importSave", () => {
     if (!res.ok) expect(res.error).toMatch(/version/i);
   });
 
-  it("rejects negative purse, empty party and oversized parties", () => {
+  it("rejects negative gold, empty party and oversized parties", () => {
     const neg = okState();
     neg.gold = -5;
     expect(importSave(serialize(neg)).ok).toBe(false);
@@ -89,6 +88,21 @@ describe("importSave", () => {
     expect(importSave(serialize(big)).ok).toBe(true); // 4 is the guild cap — legal
     big.party.push({ ...big.party[0], id: "fifth" });
     expect(importSave(serialize(big)).ok).toBe(false);
+  });
+
+  it("merges a legacy v1 code's separate bank reserve into gold", () => {
+    const res = importSave(tampered(okState(), (r) => { delete r.gold; r.gold = 80; r.bank = 40; }));
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.state.gold).toBe(120);
+      expect("bank" in res.state).toBe(false);
+    }
+  });
+
+  it("rejects a legacy bank that is not a whole non-negative number", () => {
+    const res = importSave(tampered(okState(), (r) => (r.bank = -3)));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/bank/i);
   });
 
   it("rejects a hero with an unknown class", () => {

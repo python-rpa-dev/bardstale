@@ -54,7 +54,7 @@ export interface VictorySummary {
   bountyDone?: { family: Family; gold: number }; // active bounty finished by this fight's kills
 }
 
-/** Claim a won fight: XP, banked gold, codex stamps, bounty kills + medals. */
+/** Claim a won fight: XP, gold, codex stamps, bounty kills + medals. */
 export function claimVictory(d: GameState): VictorySummary | null {
   const cs = d.activeCombat;
   if (!cs || cs.phase !== "won" || !cs.victory) return null;
@@ -66,8 +66,8 @@ export function claimVictory(d: GameState): VictorySummary | null {
     if (res.levels > 0) levelsByPc[pcId] = res.levels;
   }
 
-  // combat gold banks immediately, like chest gold
-  d.bank += v.gold;
+  // combat gold is claimed immediately, like chest gold — safe from a wipe
+  d.gold += v.gold;
   if (d.activeGate) d.activeGate.loot.gold += v.gold;
 
   // codex stamps → family medals when a page set completes
@@ -95,7 +95,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
         offer.done = true;
         let payout = offer.gold;
         if (d.medals.includes("vermin")) payout = Math.floor(payout * 1.1); // vermin medal: +10% bounty gold
-        d.bank += payout;
+        d.gold += payout;
         d.bounties.completed.push(activeId);
         d.bounties.active = undefined;
         bountyDone = { family: offer.family, gold: payout };

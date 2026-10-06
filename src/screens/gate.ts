@@ -25,7 +25,7 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
         el("div", { class: "sheet-actions" },
           button("Resume Expedition", { hint: "Return to the depths", onClick: () => ctx.navigate("#/dungeon") }),
           button("Abandon Run", {
-            hint: "Leave the maze empty-handed (loot already banked is kept)",
+            hint: "Leave the maze empty-handed (gold and items already taken are kept)",
             onClick: () => {
               const close = modal(
                 "Abandon this run?",

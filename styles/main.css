@@ -61,8 +61,8 @@ body {
   margin-bottom: var(--s3);
 }
 .hdr .loc { font-size: 1.15rem; letter-spacing: 0.04em; color: var(--gold); }
-.hdr .purse { text-align: right; min-width: 6rem; }
-.hdr .purse b { color: var(--gold); }
+.hdr .gold { text-align: right; min-width: 6rem; }
+.hdr .gold b { color: var(--gold); }
 
 /* ---------- focus & touch ---------- */
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }

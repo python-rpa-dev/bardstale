@@ -55,7 +55,7 @@ export interface CombatState {
   riches: boolean; // +50% gold on victory rolls
   pocketLuck: boolean; // living rogue: +3 gold per kill
   healDiscount: boolean; // undead medal: heal costs −2 SP
-  fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (loot is banked already)
+  fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
   blessDef: number; // party-wide DEF bonus for the combat (bless)
   tauntPc: number | null; // fighter who taunted: highest-ATK foe must target them
   pcs: CombatPc[];

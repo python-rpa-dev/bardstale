@@ -207,7 +207,7 @@ export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
     recruit.append(
       button(`Recruit ${cls.name}`, {
         hint: `Level 1 ${cls.name} — ${RECRUIT_COST} gold. Starts with ${cls.start.hp} HP, ${cls.start.sp} SP.`,
-        disabled: s.party.length >= 4 || s.gold + s.bank < RECRUIT_COST,
+        disabled: s.party.length >= 4 || s.gold < RECRUIT_COST,
         onClick: () => {
           ctx.commit((st) => recruitPc(st, cls.id));
           ctx.refresh();

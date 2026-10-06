@@ -106,8 +106,10 @@ export function importSave(raw: string): ImportResult {
   if (parsed.version !== 1) return fail(`Unknown save version (${String(parsed.version)}).`);
 
   if (!str(parsed.seed)) return fail("Save is missing its world seed.");
-  if (!int(parsed.gold) || parsed.gold < 0 || !int(parsed.bank) || parsed.bank < 0) {
-    return fail("Purse and bank must be whole numbers of at least 0 gold.");
+  if (!int(parsed.gold) || parsed.gold < 0) return fail("Gold must be a whole number of at least 0.");
+  const legacyBank = parsed.bank; // v1 codes may carry the old separate reserve — merge it in
+  if (legacyBank !== undefined && (!int(legacyBank) || legacyBank < 0)) {
+    return fail("Legacy bank gold must be a whole number of at least 0.");
   }
   if (!Array.isArray(parsed.party) || parsed.party.length < 1 || parsed.party.length > 4) {
     return fail("A party needs between 1 and 4 members.");
@@ -175,8 +177,7 @@ export function importSave(raw: string): ImportResult {
   const state: GameState = {
     version: 1,
     seed: parsed.seed,
-    gold: parsed.gold,
-    bank: parsed.bank,
+    gold: parsed.gold + (typeof legacyBank === "number" ? Math.floor(legacyBank) : 0),
     party,
     inventory,
     codex: Array.isArray(parsed.codex) ? parsed.codex.filter(str) : [],

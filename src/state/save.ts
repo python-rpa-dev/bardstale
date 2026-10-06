@@ -93,6 +93,8 @@ export interface Settings {
   /** Brighter text, stronger borders for low-vision readability. */
   highContrast: boolean;
   colorblind: boolean;
+  /** Show styled hover/focus tooltips on buttons. */
+  tooltips: boolean;
   fontScale: number;
    sfxVolume: number;
    /** Silence all SFX without losing the chosen volume. */
@@ -163,7 +165,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
-    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
+    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
 };
 }
 
@@ -208,6 +210,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
        for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
+      s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
       return s;
     }
     default:

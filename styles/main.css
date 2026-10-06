@@ -86,11 +86,13 @@ button, select, input { font: inherit; color: inherit; }
 /* command-bar glyph icons — em-sized so fontScale carries them */
 .btn .ico { display: inline-flex; }
 .btn .ico svg { width: 1.3em; height: 1.3em; display: block; }
+.cmd-bar .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
+.cmd-bar .btn .mult { font-weight: 700; }
 
 /* tooltip from hint */
-.btn[data-hint]:not([data-hint=""]):hover::after,
-.btn[data-hint]:not([data-hint=""]):focus-visible::after,
-.btn[data-hint]:not([data-hint=""]):active::after {
+body:not(.no-tooltips) .btn[data-hint]:not([data-hint=""]):hover::after,
+body:not(.no-tooltips) .btn[data-hint]:not([data-hint=""]):focus-visible::after,
+body:not(.no-tooltips) .btn[data-hint]:not([data-hint=""]):active::after {
   content: attr(data-hint);
   position: absolute;
   left: 50%;

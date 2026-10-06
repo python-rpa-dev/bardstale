@@ -31,6 +31,7 @@ function applySettings(): void {
   document.body.classList.toggle("cb", st.colorblind);
   document.body.classList.toggle("reduce-motion", st.reduceMotion);
   document.body.classList.toggle("hc", st.highContrast);
+  document.body.classList.toggle("no-tooltips", !st.tooltips);
   document.documentElement.style.setProperty("--fs", String(st.fontScale));
   compactSide();
   if (st.fontScale !== lastFs) {

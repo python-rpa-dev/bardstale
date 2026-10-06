@@ -12,6 +12,10 @@ const PATHS = {
   pause: '<path d="M9 6v12"/><path d="M15 6v12"/>',
   flask: '<path d="M10 4h4"/><path d="M11 4v5l-4.3 7.8A2.6 2.6 0 0 0 9 20.6h6a2.6 2.6 0 0 0 2.3-3.8L13 9V4"/><path d="M7.5 15h9"/>',
   spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/>',
+  sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/>',
+  shield: '<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  hourglass: '<path d="M7 3h10"/><path d="M7 21h10"/><path d="M7 3c0 4 5 5 5 9s-5 5-5 9"/><path d="M17 3c0 4-5 5-5 9s5 5 5 9"/>',
+  bolt: '<path d="M13 2 3.5 14H10l-1 8L18.5 10H12l1-8Z"/>',
   door: '<path d="M13 4H6v16h7"/><path d="M16 12H9"/><path d="M13 9l3 3-3 3"/>',
 } as const;
 

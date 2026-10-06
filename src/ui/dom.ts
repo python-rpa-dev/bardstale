@@ -46,7 +46,7 @@ export function button(label: string, opts: ButtonOpts = {}): HTMLButtonElement 
   const b = el("button", {
     class: `btn ${opts.cls ?? ""}`.trim(),
     type: "button",
-    title: opts.hint ?? label,
+    // no native title: the styled data-hint tooltip is the only one, so settings can toggle it off via CSS
     "data-hint": opts.hint ?? "",
     disabled: opts.disabled ? true : undefined,
     onclick: () => opts.onClick?.(),

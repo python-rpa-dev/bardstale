@@ -338,16 +338,18 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
   );
 
   if (cs.phase === "input") {
+    const speedBtn = button("combat speed, click to toggle pacing", { icon: "bolt", hint: "Foe-turn pacing.", onClick: () => { speed = speed === 1 ? 2 : 1; ctx.refresh(); } });
+    speedBtn.insertBefore(el("span", { class: "mult", text: `${speed}×` }), speedBtn.lastChild); // visible multiplier between glyph and sr-only label
     const cmdBar = el(
       "div",
       { class: "cmd-bar" },
-      button("Attack", { hint: "Strike the targeted foe (click a card to retarget).", disabled: !pcTurn, onClick: attack }),
-      button("Cast", { hint: "Spend SP on a known spell.", disabled: !pcTurn || spellsKnownAt(cs.pcs[activePcIdx].classId, cs.pcs[activePcIdx].level).length === 0, onClick: openSpells }),
-      button("Use", { hint: "Drink or read a consumable.", disabled: !pcTurn, onClick: openItems }),
-      button("Guard", { hint: "Halve damage until your next turn.", disabled: !pcTurn, onClick: guard }),
-      button("Flee", { hint: "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn, onClick: flee }),
-      button(`Speed ${speed}×`, { hint: "Foe-turn pacing.", onClick: () => { speed = speed === 1 ? 2 : 1; ctx.refresh(); } }),
-      button("Quick Resolve", { hint: "Auto-run the rest of this fight on the same dice.", onClick: quick })
+      button("Attack", { icon: "sword", hint: "Strike the targeted foe (click a card to retarget).", disabled: !pcTurn, onClick: attack }),
+      button("Cast", { icon: "spark", hint: "Spend SP on a known spell.", disabled: !pcTurn || spellsKnownAt(cs.pcs[activePcIdx].classId, cs.pcs[activePcIdx].level).length === 0, onClick: openSpells }),
+      button("Use", { icon: "flask", hint: "Drink or read a consumable.", disabled: !pcTurn, onClick: openItems }),
+      button("Guard", { icon: "shield", hint: "Halve damage until your next turn.", disabled: !pcTurn, onClick: guard }),
+      button("Flee", { icon: "door", hint: "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn, onClick: flee }),
+      speedBtn,
+      button("Quick Resolve", { icon: "hourglass", hint: "Auto-run the rest of this fight on the same dice.", onClick: quick })
     );
     host.append(cmdBar);
     if (pcTurn) {

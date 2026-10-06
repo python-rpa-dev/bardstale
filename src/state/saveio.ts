@@ -158,6 +158,7 @@ export function importSave(raw: string): ImportResult {
     reduceMotion: boolOr(rs.reduceMotion, false),
     highContrast: boolOr(rs.highContrast, false),
     colorblind: boolOr(rs.colorblind, false),
+    tooltips: boolOr(rs.tooltips, true),
     fontScale: num(rs.fontScale) && rs.fontScale >= 0.5 && rs.fontScale <= 2 ? rs.fontScale : 1,
     sfxVolume: num(rs.sfxVolume) && rs.sfxVolume >= 0 && rs.sfxVolume <= 1 ? rs.sfxVolume : 0.5,
     sfxMuted: boolOr(rs.sfxMuted, false),

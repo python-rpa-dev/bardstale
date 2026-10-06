@@ -84,6 +84,11 @@ export function openSettings(ctx: RouteCtx): void {
         s.settings.colorblind = v;
       }),
     ),
+    checkRow("Button Tooltips", "show keybinds and effects when you hover a button", st.tooltips, (v) =>
+      ctx.commit((s) => {
+        s.settings.tooltips = v;
+      }),
+    ),
     rangeRow(
       "Font Scale",
       0.9,

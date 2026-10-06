@@ -36,6 +36,17 @@ const FLAT_FLOOR = "#241b12";
 const FLAT_WALL_NS = "#574736"; // side shading: N/S faces darker
 const FLAT_WALL_EW = "#6b5842";
 
+/** Fill one horizontal half of the view with a repeated tint tile, or a flat color. */
+function fillHalf(ctx: CanvasRenderingContext2D, tex: HTMLImageElement | null, flat: string, y: number): void {
+  const pattern = tex ? ctx.createPattern(tex, "repeat") : null;
+  if (pattern) {
+    ctx.fillStyle = pattern;
+  } else {
+    ctx.fillStyle = flat;
+  }
+  ctx.fillRect(0, y, VIEW_W, VIEW_H / 2);
+}
+
 /** Draw one frame of the first-person view at pos (cell coords) facing dir. */
 export function renderView(
   canvas: HTMLCanvasElement,
@@ -51,18 +62,11 @@ export function renderView(
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
 
-  // Ceiling / floor flat halves (tint textures stretched, or fallback colors).
+  // Ceiling / floor halves. The tints are seamless small tiles, so repeat them;
+  // stretching one tile across the frame blows its seams up into giant blobs.
   const halfH = VIEW_H / 2;
-  if (tex.ceilTint) ctx.drawImage(tex.ceilTint, 0, 0, VIEW_W, halfH);
-  else {
-    ctx.fillStyle = FLAT_CEIL;
-    ctx.fillRect(0, 0, VIEW_W, halfH);
-  }
-  if (tex.floorTint) ctx.drawImage(tex.floorTint, 0, halfH, VIEW_W, halfH);
-  else {
-    ctx.fillStyle = FLAT_FLOOR;
-    ctx.fillRect(0, halfH, VIEW_W, halfH);
-  }
+  fillHalf(ctx, tex.ceilTint, FLAT_CEIL, 0);
+  fillHalf(ctx, tex.floorTint, FLAT_FLOOR, halfH);
 
   const [dirX, dirY] = DIR_VECS[dir];
   // Camera plane perpendicular to view direction.

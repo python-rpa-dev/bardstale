@@ -344,21 +344,16 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .side-col .party-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .side-col .pc-id { font-size: 0.82rem; } /* keeps "Name Class · Lv N" on one line at half-width cards */
 @media (min-width: 62rem) {
-  :root { --hdr-h: 6.75rem; } /* measured grid top (header + app padding); sticky pins if font scale grows it */
-  .side-col {
-    position: sticky;
-    top: var(--s3);
-    max-height: calc(100vh - var(--hdr-h) - var(--s3));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-  }
-  .side-col > * { flex-shrink: 0; } /* scroll the column instead of squashing cards and log */
+  .dungeon-grid { align-items: stretch; } /* height locked to the viewport by fitShell() in dungeon.ts */
+  .view-col, .side-col { min-height: 0; }
+  .view-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .side-col > :not(.dlog) { flex-shrink: 0; } /* cards keep natural size; the log takes the slack */
+  .side-col { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } /* safety net on very short windows */
 }
+.view-stage { display: block; min-width: 0; } /* mobile passthrough; desktop flex-sizes it */
 .view-canvas {
   display: block;
   width: 100%;
-  max-width: 46rem;
   aspect-ratio: 480 / 300;
   image-rendering: pixelated;
   border: 2px solid #000;
@@ -394,6 +389,9 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 }
 .dlog p { margin: 0 0 0.3rem; }
 .dlog p:last-child { margin-bottom: 0; }
+@media (min-width: 62rem) { /* inside the viewport shell, the log fills leftover sidebar height */
+  .dlog { max-height: none; flex: 1 1 auto; min-height: 6rem; }
+}
 button.danger { color: #e0645c; border-color: #7e2f2a; }
 
 /* ---------- M6: battle screen ---------- */

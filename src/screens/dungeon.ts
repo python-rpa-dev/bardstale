@@ -21,7 +21,7 @@ import {
   rollEncounter,
   stepRng,
 } from "../state/expedition";
-import { loadGateTextures, renderView, type ViewTextures } from "../render/raycaster";
+import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
 import { renderMinimap } from "../render/minimap";
 
 const CHEST_CONSUMABLES = ["potion-hp", "potion-sp"];
@@ -50,6 +50,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
   let tex: ViewTextures = { wall: null, floorTint: null, ceilTint: null };
   const viewCanvas = el("canvas", { class: "view-canvas", "aria-label": "First-person dungeon view" });
+  const viewStage = el("div", { class: "view-stage" }, viewCanvas);
   const miniCanvas = el("canvas", { class: "minimap-canvas", "aria-label": "Minimap of explored cells" });
   const logEl = el("div", { class: "dlog", "aria-live": "polite" });
   const partyHost = el("div", { class: "party-grid" });
@@ -619,20 +620,58 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     padBtn("▶", "Turn right", () => turn(1)),
     padBtn("▼", "Step back", () => doMove(true)),
   );
-  host.append(
-    el("div", { class: "dungeon-grid" },
-      el("div", { class: "view-col" }, viewCanvas, cmdBar, dpad),
-      el("div", { class: "side-col" },
-        el("div", { class: "panel mini-card" },
-          el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
-          miniCanvas,
-          el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine — explored cells only" }),
-        ),
-        partyHost,
-        logEl,
+  const dungeonGrid = el("div", { class: "dungeon-grid" },
+    el("div", { class: "view-col" }, viewStage, cmdBar, dpad),
+    el("div", { class: "side-col" },
+      el("div", { class: "panel mini-card" },
+        el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
+        miniCanvas,
+        el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine — explored cells only" }),
       ),
+      partyHost,
+      logEl,
     ),
   );
+  host.append(dungeonGrid);
+
+  // Desktop: lock the screen to the viewport so buttons and the log never need page scroll.
+  // The grid height is measured (not guessed) so header/font-scale changes can't push it over;
+  // the canvas then scales inside its stage at the largest size that fits, aspect preserved.
+  const mqDesktop = matchMedia("(min-width: 62rem)");
+  function fitShell(): void {
+    if (!viewCanvas.isConnected) return;
+    if (!mqDesktop.matches) {
+      dungeonGrid.style.height = "";
+      viewCanvas.style.width = "";
+      viewCanvas.style.height = "";
+      return;
+    }
+    const top = dungeonGrid.getBoundingClientRect().top + scrollY;
+    const avail = document.documentElement.clientHeight - top - 20; // #app bottom padding + slack
+    dungeonGrid.style.height = `${Math.max(360, avail)}px`;
+    fitCanvas();
+  }
+  function fitCanvas(): void {
+    if (!mqDesktop.matches || !viewStage.isConnected) return;
+    const r = viewStage.getBoundingClientRect();
+    const s = Math.min(r.width / VIEW_W, r.height / VIEW_H);
+    if (s <= 0) return;
+    viewCanvas.style.width = `${Math.floor(VIEW_W * s)}px`;
+    viewCanvas.style.height = `${Math.floor(VIEW_H * s)}px`;
+  }
+  const onResize = () => {
+    if (!viewCanvas.isConnected) {
+      removeEventListener("resize", onResize);
+      mqDesktop.removeEventListener("change", fitShell);
+      return;
+    }
+    fitShell();
+  };
+  // No ResizeObserver: every dungeon entry remounts this screen, and observers left on the
+  // detached stage would pile up. Mount-time fit + window/mq listeners cover every real change.
+  addEventListener("resize", onResize);
+  mqDesktop.addEventListener("change", fitShell);
+  fitShell();
 
   // Keyboard controls live as long as this screen's canvas is mounted.
   const onKey = (e: KeyboardEvent) => {

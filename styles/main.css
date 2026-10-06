@@ -83,9 +83,14 @@ button, select, input { font: inherit; color: inherit; }
 .btn:hover:not(:disabled) { border-color: var(--gold); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* command-bar glyph icons — em-sized so fontScale carries them */
+.btn .ico { display: inline-flex; }
+.btn .ico svg { width: 1.3em; height: 1.3em; display: block; }
+
 /* tooltip from hint */
 .btn[data-hint]:not([data-hint=""]):hover::after,
-.btn[data-hint]:not([data-hint=""]):focus-visible::after {
+.btn[data-hint]:not([data-hint=""]):focus-visible::after,
+.btn[data-hint]:not([data-hint=""]):active::after {
   content: attr(data-hint);
   position: absolute;
   left: 50%;

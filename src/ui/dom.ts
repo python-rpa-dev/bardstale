@@ -1,4 +1,6 @@
 /** Tiny component helpers — the whole "framework" this game ships with. */
+import { iconEl } from "./icons";
+import type { IconName } from "./icons";
 
 type Child = Node | string | null | false | undefined;
 
@@ -37,18 +39,21 @@ export interface ButtonOpts {
   onClick?: () => void;
   disabled?: boolean;
   cls?: string;
+  icon?: IconName; // renders the glyph + an sr-only label instead of visible text
 }
 
 export function button(label: string, opts: ButtonOpts = {}): HTMLButtonElement {
-  return el("button", {
+  const b = el("button", {
     class: `btn ${opts.cls ?? ""}`.trim(),
     type: "button",
     title: opts.hint ?? label,
     "data-hint": opts.hint ?? "",
     disabled: opts.disabled ? true : undefined,
     onclick: () => opts.onClick?.(),
-    text: label,
   } as Props);
+  if (opts.icon) b.append(iconEl(opts.icon), el("span", { class: "sr-only", text: label }));
+  else b.textContent = label;
+  return b;
 }
 
 /** HP/SP-style meter. Glyph appears in colorblind mode so state never relies on hue. */

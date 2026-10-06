@@ -1,6 +1,8 @@
 /** The Depths: split view (raycast + minimap/party/log), grid movement, traps, encounters, chests. */
 
 import { el, button, bar, modal, toast } from "../ui/dom";
+import { iconEl } from "../ui/icons";
+import type { IconName } from "../ui/icons";
 import type { RouteCtx } from "../ui/router";
 import { DIR_VECS, MAP_W, bfsPath, cellId, idToXY, openDegree } from "../core/mapgen";
 import { randInt } from "../core/rng";
@@ -302,13 +304,20 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     for (const k of sfxKinds) ctx.sfx[k]();
   }
 
+  /** Swap the Auto-Walk button between its two states; textContent stays "Auto-Walk"/"Halt" for any reader. */
+  function setAutoLabel(running: boolean): void {
+    const btn = host.querySelector<HTMLButtonElement>(".auto-btn");
+    if (!btn) return;
+    btn.replaceChildren(iconEl(running ? "pause" : "fast-forward"), el("span", { class: "sr-only", text: running ? "Halt" : "Auto-Walk" }));
+    btn.setAttribute("aria-pressed", String(running));
+  }
+
   function stopAuto(): void {
     if (autoTimer !== null) {
       clearInterval(autoTimer);
       autoTimer = null;
     }
-    const btn = host.querySelector<HTMLButtonElement>(".auto-btn");
-    if (btn) btn.textContent = "Auto-Walk";
+    setAutoLabel(false);
   }
 
   /** BFS to the stairs at 8 steps/sec; halts on encounter, trap or an unopened chest ahead. Descends and keeps walking across floors. */
@@ -320,8 +329,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (!ag) return;
 
     log("You set off toward the stair.");
-    const btn = host.querySelector<HTMLButtonElement>(".auto-btn");
-    if (btn) btn.textContent = "Halt";
+    setAutoLabel(true);
     autoTimer = window.setInterval(() => {
       if (!viewCanvas.isConnected || !ctx.state().activeGate || ctx.state().activeGate!.pendingMonsters) {
         stopAuto();
@@ -590,16 +598,18 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   // ---------- layout ----------
+  const autoBtn = button("Auto-Walk", { cls: "auto-btn", icon: "fast-forward", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, traps, chests", onClick: () => toggleAuto() });
+  autoBtn.setAttribute("aria-pressed", "false");
   const cmdBar = el("div", { class: "cmd-bar" },
-    button("Forward", { hint: "W / ↑ — step ahead (traps spring, encounters roll)", onClick: () => doMove(false) }),
-    button("Back", { hint: "S / ↓ — step back without turning", onClick: () => doMove(true) }),
-    button("Turn L", { hint: "A — turn 90° left", onClick: () => turn(3) }),
-    button("Turn R", { hint: "D — turn 90° right", onClick: () => turn(1) }),
-    button("Look", { hint: "L — describe what you face; again to open chests / reveal secrets", onClick: () => doLook() }),
-    button("Auto-Walk", { cls: "auto-btn", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, traps, chests", onClick: () => toggleAuto() }),
-    button("Item", { hint: "Use a consumable outside combat", onClick: () => openItems() }),
-    button("Spell", { hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
-    button("Leave", { cls: "danger", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
+    button("Forward", { icon: "forward", hint: "W / ↑ — step ahead (traps spring, encounters roll)", onClick: () => doMove(false) }),
+    button("Back", { icon: "back", hint: "S / ↓ — step back without turning", onClick: () => doMove(true) }),
+    button("Turn L", { icon: "turn-l", hint: "A — turn 90° left", onClick: () => turn(3) }),
+    button("Turn R", { icon: "turn-r", hint: "D — turn 90° right", onClick: () => turn(1) }),
+    button("Look", { icon: "look", hint: "L — describe what you face; again to open chests / reveal secrets", onClick: () => doLook() }),
+    autoBtn,
+    button("Item", { icon: "flask", hint: "Use a consumable outside combat", onClick: () => openItems() }),
+    button("Spell", { icon: "spark", hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
+    button("Leave", { cls: "danger", icon: "door", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
   );
 
   host.append(el("h2", { class: "sr-only", text: "The Depths" }));
@@ -608,19 +618,15 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   const ag = ctx.state().activeGate!;
   const def = gateById(ag.gateId);
   // On-screen movement pad; CSS reveals it only on touch (coarse pointer) devices.
-  const padBtn = (label: string, aria: string, fn: () => void): HTMLElement => {
-    const b = button(label, { onClick: () => fn() });
-    b.setAttribute("aria-label", aria);
-    return b;
-  };
+  const padBtn = (aria: string, icon: IconName, fn: () => void): HTMLElement => button(aria, { icon, onClick: () => fn() });
   const dpad = el(
     "div",
     { class: "dpad", role: "group", "aria-label": "Movement controls" },
-    padBtn("▲", "Move forward", () => doMove(false)),
-    padBtn("◀", "Turn left", () => turn(3)),
-    padBtn("Look", "Look at what is ahead", () => doLook(false)),
-    padBtn("▶", "Turn right", () => turn(1)),
-    padBtn("▼", "Step back", () => doMove(true)),
+    padBtn("Move forward", "forward", () => doMove(false)),
+    padBtn("Turn left", "turn-l", () => turn(3)),
+    padBtn("Look at what is ahead", "look", () => doLook(false)),
+    padBtn("Turn right", "turn-r", () => turn(1)),
+    padBtn("Step back", "back", () => doMove(true)),
   );
   const dungeonGrid = el("div", { class: "dungeon-grid" },
     el("div", { class: "view-col" }, viewStage, cmdBar, dpad),

@@ -19,12 +19,19 @@ import { renderCombat } from "./screens/combat";
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
 
+// One source of truth for the compact sidebar tier (was a pure max-height media query):
+// large fonts inflate rem-sized cards past the viewport just like short windows do, so both
+// triggers live here. Permanent app-lifetime listener — no teardown needed. 704px = old 44rem edge.
+const compactSide = () => document.documentElement.classList.toggle("compact-side", store.state.settings.fontScale > 1 || innerHeight <= 704);
+addEventListener("resize", compactSide);
+
 function applySettings(): void {
   const st = store.state.settings;
   document.body.classList.toggle("cb", st.colorblind);
   document.body.classList.toggle("reduce-motion", st.reduceMotion);
   document.body.classList.toggle("hc", st.highContrast);
   document.documentElement.style.setProperty("--fs", String(st.fontScale));
+  compactSide();
    sfx.setVolume(st.sfxMuted ? 0 : st.sfxVolume);
 }
 

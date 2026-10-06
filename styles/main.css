@@ -353,15 +353,15 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .minimap-canvas { width: auto; height: clamp(4rem, calc(100vh - 40rem), 13rem); }
   .side-col .party-grid { margin-block: 0; } /* flex gap already spaces it; the 1rem block margin wasted sidebar room */
 }
-@media (min-width: 62rem) and (max-height: 44rem) {
-  /* Short desktop windows: compress party cards so the log stays above the fold. */
-  .side-col .pc-card { padding: 0.4rem 0.55rem; gap: 0.2rem; }
-  .side-col .bar-track { height: 0.65rem; }
+/* Compact sidebar tier, toggled by main.ts (short window OR font scale >1) — media queries can't see --fs. */
+@media (min-width: 62rem) {
+  html.compact-side .side-col .pc-card { padding: 0.4rem 0.55rem; gap: 0.2rem; }
+  html.compact-side .side-col .bar-track { height: 0.65rem; }
   /* ".side-col .dlog" outranks the later plain ".dlog { min-height: 6rem }" rule (source order otherwise wins). */
-  .side-col .dlog { min-height: 3.75rem; }
-  .side-col { gap: 0.4rem; }
-  .mini-card { padding-block: 0.5rem; }
-  .legend { display: none; } /* glyph key yields to log visibility on very short windows */
+  html.compact-side .side-col .dlog { min-height: 3.75rem; }
+  html.compact-side .side-col { gap: 0.4rem; }
+  html.compact-side .mini-card { padding-block: 0.5rem; }
+  html.compact-side .legend { display: none; } /* glyph key yields to log visibility on tight windows */
 }
 .view-stage { display: block; min-width: 0; } /* mobile passthrough; desktop flex-sizes it */
 .view-canvas {

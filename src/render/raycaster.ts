@@ -36,14 +36,21 @@ const FLAT_FLOOR = "#241b12";
 const FLAT_WALL_NS = "#574736"; // side shading: N/S faces darker
 const FLAT_WALL_EW = "#6b5842";
 
+/** Patterns are per-context; cache them so each frame doesn't re-wrap the tint images. */
+const patternCache = new WeakMap<CanvasRenderingContext2D, WeakMap<HTMLImageElement, CanvasPattern>>();
+function tintPattern(ctx: CanvasRenderingContext2D, tex: HTMLImageElement): CanvasPattern | null {
+  let byImg = patternCache.get(ctx);
+  if (!byImg) patternCache.set(ctx, (byImg = new WeakMap()));
+  const hit = byImg.get(tex);
+  if (hit !== undefined) return hit;
+  const p = ctx.createPattern(tex, "repeat"); // null only for undecoded images; not cached so it retries once loaded
+  if (p) byImg.set(tex, p);
+  return p;
+}
+
 /** Fill one horizontal half of the view with a repeated tint tile, or a flat color. */
 function fillHalf(ctx: CanvasRenderingContext2D, tex: HTMLImageElement | null, flat: string, y: number): void {
-  const pattern = tex ? ctx.createPattern(tex, "repeat") : null;
-  if (pattern) {
-    ctx.fillStyle = pattern;
-  } else {
-    ctx.fillStyle = flat;
-  }
+  ctx.fillStyle = tex ? (tintPattern(ctx, tex) ?? flat) : flat;
   ctx.fillRect(0, y, VIEW_W, VIEW_H / 2);
 }
 
@@ -59,8 +66,13 @@ export function renderView(
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  canvas.width = VIEW_W;
-  canvas.height = VIEW_H;
+  // Size once: re-assigning width/height reallocates the backing store and resets all context
+  // state every frame. The two full-width tint fills below repaint every pixel, so frames need
+  // no explicit clear between them.
+  if (canvas.width !== VIEW_W || canvas.height !== VIEW_H) {
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
+  }
 
   // Ceiling / floor halves. The tints are seamless small tiles, so repeat them;
   // stretching one tile across the frame blows its seams up into giant blobs.

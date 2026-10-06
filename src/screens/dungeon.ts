@@ -659,10 +659,16 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     viewCanvas.style.width = `${Math.floor(VIEW_W * s)}px`;
     viewCanvas.style.height = `${Math.floor(VIEW_H * s)}px`;
   }
+  // Screens have no router teardown hook; every guard event tears down the whole listener set,
+  // so a navigation away can't strand closures (esp. the mq "change" one until the next resize).
+  const cleanup = () => {
+    removeEventListener("resize", onResize);
+    removeEventListener("keydown", onKey);
+    mqDesktop.removeEventListener("change", fitShell);
+  };
   const onResize = () => {
     if (!viewCanvas.isConnected) {
-      removeEventListener("resize", onResize);
-      mqDesktop.removeEventListener("change", fitShell);
+      cleanup();
       return;
     }
     fitShell();
@@ -676,7 +682,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   // Keyboard controls live as long as this screen's canvas is mounted.
   const onKey = (e: KeyboardEvent) => {
     if (!viewCanvas.isConnected) {
-      removeEventListener("keydown", onKey);
+      cleanup();
       return;
     }
     if ((e.target as HTMLElement | null)?.closest?.(".modal-backdrop")) return; // modal owns keys while open

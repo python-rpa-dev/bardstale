@@ -349,6 +349,19 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .view-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .side-col > :not(.dlog) { flex-shrink: 0; } /* cards keep natural size; the log takes the slack */
   .side-col { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } /* safety net on very short windows */
+  /* Height-driven minimap: width follows from aspect-ratio, so short windows trade map size for log room. */
+  .minimap-canvas { width: auto; height: clamp(4rem, calc(100vh - 40rem), 13rem); }
+  .side-col .party-grid { margin-block: 0; } /* flex gap already spaces it; the 1rem block margin wasted sidebar room */
+}
+@media (min-width: 62rem) and (max-height: 44rem) {
+  /* Short desktop windows: compress party cards so the log stays above the fold. */
+  .side-col .pc-card { padding: 0.4rem 0.55rem; gap: 0.2rem; }
+  .side-col .bar-track { height: 0.65rem; }
+  /* ".side-col .dlog" outranks the later plain ".dlog { min-height: 6rem }" rule (source order otherwise wins). */
+  .side-col .dlog { min-height: 3.75rem; }
+  .side-col { gap: 0.4rem; }
+  .mini-card { padding-block: 0.5rem; }
+  .legend { display: none; } /* glyph key yields to log visibility on very short windows */
 }
 .view-stage { display: block; min-width: 0; } /* mobile passthrough; desktop flex-sizes it */
 .view-canvas {

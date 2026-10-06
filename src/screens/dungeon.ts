@@ -559,6 +559,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             ctx.sfx.heal();
             toast(giftName ? `The hermit whispers of ${giftName} — the codex grows by one page.` : "The hermit studies you, then waves you on; the book holds no secrets from you.");
             drawRare();
+            fitShell(); // banner removal shrinks `top` - re-measure the shell or it stays short until a manual resize
           },
         }),
       );
@@ -576,6 +577,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           ctx.sfx.levelup();
           toast("The villager gasps free. The temple will remember this.");
           drawRare();
+          fitShell(); // banner removal shrinks `top` - re-measure the shell or it stays short until a manual resize
         },
       }),
     );
@@ -640,15 +642,17 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   const mqDesktop = matchMedia("(min-width: 62rem)");
   function fitShell(): void {
     if (!viewCanvas.isConnected) return;
-    if (!mqDesktop.matches) {
+    const avail = mqDesktop.matches
+      ? document.documentElement.clientHeight - (dungeonGrid.getBoundingClientRect().top + scrollY) - 20 // #app bottom padding + slack
+      : -1;
+    if (avail < 360) {
+      // Not desktop, or too cramped to lock: natural flow beats forcing a shell taller than the viewport.
       dungeonGrid.style.height = "";
       viewCanvas.style.width = "";
       viewCanvas.style.height = "";
       return;
     }
-    const top = dungeonGrid.getBoundingClientRect().top + scrollY;
-    const avail = document.documentElement.clientHeight - top - 20; // #app bottom padding + slack
-    dungeonGrid.style.height = `${Math.max(360, avail)}px`;
+    dungeonGrid.style.height = `${avail}px`;
     fitCanvas();
   }
   function fitCanvas(): void {
@@ -664,7 +668,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   const cleanup = () => {
     removeEventListener("resize", onResize);
     removeEventListener("keydown", onKey);
-    mqDesktop.removeEventListener("change", fitShell);
+    mqDesktop.removeEventListener("change", onMq);
   };
   const onResize = () => {
     if (!viewCanvas.isConnected) {
@@ -676,7 +680,14 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   // No ResizeObserver: every dungeon entry remounts this screen, and observers left on the
   // detached stage would pile up. Mount-time fit + window/mq listeners cover every real change.
   addEventListener("resize", onResize);
-  mqDesktop.addEventListener("change", fitShell);
+  const onMq = () => {
+    if (!viewCanvas.isConnected) {
+      cleanup(); // an mq change after navigation must detach too - bare fitShell early-returns and leaks the set
+      return;
+    }
+    fitShell();
+  };
+  mqDesktop.addEventListener("change", onMq);
   fitShell();
 
   // Keyboard controls live as long as this screen's canvas is mounted.
@@ -685,7 +696,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       cleanup();
       return;
     }
-    if ((e.target as HTMLElement | null)?.closest?.(".modal-backdrop")) return; // modal owns keys while open
+    if (document.querySelector(".modal-backdrop")) return; // modal owns keys while open - focus can escape the card, so containment checks fail
     const k = e.key.toLowerCase();
     if (k === "w" || k === "arrowup") {
       e.preventDefault();

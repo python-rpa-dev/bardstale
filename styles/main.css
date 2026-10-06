@@ -350,7 +350,7 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .side-col > :not(.dlog) { flex-shrink: 0; } /* cards keep natural size; the log takes the slack */
   .side-col { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } /* safety net on very short windows */
   /* Height-driven minimap: width follows from aspect-ratio, so short windows trade map size for log room. */
-  .minimap-canvas { width: auto; height: clamp(4rem, calc(100vh - 40rem), 13rem); }
+  .minimap-canvas { width: auto; height: clamp(4rem, calc(100vh - 640px), 13rem); } /* px subtraction: only real viewport height drives it; rem caps scale with font */
   .side-col .party-grid { margin-block: 0; } /* flex gap already spaces it; the 1rem block margin wasted sidebar room */
 }
 /* Compact sidebar tier, toggled by main.ts (short window OR font scale >1) — media queries can't see --fs. */

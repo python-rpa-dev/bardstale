@@ -25,6 +25,7 @@ const sfx = createSfx(store.state.settings.sfxVolume);
 const compactSide = () => document.documentElement.classList.toggle("compact-side", store.state.settings.fontScale > 1 || innerHeight <= 704);
 addEventListener("resize", compactSide);
 
+let lastFs: number | null = null;
 function applySettings(): void {
   const st = store.state.settings;
   document.body.classList.toggle("cb", st.colorblind);
@@ -32,6 +33,11 @@ function applySettings(): void {
   document.body.classList.toggle("hc", st.highContrast);
   document.documentElement.style.setProperty("--fs", String(st.fontScale));
   compactSide();
+  if (st.fontScale !== lastFs) {
+    // --fs changes fire no native resize; screens that measure layout (dungeon fitShell/fitCanvas) must refit.
+    lastFs = st.fontScale;
+    dispatchEvent(new Event("resize"));
+  }
    sfx.setVolume(st.sfxMuted ? 0 : st.sfxVolume);
 }
 

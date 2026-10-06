@@ -331,11 +331,33 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
 
   // ---------- assemble ----------
 
-  host.append(
+  // Viewport-locked column like the dungeon shell: rows fixed, log scrolls internally,
+  // so the action bar / victory panel never falls below the fold.
+  const stage = el(
+    "div",
+    { class: "combat-stage" },
     el("div", { class: "foe-row" }, ...cs.foes.map((_, i) => foeCard(i))),
     el("div", { class: "pc-row" }, ...cs.pcs.map((_, i) => pcChip(i))),
-    logRegion
+    logRegion,
   );
+  host.append(stage);
+  const pinLog = (): void => { logRegion.scrollTop = logRegion.scrollHeight; }; // newest line visible without scrolling
+  pinLog();
+  requestAnimationFrame(pinLog); // late webfont reflow grows scrollHeight after the sync pass
+  function fitCombat(): void {
+    if (!stage.isConnected) return;
+    const avail = document.documentElement.clientHeight - (stage.getBoundingClientRect().top + scrollY) - 20; // #app bottom padding + slack
+    stage.style.height = avail >= 430 ? `${avail}px` : ""; // too cramped to lock: natural flow wins
+  }
+  const onResize = (): void => {
+    if (!stage.isConnected) {
+      removeEventListener("resize", onResize);
+      return;
+    }
+    fitCombat();
+  };
+  addEventListener("resize", onResize);
+  fitCombat();
 
   if (cs.phase === "input") {
     const speedBtn = button("combat speed, click to toggle pacing", { icon: "bolt", hint: "Foe-turn pacing.", onClick: () => { speed = speed === 1 ? 2 : 1; ctx.refresh(); } });
@@ -351,19 +373,22 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       speedBtn,
       button("Quick Resolve", { icon: "hourglass", hint: "Auto-run the rest of this fight on the same dice.", onClick: quick })
     );
-    host.append(cmdBar);
+    stage.append(cmdBar);
     if (pcTurn) {
       const p = cs.pcs[activePcIdx];
-      host.append(el("p", { class: "turn-hint", text: `${p.name}'s turn — choose an action.` }));
+      stage.append(el("p", { class: "turn-hint", text: `${p.name}'s turn — choose an action.` }));
     } else {
-      host.append(el("p", { class: "turn-hint muted", text: "The foes move…" }));
+      stage.append(el("p", { class: "turn-hint muted", text: "The foes move…" }));
     }
   } else if (cs.phase === "won") {
     if (cs.seed !== victorySeedShown) {
       victorySeedShown = cs.seed;
       ctx.sfx.victory();
     }
-    host.append(victoryPanel());
+    const panel = victoryPanel();
+    stage.append(panel);
+    panel.scrollIntoView({ block: "nearest" }); // unlocked fallback (short viewports): reveal the claim button
+    requestAnimationFrame(() => { if (panel.isConnected) panel.scrollIntoView({ block: "nearest" }); }); // late art/font reflow can push it back down
   } else if (cs.phase === "lost" && cs.seed !== defeatSeedShown) {
     defeatSeedShown = cs.seed;
     ctx.sfx.defeat();

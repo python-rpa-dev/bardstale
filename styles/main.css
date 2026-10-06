@@ -468,6 +468,16 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 }
 .combat-log p { margin: 0 0 0.3rem; }
 .combat-log p:last-child { margin-bottom: 0; }
+/* viewport-locked combat column: rows fixed, log absorbs slack, action area pinned to the bottom */
+.combat-stage { display: flex; flex-direction: column; }
+.combat-stage > .foe-row, .combat-stage > .pc-row { flex-shrink: 0; }
+.combat-stage > .cmd-bar, .combat-stage > .combat-end { margin-top: auto; }
+@media (max-width: 62rem) { /* compact strips so the locked stage fits phones: one row of small cards, scroll only if foes overflow */
+  .combat-stage > .foe-row, .combat-stage > .pc-row { flex-wrap: nowrap; overflow-x: auto; }
+  .foe-card { width: auto; padding: 0.45rem; font-size: 0.85rem; }
+  .foe-card img { width: 64px !important; height: 64px !important; } /* beats slotImg's inline px size */
+  .pc-chip { min-width: 0; padding: 0.35rem 0.5rem; font-size: 0.8rem; }
+}
 .turn-hint { text-align: center; font-size: 0.9rem; margin: 0.4rem 0 0.6rem; }
 .spell-list, .item-list { display: grid; gap: 0.45rem; }
 .combat-end { text-align: center; padding-block: 1rem; }

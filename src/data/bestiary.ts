@@ -19,7 +19,9 @@ export interface MonsterDef {
   xp: number;
   gold: [number, number];
   family: Family;
-  special?: Special;
+  special?: Special; // spider poison, wraith drain, troll regen, wyrms breath
+  /** Gate lord guarding the final floor; excluded from random spawn pools. */
+  boss?: boolean;
 }
 
 export const BESTIARY: MonsterDef[] = [
@@ -31,6 +33,10 @@ export const BESTIARY: MonsterDef[] = [
   { id: "wraith", lvl: 7, hp: 40, atk: 14, def: 6, dex: 11, mr: 8, xp: 52, gold: [10, 30], family: "undead", special: { kind: "drain", spPerTurn: 3 } },
   { id: "troll", lvl: 9, hp: 70, atk: 17, def: 12, dex: 7, mr: 5, xp: 84, gold: [20, 50], family: "giant", special: { kind: "regen", hpPerRound: 3 } },
   { id: "wyrm-whelp", lvl: 12, hp: 110, atk: 21, def: 14, dex: 9, mr: 10, xp: 150, gold: [40, 90], family: "giant", special: { kind: "breath", base: 8, everyRounds: 3 } },
+  // gate lords — final-floor guardians (see gates.ts); never roll in random encounters
+  { id: "bark-thrall", lvl: 5, hp: 60, atk: 13, def: 9, dex: 6, mr: 4, xp: 55, gold: [25, 55], family: "giant", boss: true },
+  { id: "cloister-lich", lvl: 8, hp: 55, atk: 15, def: 8, dex: 7, mr: 12, xp: 70, gold: [30, 70], family: "undead", special: { kind: "drain", spPerTurn: 4 }, boss: true },
+  { id: "vault-wyrm", lvl: 14, hp: 160, atk: 24, def: 16, dex: 9, mr: 12, xp: 200, gold: [80, 160], family: "giant", special: { kind: "breath", base: 10, everyRounds: 3 }, boss: true },
 ];
 
 export function monsterById(id: string): MonsterDef {

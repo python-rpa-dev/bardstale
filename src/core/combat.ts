@@ -17,6 +17,10 @@ export interface CombatFoe {
   hp: number;
   lastBreathRound: number; // wyrm-whelp breath bookkeeping (0 = never)
   lvlShift?: number; // "hollows" modifier: undead +1 / vermin −1 effective level
+  elite?: boolean; // pack alpha: +1 effective level, ×1.5 XP, ×2 gold, guaranteed drop
+  boss?: boolean; // gate lord: enrages below 30% max HP (see enraged)
+  maxHp?: number; // starting HP for bosses — the enrage threshold reference
+  enraged?: boolean; // one-time trigger at ≤30% HP: +50% damage dealt
 }
 
 /** Effective def view for a foe with the "hollows" ±1 level shift: hp/atk scale ±12% per level. */
@@ -163,6 +167,8 @@ export interface StartOpts {
   healDiscount?: boolean; // undead medal
   guardedStart?: boolean; // giant medal: every PC starts with a free half-hit
   fleeGuaranteed?: boolean; // humanoid medal
+  elites?: number[]; // indices into foeIds that spawn as elites (+1 lvl via lvlShift)
+  boss?: boolean; // single-foe gate-lord fight: sets boss/maxHp for enrage
 }
 
 export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): CombatState {
@@ -184,10 +190,14 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
     tauntPc: null,
     fleeGuaranteed: !!opts.fleeGuaranteed,
     pcs: pcs.map((p) => ({ ...p, statuses: [...p.statuses], guard: false, guardedFree: !!opts.guardedStart, atkBuff: 0 })),
-    foes: foeIds.map((mid) => {
+    foes: foeIds.map((mid, i) => {
       const fam = monsterById(mid).family;
-      const shift = opts.hollows ? (fam === "undead" ? 1 : fam === "vermin" ? -1 : 0) : 0;
-      return { mid, hp: Math.max(1, Math.round(monsterById(mid).hp * (1 + 0.12 * shift))), lastBreathRound: 0, lvlShift: shift || undefined };
+      let shift = opts.hollows ? (fam === "undead" ? 1 : fam === "vermin" ? -1 : 0) : 0;
+      const elite = opts.elites?.includes(i) ?? false;
+      if (elite) shift += 1; // elites stack a level on top of hollows
+      const hp = Math.max(1, Math.round(monsterById(mid).hp * (1 + 0.12 * shift)));
+      const boss = !!opts.boss && foeIds.length === 1;
+      return { mid, hp, lastBreathRound: 0, lvlShift: shift || undefined, elite: elite || undefined, boss: boss || undefined, maxHp: boss ? hp : undefined };
     }),
     phase: "input",
     log: [],
@@ -200,8 +210,8 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
   entries.sort((a, b) => b.init - a.init || (a.side === b.side ? 0 : a.side === "pc" ? -1 : 1));
   cs.order = entries.map((e) => [e.side, e.idx]);
   cs.calls = rng.calls();
-  const names = foeIds.map((id, i) => `${titleCase(id)}${foeIds.filter((x) => x === id).length > 1 ? ` ${i + 1}` : ""}`);
-  pushLog(cs, `A ${names.join(", ")} block the way!`);
+  const names = foeIds.map((id, i) => `${opts.elites?.includes(i) ? "Elite " : ""}${titleCase(id)}${foeIds.filter((x) => x === id).length > 1 ? ` ${i + 1}` : ""}`);
+  pushLog(cs, opts.boss && foeIds.length === 1 ? `The ${names[0]} lifts its head from the hoard — the gate lord has noticed you.` : `A ${names.join(", ")} block the way!`);
    normalizeActiveTurn(cs);
    return cs;
 }
@@ -479,7 +489,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
       const fd = foeDef(f);
       const mult = xpMult(fd.lvl, avg);
       if (mult < 0.5) tooWeak = true;
-      xp += fd.xp * mult;
+      xp += fd.xp * mult * (f.elite ? 1.5 : 1);
     }
     xpByPc[p.id] = Math.round(xp);
   }
@@ -491,7 +501,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
     if (cs.riches) g = Math.floor(g * 1.5);
     if (rogueAlive) g += 3;
-    gold += g;
+    gold += f.elite ? g * 2 : g; // elites pay double
   }
   return { xpByPc, gold, tooWeak };
 }
@@ -501,10 +511,16 @@ export function tallyVictory(cs: CombatState): VictoryTally {
 export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const evs: CombatEvent[] = [];
   if (cs.phase !== "input") return evs;
+  const rng = countedStream(cs.seed, cs.calls);
   const f = cs.foes[foeIdx];
   if (!f || !foeAlive(f)) return finishTurn(cs, evs);
   const fd = foeDef(f);
-  const rng = countedStream(cs.seed, cs.calls);
+  // gate-lord enrage: one-time at ≤30% max HP, +50% damage from then on (breath included)
+  if (f.boss && !f.enraged && f.maxHp && f.hp <= Math.ceil(0.3 * f.maxHp)) {
+    f.enraged = true;
+    pushLog(cs, `The ${titleCase(f.mid)} swells with fury — its eyes burn!`);
+  }
+  const fury = f.enraged ? 1.5 : 1;
 
   // wyrm breath: every `everyRounds` rounds instead of a bite
   const br = fd.special?.kind === "breath" ? fd.special : null;
@@ -512,7 +528,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     f.lastBreathRound = cs.round;
     for (const t of alivePcIdxs(cs)) {
       const mnd = pcStats(cs, t).mnd;
-      const dmg = hurtPc(cs, t, Math.max(1, br.base - mnd));
+      const dmg = hurtPc(cs, t, Math.max(1, Math.round((br.base - mnd) * fury)));
       pushLog(cs, `The ${titleCase(f.mid)} breathes fire on ${cs.pcs[t].name} for ${dmg}.`);
       evs.push({ kind: "breath", src: ["foe", foeIdx], dst: ["pc", t], amount: dmg, text: String(dmg) });
     }
@@ -546,6 +562,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   let dmg = Math.max(1, Math.round(fd.atk * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2));
   const crit = rng() < cs.critFoe;
   if (crit) dmg *= 2;
+  if (f.enraged) dmg = Math.round(dmg * 1.5);
   const applied = hurtPc(cs, t, dmg);
   cs.calls = rng.calls();
   pushLog(cs, crit ? `The ${titleCase(f.mid)} CRITS ${p.name} for ${applied}!` : `The ${titleCase(f.mid)} hits ${p.name} for ${applied}.`);

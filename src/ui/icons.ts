@@ -17,6 +17,7 @@ const PATHS = {
   hourglass: '<path d="M7 3h10"/><path d="M7 21h10"/><path d="M7 3c0 4 5 5 5 9s-5 5-5 9"/><path d="M17 3c0 4-5 5-5 9s5 5 5 9"/>',
   bolt: '<path d="M13 2 3.5 14H10l-1 8L18.5 10H12l1-8Z"/>',
   door: '<path d="M13 4H6v16h7"/><path d="M16 12H9"/><path d="M13 9l3 3-3 3"/>',
+  camp: '<path d="M12 4c1.8 2.3 3.5 3.9 3.5 6.4A3.5 3.5 0 0 1 12 14a3.5 3.5 0 0 1-3.5-3.6C8.5 8 10.2 6.3 12 4Z"/><path d="M4 20l4.5-3.5"/><path d="M20 20l-4.5-3.5"/>',
 } as const;
 
 export type IconName = keyof typeof PATHS;

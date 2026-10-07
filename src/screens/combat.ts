@@ -63,11 +63,11 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
     const card = el(
       "div",
       {
-        class: `foe-card${dead ? " dead" : ""}${idx === selectedFoe && !dead ? " targeted" : ""}`,
+        class: `foe-card${dead ? " dead" : ""}${f.elite ? " elite" : ""}${idx === selectedFoe && !dead ? " targeted" : ""}`,
+        "aria-label": dead ? `${f.elite ? "Elite " : ""}${titleCase(f.mid)}, slain` : `Target the ${f.elite ? "Elite " : ""}${titleCase(f.mid)}, ${f.hp} of ${def.hp} HP`,
         "data-side": "foe",
         "data-idx": String(idx),
         role: dead ? undefined : "button",
-        "aria-label": dead ? `${titleCase(f.mid)}, slain` : `Target the ${titleCase(f.mid)}, ${f.hp} of ${def.hp} HP`,
         onClick: () => {
           if (dead) return;
           selectedFoe = idx;
@@ -75,7 +75,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         },
       },
       slotImg(`monster.${f.mid}`, 96),
-      el("b", { text: titleCase(f.mid) }),
+      el("b", { text: `${f.elite ? "Elite " : ""}${titleCase(f.mid)}` }),
       el("span", { class: "muted", text: `Lvl ${def.lvl}` }),
        bar(f.hp, def.hp, dead ? "var(--danger)" : "var(--hp)", "☠", `${titleCase(f.mid)} HP`)
     );
@@ -288,6 +288,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
               toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
               ctx.sfx.coin();
             }
+            if (summary?.eliteLoot?.length) toast(`Elite loot: ${summary.eliteLoot.join(", ")}!`);
             for (const fam of summary?.newMedals ?? []) {
               const med = medalForFamily(fam);
               modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));

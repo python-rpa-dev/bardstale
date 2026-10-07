@@ -83,6 +83,7 @@ export interface ActiveGate {
   loot: { gold: number; items: Record<string, number> }; // this run's tally for the end-of-run summary
   rareSpawn?: RareKind; // one-off event present for this whole run (see screens/dungeon event card)
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
+  pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
 }
 
 // ---------- Root state ----------

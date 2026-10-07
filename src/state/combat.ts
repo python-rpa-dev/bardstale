@@ -2,9 +2,11 @@
  *  and resolve victory / defeat / flee. All mutators take a draft GameState. */
 
 import { startCombat } from "../core/combat";
-import { hashStr } from "../core/rng";
+import { hashStr, mulberry32 } from "../core/rng";
 import { BESTIARY, monsterById } from "../data/bestiary";
 import { bountyId } from "../data/bounties";
+import { gateById } from "../data/gates";
+import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
 import { applyXpToPc } from "./party";
 import { endExpedition } from "./expedition";
@@ -17,6 +19,8 @@ export function beginCombat(d: GameState): void {
   // deterministic per-encounter seed: same run/floor/step always yields the same fight rolls
   const seed = hashStr(`${ag.seed}:${ag.floor}:${ag.steps}:combat`);
   const m = ag.modifier;
+  const def = gateById(ag.gateId);
+  const bossFight = !!def.boss && ag.pendingMonsters.length === 1 && ag.pendingMonsters[0] === def.boss;
   d.activeCombat = startCombat(d.party, [...ag.pendingMonsters], {
     seed,
     frantic: m === "frantic",
@@ -27,6 +31,8 @@ export function beginCombat(d: GameState): void {
     healDiscount: d.medals.includes("undead"), // undead medal: heal −2 SP
     guardedStart: d.medals.includes("giant"), // giant medal: start Guarded
     fleeGuaranteed: d.medals.includes("humanoid"), // humanoid medal: always escape intact
+    elites: ag.pendingElites,
+    boss: bossFight,
   });
 }
 
@@ -52,6 +58,7 @@ export interface VictorySummary {
   levelsByPc: Record<string, number>; // pcId → level-ups gained (for sfx/celebration)
   newMedals: Family[]; // families whose codex just completed
   bountyDone?: { family: Family; gold: number }; // active bounty finished by this fight's kills
+  eliteLoot?: string[]; // item names granted by elite kills (guaranteed uncommons)
 }
 
 /** Claim a won fight: XP, gold, codex stamps, bounty kills + medals. */
@@ -82,6 +89,17 @@ export function claimVictory(d: GameState): VictorySummary | null {
     }
   }
 
+  // elite kills guarantee an uncommon equipment drop (deterministic per fight/slot)
+  const eliteLoot: string[] = [];
+  const drops = ITEMS.filter((it) => it.rarity === "uncommon" && it.slot !== "consumable");
+  cs.foes.forEach((f, i) => {
+    if (!f.elite || !drops.length) return;
+    const pick = drops[Math.floor(mulberry32(hashStr(`${cs.seed}:elite:${i}`))() * drops.length)];
+    d.inventory[pick.id] = (d.inventory[pick.id] ?? 0) + 1;
+    if (d.activeGate) d.activeGate.loot.items[pick.id] = (d.activeGate.loot.items[pick.id] ?? 0) + 1;
+    eliteLoot.push(pick.name);
+  });
+
   // bounty kill accounting on the accepted offer
   let bountyDone: VictorySummary["bountyDone"];
   const activeId = d.bounties.active;
@@ -103,10 +121,19 @@ export function claimVictory(d: GameState): VictorySummary | null {
     }
   }
 
+  // gate lord slain: the final floor is cleared, stairs finish the run next step
+  const gateDef = d.activeGate ? gateById(d.activeGate.gateId) : null;
+  if (gateDef?.boss && cs.foes.some((f) => f.mid === gateDef.boss)) {
+    d.activeGate!.flags["boss"] = true;
+  }
+
   syncPartyFromCombat(d);
-  if (d.activeGate) delete d.activeGate.pendingMonsters;
+  if (d.activeGate) {
+    delete d.activeGate.pendingMonsters;
+    delete d.activeGate.pendingElites;
+  }
   delete d.activeCombat;
-  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone };
+  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone, eliteLoot: eliteLoot.length ? eliteLoot : undefined };
 }
 
 /** Wipe: everyone crawls home at 1 HP and unbanked loot items are forfeited (gold stays banked). */
@@ -125,6 +152,9 @@ export function applyDefeat(d: GameState): void {
 
 /** Successful flee: the fight dissolves, party stays in the dungeon where it stands. */
 export function resolveFlee(d: GameState): void {
-  if (d.activeGate) delete d.activeGate.pendingMonsters;
+  if (d.activeGate) {
+    delete d.activeGate.pendingMonsters;
+    delete d.activeGate.pendingElites; // stale elite indices must not leak into the next fight
+  }
   delete d.activeCombat;
 }

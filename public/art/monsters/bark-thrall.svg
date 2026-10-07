@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgThr" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#1d2116"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="barkThr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6e5334"/>
+      <stop offset="1" stop-color="#33241a"/>
+    </linearGradient>
+    <radialGradient id="sapThr" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0" stop-color="#f2c063"/>
+      <stop offset="1" stop-color="#8f5a18" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgThr)"/>
+  <ellipse cx="48" cy="89" rx="30" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- root feet -->
+  <path d="M28,96 c2,-8 -2,-12 -8,-14 h16 l-2,14 z M68,96 c-2,-8 2,-12 8,-14 H60 l2,14 z" fill="#3a2b1c" stroke="#0d0a10" stroke-width="1.4"/>
+  <!-- trunk torso with knot hollow -->
+  <path d="M32,92 c-4,-22 -2,-38 6,-46 h20 c8,8 10,24 6,46 z" fill="url(#barkThr)" stroke="#0d0a10" stroke-width="1.7"/>
+  <g stroke="#241708" stroke-opacity="0.55" stroke-width="1.1" fill="none">
+    <path d="M38,90 c-2,-16 -1,-30 3,-40 M48,90 c0,-18 0,-32 0,-40 M58,90 c2,-16 1,-30 -3,-40"/>
+  </g>
+  <ellipse cx="48" cy="62" rx="7.5" ry="9.5" fill="#1c120a" stroke="#0d0a10" stroke-width="1.3"/>
+  <circle cx="48" cy="62" r="6" fill="url(#sapThr)" opacity="0.9"/>
+
+  <!-- branch arms -->
+  <path d="M34,50 C22,46 14,52 10,62 c7,-4 12,-3 16,2 l-2,-8 c4,2 8,1 10,-6 z" fill="#4a3620" stroke="#0d0a10" stroke-width="1.5"/>
+  <path d="M62,50 C74,46 82,52 86,62 c-7,-4 -12,-3 -16,2 l2,-8 c-4,2 -8,1 -10,-6 z" fill="#4a3620" stroke="#0d0a10" stroke-width="1.5"/>
+
+  <!-- crown of broken branches -->
+  <g stroke="#4a3620" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M40,28 l-7,-13 M48,25 v-15 M56,28 l7,-13"/>
+  </g>
+
+  <!-- blocky head with amber eye sockets -->
+  <path d="M36,28 h24 c3,0 5,2 5,5 v9 c0,7 -7,11 -17,11 -10,0 -17,-4 -17,-11 v-9 c0,-3 2,-5 5,-5 z" fill="url(#barkThr)" stroke="#0d0a10" stroke-width="1.7"/>
+  <ellipse cx="42" cy="40" rx="3.4" ry="3" fill="#f2c063" stroke="#0d0a10" stroke-width="1"/>
+  <ellipse cx="54" cy="40" rx="3.4" ry="3" fill="#f2c063" stroke="#0d0a10" stroke-width="1"/>
+  <!-- grain mouth -->
+  <path d="M42,48 h12 M44,51 h9" stroke="#241708" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

@@ -12,6 +12,7 @@ import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
 import {
   activeBountyFamily,
+  campRest,
   descendFloor,
   describeRare,
   endExpedition,
@@ -129,6 +130,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     descended?: boolean; // a new floor was generated
     avoided?: string; // trap detected and stilled before springing
     finished?: { loot: { gold: number; items: Record<string, number> }; gateName: string };
+    boss?: string; // gate lord stirred on the final floor — display name
   }
 
   /** One grid step in the facing direction (or straight back). Traps spring and encounters roll here. */
@@ -177,16 +179,28 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
       if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < 0.18) {
-        const mobs = rollEncounter(ag, activeBountyFamily(d));
+        const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
+        if (elite !== null) ag.pendingElites = [elite];
+        else delete ag.pendingElites; // never leak stale elite indices into a plain pack
         const counts = new Map<string, number>();
-        for (const m of mobs) counts.set(m.id, (counts.get(m.id) ?? 0) + 1);
-        out.encounter = [...counts].map(([id, n]) => (n > 1 ? `${titleCase(id)} ×${n}` : titleCase(id)));
+        mobs.forEach((m, i) => {
+          const label = i === elite ? `Elite ${titleCase(m.id)}` : titleCase(m.id);
+          counts.set(label, (counts.get(label) ?? 0) + 1);
+        });
+        out.encounter = [...counts].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label));
       }
 
       if (kind === "stairs") {
         if (ag.floor + 1 >= def.floors) {
-          out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
+          // gate lord bars the last floor: fight it before the stairs may finish the run
+          if (def.boss && !ag.flags["boss"] && !(ag.pendingMonsters?.length)) {
+            ag.pendingMonsters = [def.boss];
+            delete ag.pendingElites;
+            out.boss = titleCase(def.boss);
+          } else {
+            out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
+          }
         } else {
           descendFloor(d);
           out.descended = true;
@@ -202,6 +216,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.avoided) ctx.sfx.avoided();
     else if (out.trapMsg) ctx.sfx.trap();
     if (out.encounter) ctx.sfx.encounter(); // foes drop in before the screen flips
+    else if (out.boss) ctx.sfx.encounter();
     if (out.descended) ctx.sfx.descend();
     return out;
   }
@@ -365,6 +380,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         ctx.navigate("#/combat");
         return;
       }
+      if (out.boss) {
+        toast(`${out.boss} rises — the gate lord bars the last floor.`);
+        log(`The hoard shifts. ${out.boss} lifts its head; there is no way past but through.`);
+        stopAuto();
+        ctx.navigate("#/combat");
+        return;
+      }
       if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
       if (out.finished || out.trapMsg || out.avoided || out.encounter) {
         stopAuto();
@@ -485,10 +507,46 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       ctx.navigate("#/combat");
       return;
     }
+    if (out.boss) {
+      ctx.sfx.hit();
+      toast(`${out.boss} rises — the gate lord bars the last floor.`);
+      log(`The hoard shifts. ${out.boss} lifts its head; there is no way past but through.`);
+      refreshParty();
+      drawView();
+      ctx.navigate("#/combat");
+      return;
+    }
     refreshParty();
     drawView();
     if (out.descended) log("You descend. The air changes.");
     if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
+  }
+
+  /** Campfire rest: once per floor, +25% max HP/SP to the living — maybe with company. */
+  function doRest(): void {
+    stopAuto();
+    let result: ReturnType<typeof campRest> | null = null;
+    ctx.commit((d) => {
+      result = campRest(d);
+    });
+    const res = result!;
+    refreshParty();
+    drawView();
+    if (!res.healed) {
+      toast("You already banked a fire on this floor. Embers make poor company.");
+      return;
+    }
+    log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP).");
+    if (res.ambush) {
+      const names = res.ambush.map((m) => titleCase(m.id));
+      toast(`Smoke draws eyes — ${names.join(", ")} come calling!`);
+      log(`Something smelled the fire. ${names.join(", ")} emerge from the dark.`);
+      ctx.sfx.encounter();
+      drawView();
+      ctx.navigate("#/combat");
+    } else {
+      toast("The campfire holds. +25% HP and SP.");
+    }
   }
 
   function doLook(interact = false): void {
@@ -609,6 +667,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     autoBtn,
     button("Item", { icon: "flask", hint: "Use a consumable outside combat", onClick: () => openItems() }),
     button("Spell", { icon: "spark", hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
+    button("Rest", { icon: "camp", hint: "R — bank a campfire: +25% HP/SP, once per floor; the smoke may draw company", onClick: () => doRest() }),
     button("Leave", { cls: "danger", icon: "door", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
   );
 
@@ -720,6 +779,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       doLook(false);
     } else if (k === "e") {
       doLook(true); // Use: open chest / reveal secret directly
+    } else if (k === "r") {
+      doRest();
     }
   };
   addEventListener("keydown", onKey);

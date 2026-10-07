@@ -7,6 +7,7 @@ import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/
 import { gateById, gateIndex } from "../data/gates";
 import { dayNumber, modifierForGate } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
+import { pcMax } from "./save";
 import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
 
 /** Per-floor rng seed derived from the run seed. */
@@ -112,18 +113,19 @@ export function stepRng(ag: ActiveGate): Rng {
 }
 
 /**
- * Spawn 1–3 monsters from the gate's level band. When a bounty for a family in-band is active,
- * that family's members are weighted twice as often — bounties should feel responsive.
+ * Spawn 1–3 monsters from the gate's level band (gate lords excluded). When a bounty for a
+ * family in-band is active, that family's members are weighted twice as often. ~12% of packs
+ * carry one elite: `elite` is its index into `mobs`, or null.
  */
-export function rollEncounter(ag: ActiveGate, bountyFamily: Family | null): MonsterDef[] {
+export function rollEncounter(ag: ActiveGate, bountyFamily: Family | null): { mobs: MonsterDef[]; elite: number | null } {
   const def = gateById(ag.gateId);
   const [lo, hi] = def.levels;
-  const pool = BESTIARY.filter((m) => m.lvl >= lo && m.lvl <= hi);
+  const pool = BESTIARY.filter((m) => m.lvl >= lo && m.lvl <= hi && !m.boss);
   const weights = pool.map((m) => (bountyFamily && m.family === bountyFamily ? 2 : 1));
   const total = weights.reduce((a, b) => a + b, 0);
   const rng = stepRng(ag);
   const count = randInt(rng, 1, 3);
-  const out: MonsterDef[] = [];
+  const mobs: MonsterDef[] = [];
   for (let i = 0; i < count; i++) {
     let roll = rng() * total;
     let idx = 0;
@@ -131,9 +133,33 @@ export function rollEncounter(ag: ActiveGate, bountyFamily: Family | null): Mons
       roll -= weights[idx];
       idx++;
     }
-    out.push(pool[idx]);
+    mobs.push(pool[idx]);
   }
-  return out;
+  const elite = rng() < 0.12 ? randInt(rng, 0, mobs.length - 1) : null;
+  return { mobs, elite };
+}
+
+/**
+ * Campfire rest: once per floor the living recover 25% max HP/SP — but firelight draws eyes,
+ * so ~35% of rests end in an ambush (pendingMonsters set for the caller to resolve).
+ */
+export function campRest(d: GameState): { healed: boolean; ambush: MonsterDef[] | null } {
+  const ag = d.activeGate!;
+  if (ag.flags[`rested-f${ag.floor}`]) return { healed: false, ambush: null };
+  ag.flags[`rested-f${ag.floor}`] = true;
+  for (const p of d.party) {
+    if (p.hp <= 0) continue;
+    const max = pcMax(p);
+    p.hp = Math.min(max.hp, p.hp + Math.ceil(max.hp * 0.25));
+    p.sp = Math.min(max.sp, p.sp + Math.ceil(max.sp * 0.25));
+  }
+  if (stepRng(ag)() < 0.35) {
+    const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
+    ag.pendingMonsters = mobs.map((m) => m.id);
+    if (elite !== null) ag.pendingElites = [elite];
+    return { healed: true, ambush: mobs };
+  }
+  return { healed: true, ambush: null };
 }
 
 /** The active bounty's family if any, for encounter weighting. */

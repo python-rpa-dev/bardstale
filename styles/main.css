@@ -429,6 +429,7 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
   cursor: pointer;
 }
 .foe-card.targeted { border-color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent); }
+.foe-card.elite { border-color: var(--uncommon); box-shadow: 0 0 12px 2px color-mix(in srgb, var(--uncommon) 55%, transparent), inset 0 0 6px color-mix(in srgb, var(--uncommon) 30%, transparent); }
 .foe-card.dead { opacity: 0.45; cursor: default; filter: grayscale(1); }
 .pc-row { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-bottom: 0.9rem; }
 .pc-chip {

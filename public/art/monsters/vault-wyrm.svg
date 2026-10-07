@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgVwt" cx="0.5" cy="0.42" r="0.85">
+      <stop offset="0" stop-color="#1c1a2b"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="scaleVwt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b6ea3"/>
+      <stop offset="1" stop-color="#211f38"/>
+    </linearGradient>
+    <radialGradient id="hoardVwt" cx="0.5" cy="0.75" r="0.7">
+      <stop offset="0" stop-color="#f2c063"/>
+      <stop offset="1" stop-color="#8a6a1c" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgVwt)"/>
+  <ellipse cx="48" cy="89" rx="34" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- hoard glow behind -->
+  <circle cx="48" cy="72" r="26" fill="url(#hoardVwt)" opacity="0.35"/>
+
+  <!-- wings spread wide -->
+  <path d="M28,66 C10,58 4,38 12,22 c-1,12 4,22 13,29 l-4,-15 c-1,9 2,17 8,23 z" fill="#3a3f63" stroke="#0d0a10" stroke-width="1.5"/>
+  <path d="M68,66 C86,58 92,38 84,22 c1,12 -4,22 -13,29 l4,-15 c1,9 -2,17 -8,23 z" fill="#3a3f63" stroke="#0d0a10" stroke-width="1.5"/>
+  <g stroke="#c9a227" stroke-opacity="0.28" stroke-width="1" fill="none">
+    <path d="M28,66 C17,57 13,44 15,30 M25,63 l-6,-17"/>
+    <path d="M68,66 C79,57 83,44 81,30 M71,63 l6,-17"/>
+  </g>
+
+  <!-- coiled body over the hoard -->
+  <path d="M22,92 c-3,-16 4,-28 14,-32 h24 c10,4 17,16 14,32 z" fill="url(#scaleVwt)" stroke="#0d0a10" stroke-width="1.7"/>
+  <g stroke="#c9a227" stroke-opacity="0.25" stroke-width="1" fill="none">
+    <path d="M28,88 q10,-4 20,0 q10,4 20,0 M30,80 q9,-4 18,0 q9,4 18,0"/>
+  </g>
+
+  <!-- neck and head, snout to the left -->
+  <path d="M56,60 c-2,-14 2,-24 10,-30 l10,6 c-6,7 -8,15 -7,24 z" fill="url(#scaleVwt)" stroke="#0d0a10" stroke-width="1.5"/>
+  <path d="M66,26 c9,-2 17,3 19,11 1,7 -3,13 -10,15 -5,1.5 -9,0.5 -12,-2.5 L48,46 l12,-12 c-1,-5 2,-7 6,-8 z" fill="url(#scaleVwt)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- open jaw -->
+  <path d="M50,46 L64,42 c-1,5 1,9 5,11 l-15,-2 z" fill="#0d0a10"/>
+  <g fill="#e8ddc4">
+    <polygon points="53,44 55,47.5 56.5,44"/>
+    <polygon points="59,47 61,50.5 62.5,47"/>
+  </g>
+  <!-- gold eye -->
+  <ellipse cx="68" cy="34" rx="3.4" ry="3" fill="#c9a227" stroke="#0d0a10" stroke-width="1"/>
+  <path d="M68,31.5 v5" stroke="#141019" stroke-width="1.4"/>
+  <!-- crown horns -->
+  <path d="M72,24 c-1,-6 2,-11 8,-12 -2,4 -1,9 1,11 z M80,30 c1,-5 5,-8 11,-7 -4,3 -5,7 -4,10 z" fill="#c9a227" stroke="#0d0a10" stroke-width="1.1"/>
+
+  <!-- coins scattered on the hoard -->
+  <g fill="#c9a227" stroke="#8a6a1c" stroke-width="0.7">
+    <circle cx="34" cy="86" r="2.4"/>
+    <circle cx="44" cy="90" r="2.1"/>
+    <circle cx="58" cy="85" r="2.5"/>
+    <circle cx="66" cy="90" r="2"/>
+  </g>
+</svg>

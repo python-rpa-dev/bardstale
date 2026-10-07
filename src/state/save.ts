@@ -1,4 +1,5 @@
 import { classById, type ClassId } from "../data/classes";
+import { boonById } from "../data/boons";
 import { bountyId, offersForDay, shuffledPool, type BountyDef } from "../data/bounties";
 import { dailySeed, dayKey, hashStr, mulberry32 } from "../core/rng";
 import type { CombatState } from "../core/combat";
@@ -19,6 +20,8 @@ export interface Pc {
   alloc: { atk: number; def: number; dex: number; mnd: number };
   gear: { weapon?: string; armor?: string; trinket?: string }; // item ids
   statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound)
+  boons?: string[]; // permanent level-up perk ids (see data/boons)
+  boonQueue?: number; // level-ups whose boon pick is still owed
 }
 
 /** A lingering condition on a PC; rounds tick only during combat. */
@@ -27,12 +30,18 @@ export interface StatusMark {
   roundsLeft: number;
 }
 
-/** Effective maxima from class formula + growth (gear handled separately). */
+/** Effective maxima from class formula + growth + boons (gear handled separately). */
 export function pcMax(pc: Pc): { hp: number; sp: number } {
   const def = classById(pc.classId);
+  let bonusHp = 0;
+  let bonusSp = 0;
+  for (const id of pc.boons ?? []) {
+    bonusHp += boonById(id).bonus.maxHp ?? 0;
+    bonusSp += boonById(id).bonus.maxSp ?? 0;
+  }
   return {
-    hp: def.start.hp + (def.growth.hp ?? 0) * (pc.level - 1),
-    sp: def.start.sp + (def.growth.sp ?? 0) * (pc.level - 1),
+    hp: def.start.hp + (def.growth.hp ?? 0) * (pc.level - 1) + bonusHp,
+    sp: def.start.sp + (def.growth.sp ?? 0) * (pc.level - 1) + bonusSp,
   };
 }
 
@@ -146,6 +155,8 @@ export function makePc(classId: ClassId, ordinal: number): Pc {
     alloc: { atk: 0, def: 0, dex: 0, mnd: 0 },
     gear: {},
     statuses: [],
+    boons: [],
+    boonQueue: 0,
   };
 }
 
@@ -206,7 +217,11 @@ function migrate(save: GameState & { version: number }): GameState | null {
   switch (save.version) {
     case 1: {
       const s = save as unknown as GameState;
-       for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
+      for (const pc of s.party) {
+        pc.statuses ??= []; // v1 saves predate statuses
+        pc.boons ??= []; // v1 saves predate boons
+        pc.boonQueue ??= 0; // ditto — no picks owed
+      }
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default

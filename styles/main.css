@@ -546,3 +546,8 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 .tour-card .modal-actions { justify-content: space-between; gap: var(--s2); }
 .tour-card .btn.primary { border-color: var(--gold); color: var(--gold); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+
+.boon-list { display: flex; flex-direction: column; gap: var(--s2); }
+.boon-opt { text-align: left; display: block; }
+.boon-opt strong { color: var(--gold); }
+.boon-opt .muted { font-size: 0.85rem; margin-top: 2px; }

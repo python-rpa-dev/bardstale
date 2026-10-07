@@ -13,6 +13,8 @@ import type { GameState } from "../state/save";
 import {
   activeBountyFamily,
   campRest,
+  campScout,
+  campTrophy,
   descendFloor,
   describeRare,
   endExpedition,
@@ -522,9 +524,18 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
   }
 
-  /** Campfire rest: once per floor, +25% max HP/SP to the living — maybe with company. */
+  /** Ambush shared by rest/trophy: log, sting, and drop into combat. True if a fight started. */
+  function meetCompany(ambush: NonNullable<ReturnType<typeof campRest>["ambush"]> | null): boolean {
+    if (!ambush) return false;
+    const names = ambush.map((m) => titleCase(m.id));
+    log(`Something caught the scent. ${names.join(", ")} emerge from the dark.`);
+    ctx.sfx.encounter();
+    drawView();
+    ctx.navigate("#/combat");
+    return true;
+  }
+
   function doRest(): void {
-    stopAuto();
     let result: ReturnType<typeof campRest> | null = null;
     ctx.commit((d) => {
       result = campRest(d);
@@ -537,16 +548,59 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       return;
     }
     log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP).");
-    if (res.ambush) {
-      const names = res.ambush.map((m) => titleCase(m.id));
-      toast(`Smoke draws eyes — ${names.join(", ")} come calling!`);
-      log(`Something smelled the fire. ${names.join(", ")} emerge from the dark.`);
-      ctx.sfx.encounter();
-      drawView();
-      ctx.navigate("#/combat");
-    } else {
-      toast("The campfire holds. +25% HP and SP.");
+    if (!meetCompany(res.ambush)) toast("The campfire holds. +25% HP and SP.");
+  }
+
+  function doScout(): void {
+    let result: ReturnType<typeof campScout> | null = null;
+    ctx.commit((d) => {
+      result = campScout(d);
+    });
+    const res = result!;
+    drawView();
+    if (!res.revealed) {
+      toast("A runner already walked this floor. The map is as good as it gets.");
+      return;
     }
+    log(`You send a runner ahead — ${res.cellsRevealed} cells of the floor unfold on the map.`);
+    toast("Scouts return. The floor plan lies open before you.");
+  }
+
+  function doTrophy(): void {
+    let result: ReturnType<typeof campTrophy> | null = null;
+    ctx.commit((d) => {
+      result = campTrophy(d);
+    });
+    const res = result!;
+    refreshParty();
+    drawView();
+    if (res.gold === 0) {
+      toast("This floor's fire is already salted. Greed won't double the cut.");
+      return;
+    }
+    log(`You butcher a kill and salt the coals — +${res.gold}g for the purse.`);
+    if (!meetCompany(res.ambush)) toast(`Trophy taken: +${res.gold}g, no company.`);
+  }
+
+  /** Make camp: one screen, three once-per-floor tricks — heal, know, or get paid. */
+  function openCamp(): void {
+    stopAuto();
+    const actions = el("div", { class: "modal-actions" });
+    const close = modal(
+      "Make Camp",
+      el(
+        "div",
+        {},
+        el("p", { text: "The fire takes the edge off the dark. Each trick works once per floor — pick your price for safety." }),
+        actions,
+      ),
+    );
+    actions.append(
+      button("Rest", { hint: "+25% max HP/SP to the living; smoke may draw company (35%)", onClick: () => { close(); doRest(); } }),
+      button("Scout", { hint: "Reveal this floor's layout on the map — no healing, no risk", onClick: () => { close(); doScout(); } }),
+      button("Trophy", { hint: "Butcher a kill for 12g per floor deep; blood scent draws company (60%)", onClick: () => { close(); doTrophy(); } }),
+      button("Never mind", { onClick: () => close() }),
+    );
   }
 
   function doLook(interact = false): void {
@@ -667,7 +721,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     autoBtn,
     button("Item", { icon: "flask", hint: "Use a consumable outside combat", onClick: () => openItems() }),
     button("Spell", { icon: "spark", hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
-    button("Rest", { icon: "camp", hint: "R — bank a campfire: +25% HP/SP, once per floor; the smoke may draw company", onClick: () => doRest() }),
+    button("Camp", { icon: "camp", hint: "R — make camp: rest, scout the floor, or take a trophy (once per floor each)", onClick: () => openCamp() }),
     button("Leave", { cls: "danger", icon: "door", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
   );
 
@@ -780,7 +834,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     } else if (k === "e") {
       doLook(true); // Use: open chest / reveal secret directly
     } else if (k === "r") {
-      doRest();
+      openCamp();
     }
   };
   addEventListener("keydown", onKey);

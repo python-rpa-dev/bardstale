@@ -1,5 +1,6 @@
 import "../styles/main.css";
 import { el, toast } from "./ui/dom";
+import { maybeBoonModal } from "./ui/boons";
 import { createRouter, navigateTo, type RouteCtx, type Router, type Screen } from "./ui/router";
 import { createStore } from "./state/save";
 import { createSfx } from "./core/sfx";
@@ -123,6 +124,7 @@ for (const [name, fn] of Object.entries(routes)) {
   wrapped[name] = (host, c) => {
     updateHeader(name);
     fn(host, c);
+    setTimeout(() => maybeBoonModal(c), 0); // level-up picks surface after the screen paints
   };
 }
 

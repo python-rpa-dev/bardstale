@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { makePc, newGame, pcMax } from "../save";
-import { campRest, hermitGift, merchantWares, RARE_CHANCE, rollRare } from "../expedition";
+import { campRest, campScout, campTrophy, hermitGift, merchantWares, RARE_CHANCE, rollRare } from "../expedition";
 import { claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
@@ -214,6 +214,51 @@ describe("campfire rest", () => {
     campRest(a);
     campRest(b);
     expect(a.activeGate!.pendingMonsters).toEqual(b.activeGate!.pendingMonsters);
+  });
+});
+
+describe("campfire scout", () => {
+  it("reveals every non-wall cell of the floor exactly once", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    ag.visited = []; // pretend fresh eyes
+    const r = campScout(s);
+    expect(r.revealed).toBe(true);
+    const nonWall: number[] = [];
+    for (let id = 0; id < ag.map.cells.length; id++) if (ag.map.cells[id] !== "1") nonWall.push(id);
+    expect(new Set(ag.visited)).toEqual(new Set(nonWall)); // walls stay hidden, everything else open
+    const r2 = campScout(s);
+    expect(r2).toEqual({ revealed: false, cellsRevealed: 0 });
+    expect(ag.flags["scouted-f0"]).toBe(true);
+  });
+});
+
+describe("campfire trophy", () => {
+  it("pays 12g per floor depth into the run loot, once per floor", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const before = ag.loot.gold;
+    const r = campTrophy(s);
+    expect(r.gold).toBe(12 * (ag.floor + 1));
+    expect(ag.loot.gold).toBe(before + r.gold);
+    expect(ag.flags["trophy-f0"]).toBe(true);
+    expect(campTrophy(s)).toEqual({ gold: 0, ambush: null }); // second cut pays nothing
+    expect(ag.loot.gold).toBe(before + r.gold);
+  });
+
+  it("ambush is seed-deterministic and both outcomes occur (blood draws more than smoke)", () => {
+    let amb = 0;
+    let safe = 0;
+    for (let seed = 1; seed <= 80 && !(amb > 0 && safe > 0); seed++) {
+      const r = campTrophy(runState(seed));
+      if (r.ambush) amb++;
+      else safe++;
+    }
+    expect(amb).toBeGreaterThan(0);
+    expect(safe).toBeGreaterThan(0);
+    const a = runState(3);
+    const b = runState(3);
+    expect(campTrophy(a)).toEqual(campTrophy(b));
   });
 });
 

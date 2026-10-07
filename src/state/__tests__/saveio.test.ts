@@ -43,6 +43,28 @@ describe("importSave", () => {
     if (res.ok) expect(res.state).toEqual(s);
   });
 
+  it("preserves boons and clamps a forged boonQueue to levels earned", () => {
+    const s = okState();
+    s.party[0].boons = ["iron-vitality", "killer-instinct"];
+    s.party[0].boonQueue = 1;
+    const kept = importSave(serialize(s));
+    expect(kept.ok).toBe(true);
+    if (kept.ok) {
+      expect(kept.state.party[0].boons).toEqual(["iron-vitality", "killer-instinct"]);
+      expect(kept.state.party[0].boonQueue).toBe(1);
+    }
+    // forged: 999 owed picks and a bogus id on a level-1 hero
+    const raw = JSON.parse(serialize(s)) as { party: Record<string, unknown>[] };
+    raw.party[0].boons = ["iron-vitality", "not-a-boon"];
+    raw.party[0].boonQueue = 999;
+    const forged = importSave(JSON.stringify(raw));
+    expect(forged.ok).toBe(true);
+    if (forged.ok) {
+      expect(forged.state.party[0].boons).toEqual(["iron-vitality"]); // unknown id dropped
+      expect(forged.state.party[0].boonQueue).toBe(1); // clamped to level 1
+    }
+  });
+
   it("keeps a structurally valid active expedition", () => {
     const s = okState();
     s.activeGate = sampleGate(s.party.map((p) => ({ id: p.id, hp: p.hp, sp: p.sp })));

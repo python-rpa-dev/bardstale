@@ -1,6 +1,7 @@
 import { classById, RECRUIT_COST, type ClassId } from "../data/classes";
 import { itemById } from "../data/items";
 import { xpForNext, LEVEL_CAP } from "../data/progression";
+import { boonById } from "../data/boons";
 import { pcBase, pcMax, makePc, type GameState, type Pc } from "./save";
 
 export interface EffectiveStats {
@@ -10,7 +11,7 @@ export interface EffectiveStats {
   mnd: number;
 }
 
-/** Base + gear bonuses + active status modifiers (poison −DEX). */
+/** Base + gear + boons + active status modifiers (poison −DEX). */
 export function effectiveStats(pc: Pc): EffectiveStats {
   const out: EffectiveStats = { ...pcBase(pc) };
   for (const slot of ["weapon", "armor", "trinket"] as const) {
@@ -24,13 +25,22 @@ export function effectiveStats(pc: Pc): EffectiveStats {
       out.mnd += def.bonus.mnd ?? 0;
     }
   }
+  for (const id of pc.boons ?? []) {
+    const b = boonById(id).bonus;
+    out.atk += b.atk ?? 0;
+    out.def += b.def ?? 0;
+    out.dex += b.dex ?? 0;
+    out.mnd += b.mnd ?? 0;
+  }
   if (pc.statuses.some((s) => s.kind === "poison")) out.dex -= 1; // poison: −1 DEX while active
   return out;
 }
 
 export function critChanceBonus(pc: Pc): number {
   const id = pc.gear.trinket;
-  return id ? itemById(id).critChanceBonus ?? 0 : 0;
+  let crit = id ? itemById(id).critChanceBonus ?? 0 : 0;
+  for (const boon of pc.boons ?? []) crit += boonById(boon).bonus.crit ?? 0;
+  return crit;
 }
 
 /** Equip from inventory (swaps out the current item of that slot, if any). */
@@ -76,8 +86,21 @@ export function applyXpToPc(state: GameState, pcId: string, xp: number): XpResul
     pc.hp = Math.min(max.hp, pc.hp + (growth.hp ?? 0)); // growth HP arrives healed
     pc.sp = Math.min(max.sp, pc.sp + (growth.sp ?? 0));
   }
+  if (gained > 0) pc.boonQueue = (pc.boonQueue ?? 0) + gained; // one boon pick owed per level
   if (pc.level >= LEVEL_CAP) pc.xp = 0; // no hoarding past the cap
   return { levels: gained };
+}
+
+/** Spend one owed boon pick for a hero; max-HP/SP boons heal the difference now. */
+export function chooseBoon(state: GameState, pcId: string, boonId: string): boolean {
+  const pc = state.party.find((p) => p.id === pcId);
+  if (!pc || (pc.boonQueue ?? 0) <= 0) return false;
+  const def = boonById(boonId); // throws on unknown id — callers pass table ids only
+  pc.boons = [...(pc.boons ?? []), boonId];
+  pc.boonQueue = (pc.boonQueue ?? 0) - 1;
+  if (def.bonus.maxHp) pc.hp = Math.min(pcMax(pc).hp, pc.hp + def.bonus.maxHp);
+  if (def.bonus.maxSp) pc.sp = Math.min(pcMax(pc).sp, pc.sp + def.bonus.maxSp);
+  return true;
 }
 
 /** Temple prices (plan M4). */

@@ -1,5 +1,6 @@
 import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
+import { BOONS } from "../data/boons";
 import type { ActiveGate, GameState, Pc, Settings, StatusMark } from "./save";
 
 /**
@@ -73,7 +74,12 @@ function parsePc(raw: Record<string, unknown>): Pc | null {
       if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
     }
   }
-  return { id: raw.id, classId: raw.classId, name: raw.name.slice(0, 40), level, xp, hp, sp, points, alloc, gear, statuses };
+  const boons: string[] = [];
+  if (Array.isArray(raw.boons)) {
+    for (const id of raw.boons) if (str(id) && BOONS.some((b) => b.id === id) && !boons.includes(id)) boons.push(id);
+  }
+  const boonQueue = Math.min(nonNegInt(raw.boonQueue), level); // can't owe more picks than levels earned
+  return { id: raw.id, classId: raw.classId, name: raw.name.slice(0, 40), level, xp, hp, sp, points, alloc, gear, statuses, boons, boonQueue };
 }
 
 /** Light structural check — enough that the dungeon screen can render it. */

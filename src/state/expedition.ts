@@ -162,6 +162,43 @@ export function campRest(d: GameState): { healed: boolean; ambush: MonsterDef[] 
   return { healed: true, ambush: null };
 }
 
+/**
+ * Campfire scout: once per floor, send a runner — the whole floor plan (minus walls)
+ * lights up on the minimap. No healing, no ambush risk: information is cheap here.
+ */
+export function campScout(d: GameState): { revealed: boolean; cellsRevealed: number } {
+  const ag = d.activeGate!;
+  if (ag.flags[`scouted-f${ag.floor}`]) return { revealed: false, cellsRevealed: 0 };
+  ag.flags[`scouted-f${ag.floor}`] = true;
+  const seen = new Set(ag.visited);
+  let added = 0;
+  for (let id = 0; id < ag.map.cells.length; id++) {
+    if (ag.map.cells[id] === "1" || seen.has(id)) continue;
+    ag.visited.push(id);
+    added++;
+  }
+  return { revealed: true, cellsRevealed: added };
+}
+
+/**
+ * Campfire trophy: butcher the last kill and salt the camp — loot 12g per floor depth
+ * on the spot, but the blood scent draws company far more often (60% vs rest's 35%).
+ */
+export function campTrophy(d: GameState): { gold: number; ambush: MonsterDef[] | null } {
+  const ag = d.activeGate!;
+  if (ag.flags[`trophy-f${ag.floor}`]) return { gold: 0, ambush: null };
+  ag.flags[`trophy-f${ag.floor}`] = true;
+  const gold = 12 * (ag.floor + 1);
+  ag.loot.gold += gold;
+  if (stepRng(ag)() < 0.6) {
+    const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
+    ag.pendingMonsters = mobs.map((m) => m.id);
+    if (elite !== null) ag.pendingElites = [elite];
+    return { gold, ambush: mobs };
+  }
+  return { gold, ambush: null };
+}
+
 /** The active bounty's family if any, for encounter weighting. */
 export function activeBountyFamily(s: GameState): Family | null {
   const id = s.bounties.active;

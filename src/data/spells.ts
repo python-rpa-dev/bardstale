@@ -21,6 +21,9 @@ export const SPELLS: SpellDef[] = [
   { id: "purify", name: "Purify", class: "cleric", sp: 4, target: "one-ally", effect: "Cure all statuses on one ally" },
   { id: "power-strike", name: "Power Strike", class: "fighter", sp: 4, target: "one-foe", effect: "One foe takes round(ATK×1.8), ignores half DEF" },
   { id: "taunt", name: "Taunt", class: "fighter", sp: 2, target: "self-caster", effect: "Highest-ATK enemy must target this PC next round" },
+  { id: "cleave", name: "Cleave", class: "fighter", sp: 7, target: "all-foes", effect: "All foes take round(ATK×1.2), halved by their DEF" },
+  { id: "frost-nova", name: "Frost Nova", class: "mage", sp: 14, target: "all-foes", effect: "All foes take round(casterMND×1.2) − MR" },
+  { id: "mass-heal", name: "Mass Heal", class: "cleric", sp: 12, target: "all-allies", effect: "Restore 6 + casterMND HP to every ally" },
 ];
 
 export function spellById(id: string): SpellDef {
@@ -35,15 +38,18 @@ export const SPELL_UNLOCKS: Record<ClassId, { lvl: number; spell: string }[]> = 
     { lvl: 1, spell: "magic-missile" },
     { lvl: 3, spell: "flame-wave" },
     { lvl: 6, spell: "lightning" },
+    { lvl: 10, spell: "frost-nova" },
   ],
   cleric: [
     { lvl: 1, spell: "heal" },
     { lvl: 4, spell: "bless" },
     { lvl: 9, spell: "purify" },
+    { lvl: 13, spell: "mass-heal" },
   ],
   fighter: [
     { lvl: 1, spell: "power-strike" },
     { lvl: 5, spell: "taunt" },
+    { lvl: 9, spell: "cleave" },
   ],
   rogue: [],
 };

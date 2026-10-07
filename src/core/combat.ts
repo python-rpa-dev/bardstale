@@ -297,6 +297,14 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
     cs.tauntPc = pcIdx;
     pushLog(cs, `${p.name} taunts the monsters — the biggest one will come for them.`);
     evs.push({ kind: "status", src: ["pc", pcIdx], text: "taunt" });
+  } else if (spellId === "mass-heal") {
+    for (const t of alivePcIdxs(cs)) {
+      const amt = 6 + mnd;
+      const before = cs.pcs[t].hp;
+      cs.pcs[t].hp = Math.min(pcMax(cs.pcs[t]).hp, cs.pcs[t].hp + amt);
+      pushLog(cs, `${p.name} mends ${cs.pcs[t].name} for ${cs.pcs[t].hp - before}.`);
+      evs.push({ kind: "heal", src: ["pc", pcIdx], dst: ["pc", t], amount: cs.pcs[t].hp - before, text: `+${cs.pcs[t].hp - before}` });
+    }
   } else {
     // damage spells always hit; reduced by target MR (min 1)
     const targets = def.target === "all-foes" ? aliveFoeIdxs(cs) : [targetIdx >= 0 && foeAlive(cs.foes[targetIdx]) ? targetIdx : aliveFoeIdxs(cs)[0]];
@@ -310,14 +318,17 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
       else if (spellId === "flame-wave") base = Math.round(mnd * 0.8);
       else if (spellId === "lightning") { base = mnd + randInt(rng, 0, 8); critChance += 0.1; }
       else if (spellId === "power-strike") base = Math.round(pcStats(cs, pcIdx).atk * 1.8);
+      else if (spellId === "cleave") base = Math.round(pcStats(cs, pcIdx).atk * 1.2);
+      else if (spellId === "frost-nova") base = Math.round(mnd * 1.2);
       else throw new Error(`unhandled damage spell ${spellId}`);
       let dmg = Math.max(1, base - fd.mr);
-      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter
+      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter; cleave is physical — full half-DEF
       if (spellId === "power-strike") dmg = Math.max(1, base - Math.floor(fd.def / 4));
+      else if (spellId === "cleave") dmg = Math.max(1, base - Math.floor(fd.def / 2));
       const crit = rng() < critChance;
       if (crit) dmg *= 2;
       f.hp = Math.max(0, f.hp - dmg);
-      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} sears the ${titleCase(f.mid)} for ${dmg}.`);
+      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" ? "slashes" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
       evs.push({ kind: crit ? "crit" : "spell", src: ["pc", pcIdx], dst: ["foe", t], amount: dmg, text: String(dmg) });
       if (!foeAlive(f)) {
         pushLog(cs, `The ${titleCase(f.mid)} falls!`);

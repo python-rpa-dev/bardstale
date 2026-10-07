@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgAsg" cx="0.5" cy="0.42" r="0.8">
+      <stop offset="0" stop-color="#2a231f"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="plateAsg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b6560"/>
+      <stop offset="1" stop-color="#2a2523"/>
+    </linearGradient>
+    <linearGradient id="cloakAsg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3531"/>
+      <stop offset="1" stop-color="#17130f"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgAsg)"/>
+  <ellipse cx="48" cy="89" rx="32" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- tattered ash cloak behind -->
+  <path d="M30,46 c-6,14 -8,28 -7,42 l5,-6 5,6 5,-7 6,7 6,-7 5,7 5,-6 5,6 c1,-14 -1,-28 -7,-42 z" fill="url(#cloakAsg)" stroke="#0d0a10" stroke-width="1.4"/>
+
+  <!-- greaves and planted stance -->
+  <path d="M36,72 l-3,20 h10 l1,-20 z M54,72 l3,20 h-10 l-1,-20 z" fill="#3a3531" stroke="#0d0a10" stroke-width="1.4"/>
+
+  <!-- hollow breastplate -->
+  <path d="M36,46 c4,-3 20,-3 24,0 l3,26 c-9,4 -21,4 -30,0 z" fill="url(#plateAsg)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- pauldrons -->
+  <ellipse cx="30" cy="48" rx="9" ry="7" fill="url(#plateAsg)" stroke="#0d0a10" stroke-width="1.5"/>
+  <ellipse cx="66" cy="48" rx="9" ry="7" fill="url(#plateAsg)" stroke="#0d0a10" stroke-width="1.5"/>
+  <g fill="#c9a227" opacity="0.8">
+    <circle cx="30" cy="46" r="1.2"/><circle cx="66" cy="46" r="1.2"/>
+  </g>
+
+  <!-- ember cracks glowing through the plate -->
+  <g stroke="#ff6a2b" stroke-opacity="0.25" stroke-width="3" fill="none">
+    <path d="M48,52 l-4,7 M48,52 l3,8 M44,59 l-3,6 M51,60 l3,6"/>
+  </g>
+  <g stroke="#f2913c" stroke-width="1.2" fill="none">
+    <path d="M48,52 l-4,7 M48,52 l3,8 M44,59 l-3,6 M51,60 l3,6"/>
+  </g>
+
+  <!-- helm with burning eye-slit -->
+  <path d="M40,22 c0,-5 16,-5 16,0 l1,14 c-6,3 -12,3 -18,0 z" fill="url(#plateAsg)" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M48,17 v-5 M45,18 l-2,-4 M51,18 l2,-4" stroke="#c9a227" stroke-width="1.4" fill="none"/>
+  <rect x="41" y="28" width="14" height="3.4" rx="1.2" fill="#0d0a10"/>
+  <path d="M42,29.7 h12" stroke="#f2913c" stroke-width="1.6"/>
+  <ellipse cx="48" cy="29.7" rx="9" ry="4" fill="#ff6a2b" opacity="0.3"/>
+
+  <!-- greatsword planted point-first, gauntlet on the pommel -->
+  <circle cx="70" cy="44" r="2.4" fill="#c9a227" stroke="#0d0a10" stroke-width="1.1"/>
+  <path d="M68.6,46 h2.8 v12 h-2.8 z" fill="#4a3320" stroke="#0d0a10" stroke-width="1"/>
+  <rect x="64" y="57" width="12" height="3" rx="1" fill="#c9a227" stroke="#0d0a10" stroke-width="1.1"/>
+  <polygon points="67,60 73,60 71,88 70,91 69,88" fill="#a9aeb8" stroke="#0d0a10" stroke-width="1.2"/>
+  <path d="M70,61 v26" stroke="#f2e8d5" stroke-opacity="0.4" stroke-width="0.9"/>
+
+  <!-- drifting ash motes -->
+  <g fill="#b9b2aa" opacity="0.35">
+    <circle cx="22" cy="30" r="1"/><circle cx="78" cy="22" r="0.8"/>
+    <circle cx="16" cy="54" r="0.9"/><circle cx="84" cy="62" r="1"/>
+  </g>
+</svg>

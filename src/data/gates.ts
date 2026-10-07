@@ -11,7 +11,9 @@ export interface GateDef {
 export const GATES: GateDef[] = [
   { id: "hollow-roots", name: "Hollow Roots", levels: [1, 4], floors: 3, boss: "bark-thrall" },
   { id: "sunken-cloister", name: "Sunken Cloister", levels: [3, 7], floors: 4, boss: "cloister-lich" },
+  { id: "gallows-fen", name: "Gallows Fen", levels: [4, 8], floors: 4, boss: "fen-matriarch" },
   { id: "wyrm-vault", name: "Wyrm Vault", levels: [6, 12], floors: 5, boss: "vault-wyrm" },
+  { id: "ember-spire", name: "Ember Spire", levels: [10, 14], floors: 5, boss: "ashfiend" },
 ];
 
 export function gateById(id: string): GateDef {

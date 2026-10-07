@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="steelW" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6e9ee"/>
+      <stop offset="0.55" stop-color="#a9aeb8"/>
+      <stop offset="1" stop-color="#71767f"/>
+    </linearGradient>
+  </defs>
+  <!-- haft running up-right -->
+  <polygon points="7.4,28.6 5.4,26.6 21.0,11.0 23.0,13.0" fill="#4a3320" stroke="#0d0a10" stroke-width="1.1"/>
+  <path d="M7.6,25.8 l3,-2.9 M9.2,27.4 l3,-2.9" stroke="#f2e8d5" stroke-opacity="0.25" stroke-width="0.8"/>
+  <!-- pommel -->
+  <circle cx="5.6" cy="28.4" r="2.1" fill="#c9a227" stroke="#0d0a10" stroke-width="1.1"/>
+  <circle cx="5.1" cy="27.9" r="0.6" fill="#f2e8d5" opacity="0.7"/>
+
+  <!-- hammer head block, perpendicular to the haft -->
+  <polygon points="26.7,16.2 31.2,11.7 21.3,1.8 16.8,6.3" fill="url(#steelW)" stroke="#0d0a10" stroke-width="1.2"/>
+  <path d="M17.8,6.0 L21.0,2.8" stroke="#f2e8d5" stroke-opacity="0.55" stroke-width="1"/>
+  <path d="M24.9,14.4 L30.0,9.3" stroke="#0d0a10" stroke-opacity="0.45" stroke-width="1"/>
+  <!-- gold collar where head meets haft -->
+  <polygon points="19.3,10.7 24.3,15.7 22.6,17.4 17.6,12.4" fill="#c9a227" stroke="#0d0a10" stroke-width="0.9"/>
+</svg>

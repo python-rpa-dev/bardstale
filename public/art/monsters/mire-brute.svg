@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgMrb" cx="0.5" cy="0.42" r="0.78">
+      <stop offset="0" stop-color="#262a1d"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="skinMrb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7d8a5e"/>
+      <stop offset="1" stop-color="#333b26"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgMrb)"/>
+  <ellipse cx="48" cy="89" rx="37" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- gnarled bogwood club resting on the shoulder -->
+  <path d="M72,88 L81,34 l6,1 -9,54 z" fill="#5a4326" stroke="#0d0a10" stroke-width="1.5"/>
+  <circle cx="85" cy="27" r="7" fill="#6b5230" stroke="#0d0a10" stroke-width="1.6"/>
+  <g fill="#d8cdb2" stroke="#0d0a10" stroke-width="0.9">
+    <polygon points="80,22 76,16 82,20"/>
+    <polygon points="88,20 92,14 91,22"/>
+  </g>
+  <circle cx="83" cy="28" r="1.6" fill="#3a2a17"/>
+
+  <!-- hulking sloped shoulders -->
+  <path d="M10,96 c-2,-24 8,-38 24,-42 h28 c16,4 26,18 24,42 z" fill="url(#skinMrb)" stroke="#0d0a10" stroke-width="1.7"/>
+  <!-- coarse hair and mud cake -->
+  <g stroke="#1c2115" stroke-width="1.4" fill="none">
+    <path d="M30,68 l-2,-4 M38,64 l-1,-4 M58,64 l1,-4 M66,68 l2,-4"/>
+  </g>
+  <g fill="#241d16" opacity="0.8">
+    <circle cx="26" cy="84" r="2.6"/><circle cx="68" cy="80" r="2.2"/>
+    <circle cx="42" cy="90" r="1.8"/><circle cx="56" cy="86" r="1.6"/>
+  </g>
+  <!-- moss mantle across the back -->
+  <path d="M14,76 q12,-13 28,-15 l-1,6 q-13,3 -22,13 z M82,76 q-12,-13 -28,-15 l1,6 q13,3 22,13 z" fill="#4c7038" stroke="#0d0a10" stroke-width="1"/>
+
+  <!-- small brutish head sunk forward -->
+  <path d="M48,28 c11,0 17,7 17,17 0,12 -8,19 -17,19 s-17,-7 -17,-19 c0,-10 6,-17 17,-17 z" fill="url(#skinMrb)" stroke="#0d0a10" stroke-width="1.7"/>
+  <path d="M31,40 c5,-4 12,-5 17,-3 5,-2 12,-1 17,3 l-2,4 c-9,-4 -21,-4 -30,0 z" fill="#46523a" stroke="#0d0a10" stroke-width="1.3"/>
+  <circle cx="42" cy="46" r="2.2" fill="#c9a227" stroke="#0d0a10" stroke-width="0.8"/>
+  <circle cx="54" cy="46" r="2.2" fill="#c9a227" stroke="#0d0a10" stroke-width="0.8"/>
+  <!-- underbite jaw with worn tusks -->
+  <path d="M34,54 q14,6 28,0 l-1,6 q-13,5 -26,0 z" fill="#333b26" stroke="#0d0a10" stroke-width="1.3"/>
+  <path d="M37,57 c-1,5 -3,8 -6,9 l-1,-5 c2,-1 4,-2 5,-5 z M59,57 c1,5 3,8 6,9 l1,-5 c-2,-1 -4,-2 -5,-5 z" fill="#d8cdb2" stroke="#0d0a10" stroke-width="1.1"/>
+</svg>

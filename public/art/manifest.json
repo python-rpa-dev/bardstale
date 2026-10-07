@@ -38,6 +38,24 @@
     "family.undead": { "file": "art/families/undead.svg", "w": 32, "h": 32 },
     "family.giant": { "file": "art/families/giant.svg", "w": 32, "h": 32 },
     "town.hub": { "file": "art/town/hub.svg", "w": 1600, "h": 900 },
-    "ui.frame": { "file": "art/ui/frame.svg", "w": 64, "h": 64 }
+    "ui.frame": { "file": "art/ui/frame.svg", "w": 64, "h": 64 },
+    "monster.fen-leech": { "file": "art/monsters/fen-leech.svg", "w": 96, "h": 96 },
+    "monster.drowned-monk": { "file": "art/monsters/drowned-monk.svg", "w": 96, "h": 96 },
+    "monster.mire-brute": { "file": "art/monsters/mire-brute.svg", "w": 96, "h": 96 },
+    "monster.bog-troll": { "file": "art/monsters/bog-troll.svg", "w": 96, "h": 96 },
+    "monster.cinder-spider": { "file": "art/monsters/cinder-spider.svg", "w": 96, "h": 96 },
+    "monster.ash-guardian": { "file": "art/monsters/ash-guardian.svg", "w": 96, "h": 96 },
+    "monster.ash-wight": { "file": "art/monsters/ash-wight.svg", "w": 96, "h": 96 },
+    "monster.fen-matriarch": { "file": "art/monsters/fen-matriarch.svg", "w": 96, "h": 96 },
+    "monster.ashfiend": { "file": "art/monsters/ashfiend.svg", "w": 96, "h": 96 },
+    "item.warhammer": { "file": "art/items/warhammer.svg", "w": 32, "h": 32 },
+    "item.crystal-wand": { "file": "art/items/crystal-wand.svg", "w": 32, "h": 32 },
+    "item.runed-blade": { "file": "art/items/runed-blade.svg", "w": 32, "h": 32 },
+    "item.bone-scale": { "file": "art/items/bone-scale.svg", "w": 32, "h": 32 },
+    "item.wyrmscale-mail": { "file": "art/items/wyrmscale-mail.svg", "w": 32, "h": 32 },
+    "item.ember-sigil": { "file": "art/items/ember-sigil.svg", "w": 32, "h": 32 },
+    "item.potion-greater-hp": { "file": "art/items/potion-greater-hp.svg", "w": 32, "h": 32 },
+    "wall.fen": { "file": "art/walls/fen.svg", "w": 64, "h": 64 },
+    "wall.ember": { "file": "art/walls/ember.svg", "w": 64, "h": 64 }
   }
 }

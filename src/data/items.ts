@@ -27,6 +27,13 @@ export const ITEMS: ItemDef[] = [
   { id: "potion-sp", name: "Mana Potion", slot: "consumable", price: 40, rarity: "common", use: { kind: "restore-sp", amount: 15 } },
   { id: "elixir-might", name: "Elixir of Might", slot: "consumable", price: 60, rarity: "uncommon", use: { kind: "combat-atk-buff", amount: 4 } },
   { id: "scroll-heal-all", name: "Scroll of Healing", slot: "consumable", price: 70, rarity: "uncommon", use: { kind: "party-heal", amount: 15 } },
+  { id: "warhammer", name: "Warhammer", slot: "weapon", price: 85, rarity: "uncommon", bonus: { atk: 5, def: 1 } },
+  { id: "crystal-wand", name: "Crystal Wand", slot: "weapon", price: 95, rarity: "uncommon", bonus: { atk: 3, mnd: 5 } },
+  { id: "runed-blade", name: "Runed Blade", slot: "weapon", price: 230, rarity: "rare", bonus: { atk: 8, dex: 1 } },
+  { id: "bone-scale", name: "Bone Scale", slot: "armor", price: 125, rarity: "uncommon", bonus: { def: 7 } },
+  { id: "wyrmscale-mail", name: "Wyrm-Scale Mail", slot: "armor", price: 260, rarity: "rare", bonus: { def: 9, dex: -1 } },
+  { id: "ember-sigil", name: "Ember Sigil", slot: "trinket", price: 200, rarity: "rare", bonus: { atk: 2, mnd: 2 } },
+  { id: "potion-greater-hp", name: "Greater Health Potion", slot: "consumable", price: 75, rarity: "uncommon", use: { kind: "restore-hp", amount: 60 } },
 ];
 
 export function itemById(id: string): ItemDef {

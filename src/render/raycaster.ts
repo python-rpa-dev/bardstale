@@ -9,9 +9,11 @@ const FOV = (66 * Math.PI) / 180;
 const PLANE_LEN = Math.tan(FOV / 2);
 
 /** Wall texture slot per gate. */
-export function wallSlotForGate(gateId: string): "wall.brick" | "wall.stone" | "wall.vault" {
+export function wallSlotForGate(gateId: string): "wall.brick" | "wall.stone" | "wall.vault" | "wall.fen" | "wall.ember" {
   if (gateId === "sunken-cloister") return "wall.stone";
+  if (gateId === "gallows-fen") return "wall.fen";
   if (gateId === "wyrm-vault") return "wall.vault";
+  if (gateId === "ember-spire") return "wall.ember";
   return "wall.brick";
 }
 

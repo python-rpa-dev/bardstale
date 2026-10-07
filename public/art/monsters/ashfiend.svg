@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgAsh" cx="0.5" cy="0.45" r="0.85">
+      <stop offset="0" stop-color="#2b140e"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="bodyAsh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a201c"/>
+      <stop offset="1" stop-color="#170c0c"/>
+    </linearGradient>
+    <radialGradient id="glowAsh" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff6a2b" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ff6a2b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgAsh)"/>
+  <!-- furnace glow behind the lord -->
+  <circle cx="48" cy="50" r="44" fill="url(#glowAsh)"/>
+  <ellipse cx="48" cy="89" rx="38" ry="5.5" fill="#000000" opacity="0.5"/>
+
+  <!-- tattered ember wings spread wide -->
+  <path d="M32,56 C14,48 6,30 14,16 c-1,11 4,20 12,26 l-3,-13 c-1,8 2,15 7,20 z" fill="#4a1f16" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M64,56 C82,48 90,30 82,16 c1,11 -4,20 -12,26 l3,-13 c-1,8 2,15 7,20 z" fill="#4a1f16" stroke="#0d0a10" stroke-width="1.6"/>
+  <g stroke="#e8722c" stroke-opacity="0.35" stroke-width="1" fill="none">
+    <path d="M32,56 C21,48 16,36 17,24 M29,52 l-6,-14"/>
+    <path d="M64,56 C75,48 80,36 79,24 M67,52 l6,-14"/>
+  </g>
+
+  <!-- haunches and digitigrade legs -->
+  <path d="M28,96 c-2,-14 2,-24 8,-28 h24 c6,4 10,14 8,28 z" fill="url(#bodyAsh)" stroke="#0d0a10" stroke-width="1.7"/>
+  <path d="M40,96 v-12 M56,96 v-12" stroke="#0d0a10" stroke-opacity="0.6" stroke-width="1.3"/>
+
+  <!-- arms ending in bone claws -->
+  <path d="M34,50 c-7,4 -11,12 -11,21 l7,1 c0,-7 2,-13 6,-16 z" fill="url(#bodyAsh)" stroke="#0d0a10" stroke-width="1.5"/>
+  <path d="M62,50 c7,4 11,12 11,21 l-7,1 c0,-7 -2,-13 -6,-16 z" fill="url(#bodyAsh)" stroke="#0d0a10" stroke-width="1.5"/>
+  <g fill="#d8cdb2" stroke="#0d0a10" stroke-width="0.9">
+    <polygon points="24,73 20,80 26,76"/>
+    <polygon points="29,74 28,82 32,76"/>
+    <polygon points="72,73 76,80 70,76"/>
+    <polygon points="67,74 68,82 64,76"/>
+  </g>
+
+  <!-- barrel chest riddled with ember seams -->
+  <path d="M34,48 c6,-4 22,-4 28,0 l5,22 c-11,5 -27,5 -38,0 z" fill="url(#bodyAsh)" stroke="#0d0a10" stroke-width="1.7"/>
+  <g stroke="#ff6a2b" stroke-opacity="0.28" stroke-width="3" fill="none">
+    <path d="M48,52 l-4,9 5,6 -3,8 M40,56 l4,4 M56,55 l-4,7"/>
+  </g>
+  <g stroke="#f2913c" stroke-width="1.2" fill="none">
+    <path d="M48,52 l-4,9 5,6 -3,8 M40,56 l4,4 M56,55 l-4,7"/>
+  </g>
+
+  <!-- burning mane -->
+  <g fill="#e8722c" opacity="0.8">
+    <path d="M36,26 c-2,-6 -1,-11 2,-15 -1,5 1,9 4,11 z"/>
+    <path d="M60,26 c2,-6 1,-11 -2,-15 1,5 -1,9 -4,11 z"/>
+    <path d="M48,20 c-1,-7 1,-12 3,-16 0,6 2,10 4,13 z" opacity="0.7"/>
+  </g>
+
+  <!-- horned skull and molten gaze -->
+  <path d="M40,28 c0,-7 16,-7 16,0 l2,14 c-7,4 -15,4 -20,0 z" fill="url(#bodyAsh)" stroke="#0d0a10" stroke-width="1.6"/>
+  <path d="M41,27 c-6,-3 -11,-9 -12,-18 6,4 11,9 14,14 z M55,27 c6,-3 11,-9 12,-18 -6,4 -11,9 -14,14 z" fill="#d8cdb2" stroke="#0d0a10" stroke-width="1.2"/>
+  <ellipse cx="44" cy="35" rx="2.4" ry="1.7" fill="#ff6a2b"/>
+  <ellipse cx="52" cy="35" rx="2.4" ry="1.7" fill="#ff6a2b"/>
+  <circle cx="44" cy="35" r="5" fill="#ff6a2b" opacity="0.4"/>
+  <circle cx="52" cy="35" r="5" fill="#ff6a2b" opacity="0.4"/>
+  <!-- maw lit from within -->
+  <path d="M42,42 h12 c-1,5 -3,8 -6,9 -3,-1 -5,-4 -6,-9 z" fill="#0d0a10"/>
+  <path d="M45,44 c-1,3 0,5 3,6 3,-1 4,-3 3,-6 z" fill="#f2913c" opacity="0.85"/>
+  <g fill="#d8cdb2">
+    <polygon points="43.5,42.5 45,46 46.2,42.5"/>
+    <polygon points="49.8,42.5 51,46 52.5,42.5"/>
+  </g>
+
+  <!-- rising embers and ground fire -->
+  <g fill="#f2913c" opacity="0.6">
+    <circle cx="22" cy="28" r="1"/><circle cx="76" cy="20" r="0.9"/>
+    <circle cx="14" cy="58" r="0.8"/><circle cx="86" cy="50" r="1"/>
+  </g>
+  <g stroke="#e8722c" stroke-opacity="0.5" stroke-width="1.3" fill="none">
+    <path d="M24,92 c-1,-4 1,-6 3,-8 M72,92 c1,-4 -1,-6 -3,-8 M40,94 c0,-3 1,-5 2,-6"/>
+  </g>
+</svg>

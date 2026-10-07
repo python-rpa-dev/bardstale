@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bgDwk" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#1d2b30"/>
+      <stop offset="1" stop-color="#141019"/>
+    </radialGradient>
+    <linearGradient id="cloakDwk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6f97a3"/>
+      <stop offset="0.65" stop-color="#2c4a52"/>
+      <stop offset="1" stop-color="#141019" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" fill="url(#bgDwk)"/>
+
+  <!-- sodden robe, pointed cowl and waterlogged hem -->
+  <path d="M48,13 C35,18 28,34 30,52 c1,10 -2,18 -5,27 l5,-3 4,5 4,-6 4,6 4,-7 4,7 4,-7 4,6 4,-6 4,5 5,-3 c-3,-9 -6,-17 -5,-27 2,-18 -5,-34 -18,-39 z" fill="url(#cloakDwk)" stroke="#0d0a10" stroke-opacity="0.75" stroke-width="1.5"/>
+  <!-- inner cowl shadow -->
+  <path d="M48,22 c-9,4 -13,14 -11,24 0.6,3.5 2.5,6 4.5,7.5 h13 c2,-1.5 3.9,-4 4.5,-7.5 2,-10 -2,-20 -11,-24 z" fill="#0d0a10"/>
+  <!-- drowned eyes -->
+  <ellipse cx="43.5" cy="44" rx="2.8" ry="1.9" fill="#8fd7d0"/>
+  <ellipse cx="52.5" cy="44" rx="2.8" ry="1.9" fill="#8fd7d0"/>
+  <circle cx="43.5" cy="44" r="5.5" fill="#6fb7c9" opacity="0.3"/>
+  <circle cx="52.5" cy="44" r="5.5" fill="#6fb7c9" opacity="0.3"/>
+
+  <!-- rope belt with hanging knot -->
+  <path d="M33,61 c5,3 25,3 30,0" fill="none" stroke="#7a5230" stroke-width="2.4"/>
+  <g stroke="#7a5230" stroke-width="1.6" fill="none">
+    <path d="M48,63 v9 M45,64 v7 M51,64 v7"/>
+  </g>
+  <!-- gold votive ring on the chest -->
+  <circle cx="48" cy="57" r="2.6" fill="none" stroke="#c9a227" stroke-width="1.4"/>
+
+  <!-- water streaming off sleeves and hem -->
+  <g stroke="#8fd7d0" stroke-opacity="0.35" stroke-width="1" fill="none">
+    <path d="M30,60 c-2,6 -2,12 -1,18 M66,60 c2,6 2,12 1,18"/>
+    <path d="M34,85 v4 M44,88 v4 M54,87 v4 M62,84 v4"/>
+  </g>
+  <!-- shallow pool at the feet -->
+  <ellipse cx="48" cy="90" rx="21" ry="2.6" fill="#6fb7c9" opacity="0.14"/>
+</svg>

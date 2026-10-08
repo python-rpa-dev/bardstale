@@ -1,3 +1,4 @@
+import { riddleFor, sealPuzzle } from "../data/riddles";
 /** Expedition run logic shared by the gate and dungeon screens. Mutators take a draft GameState. */
 
 import { generateFloor, MAP_H, MAP_W, type EntityKind, type GeneratedFloor } from "../core/mapgen";
@@ -68,7 +69,7 @@ export function startExpedition(s: GameState, gateId: string): void {
     seed,
     modifier,
     floor: 0,
-    map: toFloorSave(generateFloor(floorSeed(seed, 0))),
+    map: toFloorSave(generateFloor(floorSeed(seed, 0), 0)),
     pos: { x: 1, y: 1 },
     dir: 1,
     visited: [],
@@ -90,7 +91,7 @@ export function descendFloor(s: GameState): void {
   const ag = s.activeGate;
   if (!ag) return;
   ag.floor += 1;
-  ag.map = toFloorSave(generateFloor(floorSeed(ag.seed, ag.floor)));
+  ag.map = toFloorSave(generateFloor(floorSeed(ag.seed, ag.floor), ag.floor));
   ag.pos = { x: 1, y: 1 };
   ag.dir = 1;
   ag.visited = [];
@@ -197,6 +198,68 @@ export function campTrophy(d: GameState): { gold: number; ambush: MonsterDef[] |
     return { gold, ambush: mobs };
   }
   return { gold, ambush: null };
+}
+
+/**
+ * Answer the floor's riddle stone — one chance per floor either way. Correct: loot gold
+ * (18g × depth). Wrong: the stone always wakes its guardian (pendingMonsters for the caller).
+ */
+export function answerRiddle(d: GameState, pickIndex: number): { correct: boolean; gold: number; ambush: MonsterDef[] | null } {
+  const ag = d.activeGate!;
+  if (ag.flags[`riddle-f${ag.floor}`]) return { correct: false, gold: 0, ambush: null }; // dark since the last attempt
+  ag.flags[`riddle-f${ag.floor}`] = true;
+  const view = riddleFor(ag.seed, ag.floor);
+  if (pickIndex === view.correctAt) {
+    const gold = 18 * (ag.floor + 1);
+    ag.loot.gold += gold;
+    return { correct: true, gold, ambush: null };
+  }
+  const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
+  ag.pendingMonsters = mobs.map((m) => m.id);
+  if (elite !== null) ag.pendingElites = [elite];
+  else delete ag.pendingElites;
+  return { correct: false, gold: 0, ambush: mobs };
+}
+
+export interface SealOutcome {
+  solved: boolean;
+  gold?: number;
+  item?: string; // stash drop id, added to inventory + loot when solved
+  victim?: string; // wrong guess: a random party member eats the bolt
+  damage?: number;
+}
+
+/**
+ * Turn the rune seal. A correct ordered triple opens the door for good — deep gold plus one
+ * guaranteed uncommon-or-better gear piece. A wrong guess costs 6+2×depth damage to a random
+ * hero and the door stays shut: retrying is possible, surviving the brute force is not.
+ */
+export function trySeal(d: GameState, guess: string[]): SealOutcome {
+  const ag = d.activeGate!;
+  if (ag.flags[`sealed-f${ag.floor}`]) return { solved: false }; // already opened on this floor
+  const { solution } = sealPuzzle(ag.seed, ag.floor);
+  if (guess.length === 3 && guess.every((r, i) => r === solution[i])) {
+    ag.flags[`sealed-f${ag.floor}`] = true;
+    // The door opens for good: carve the wall face into floor and drop the marker.
+    const door = ag.map.entities.find(([, k]) => k === "sealed");
+    if (door) {
+      ag.map.cells = ag.map.cells.slice(0, door[0]) + "0" + ag.map.cells.slice(door[0] + 1);
+      ag.map.entities = ag.map.entities.filter(([id]) => id !== door[0]);
+    }
+    const gold = 25 * (ag.floor + 1);
+    ag.loot.gold += gold;
+    const rng = stepRng(ag);
+    const stash = ITEMS.filter((it) => it.rarity !== "common" && it.slot !== "consumable");
+    const drop = stash[Math.floor(rng() * stash.length)];
+    d.inventory[drop.id] = (d.inventory[drop.id] ?? 0) + 1;
+    ag.loot.items[drop.id] = (ag.loot.items[drop.id] ?? 0) + 1;
+    return { solved: true, gold, item: drop.id };
+  }
+  const rng = stepRng(ag);
+  const victim = d.party[Math.floor(rng() * d.party.length)];
+  const damage = 6 + ag.floor * 2;
+  victim.hp = Math.max(0, victim.hp - damage);
+  return { solved: false, victim: victim.name, damage };
 }
 
 /** The active bounty's family if any, for encounter weighting. */

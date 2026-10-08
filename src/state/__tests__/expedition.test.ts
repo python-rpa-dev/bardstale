@@ -4,7 +4,8 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { makePc, newGame, pcMax } from "../save";
-import { campRest, campScout, campTrophy, hermitGift, merchantWares, RARE_CHANCE, rollRare } from "../expedition";
+import { answerRiddle, campRest, campScout, campTrophy, gridFromSave, hermitGift, merchantWares, RARE_CHANCE, rollRare, trySeal } from "../expedition";
+import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
@@ -340,3 +341,92 @@ describe("elite kills", () => {
   });
 });
 
+
+describe("riddle stones and rune-seal doors", () => {
+  it("a correct answer pays 18g per depth into run loot, once per floor", () => {
+    const s = runState(7);
+    const view = riddleFor(7, 0);
+    const res = answerRiddle(s, view.correctAt);
+    expect(res.correct).toBe(true);
+    expect(res.gold).toBe(18);
+    expect(s.activeGate!.loot.gold).toBe(18);
+    expect(s.activeGate!.flags["riddle-f0"]).toBe(true);
+    const again = answerRiddle(s, view.correctAt); // stone dormant — no double-dipping
+    expect(again).toEqual({ correct: false, gold: 0, ambush: null });
+    expect(s.activeGate!.loot.gold).toBe(18);
+  });
+
+  it("a wrong answer wakes the guardian and burns the one chance", () => {
+    const s = runState(7);
+    const view = riddleFor(7, 0);
+    const wrong = [0, 1, 2].find((i) => i !== view.correctAt)!;
+    const res = answerRiddle(s, wrong);
+    expect(res.correct).toBe(false);
+    expect(res.ambush).not.toBeNull();
+    expect(s.activeGate!.pendingMonsters).toEqual(res.ambush!.map((m) => m.id));
+    const second = answerRiddle(s, view.correctAt); // spent even on failure
+    expect(second.gold).toBe(0);
+    expect(second.ambush).toBeNull();
+  });
+
+  it("the right triple opens the seal for deep gold and one guaranteed stash drop", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 2;
+    const { solution } = sealPuzzle(9, 2);
+    const before = s.party.map((p) => p.hp);
+    const res = trySeal(s, solution);
+    expect(res.solved).toBe(true);
+    expect(res.gold).toBe(75); // 25 × (floor+1)
+    expect(s.activeGate!.loot.gold).toBe(75);
+    const drop = itemById(res.item!);
+    expect(drop.rarity).not.toBe("common");
+    expect(drop.slot).not.toBe("consumable");
+    expect(s.inventory[drop.id]).toBe(1);
+    expect(s.activeGate!.loot.items[drop.id]).toBe(1);
+    expect(s.party.map((p) => p.hp)).toEqual(before); // nobody hurt
+    const after = trySeal(s, solution);
+    expect(after.solved).toBe(false);
+    expect(after.victim).toBeUndefined(); // an opened door never bites twice
+  });
+
+  it("a wrong triple costs 6+2×depth HP from one hero and stays retryable", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 1;
+    const { solution } = sealPuzzle(9, 1);
+    const bad = allSeals().find((p) => p.join() !== solution.join())!;
+    const before = s.party.map((p) => p.hp);
+    const res = trySeal(s, bad);
+    expect(res.solved).toBe(false);
+    expect(res.damage).toBe(8); // 6 + 2×1
+    const vi = s.party.findIndex((p) => p.name === res.victim);
+    expect(vi).toBeGreaterThanOrEqual(0);
+    s.party.forEach((p, i) => expect(p.hp).toBe(before[i] - (i === vi ? 8 : 0)));
+    const ok = trySeal(s, solution); // no flag on failure — the door still yields
+    expect(ok.solved).toBe(true);
+  });
+
+  it("the bolt floors a hero but never bites below zero", () => {
+    const s = runState(9);
+    for (const p of s.party) p.hp = 3;
+    const { solution } = sealPuzzle(9, 0);
+    const bad = allSeals().find((p) => p.join() !== solution.join())!;
+    const res = trySeal(s, bad); // damage 6 > hp 3
+    expect(res.damage).toBe(6);
+    for (const p of s.party) expect(p.hp).toBeGreaterThanOrEqual(0);
+    expect(s.party.some((p) => p.hp === 0)).toBe(true);
+  });
+
+  it("solving carves the door open — the wall face becomes walkable floor", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 1;
+    const ag = s.activeGate!;
+    const cell = 5; // plant a wall face to serve as the door (fixture map is all floor)
+    ag.map.cells = ag.map.cells.slice(0, cell) + "1" + ag.map.cells.slice(cell + 1);
+    ag.map.entities.push([cell, "sealed"]);
+    const { solution } = sealPuzzle(9, 1);
+    expect(gridFromSave(ag.map)[cell]).toBe(1); // solid before
+    expect(trySeal(s, solution).solved).toBe(true);
+    expect(gridFromSave(ag.map)[cell]).toBe(0); // open after
+    expect(ag.map.entities.some(([, k]) => k === "sealed")).toBe(false);
+  });
+});

@@ -13,7 +13,7 @@ export const DIR_VECS: ReadonlyArray<readonly [number, number]> = [
   [-1, 0],
 ];
 
-export type EntityKind = "stairs" | "chest" | "shrine" | "trap" | "secret";
+export type EntityKind = "stairs" | "chest" | "shrine" | "trap" | "secret" | "riddle" | "sealed";
 
 export interface GeneratedFloor {
   w: number;
@@ -159,10 +159,12 @@ function shuffled(items: number[], rng: Rng): number[] {
 }
 
 /** Generate one floor. Entrance fixed at (1,1) facing east; exit stairs at the BFS-farthest cell;
- * 3 chests, 1 shrine (free full-heal once per floor), traps on 4 corridor cells, and one secret-wall
- * alcove (a wall cell touching exactly one open cell — behind it lies a guaranteed rare drop).
+ * 3 chests, 1 shrine (free full-heal once per floor), 1 riddle stone (answer for loot gold — or
+ * wake its guardian), traps on 4 corridor cells, and one secret-wall alcove (a wall cell touching
+ * exactly one open cell — behind it lies a guaranteed rare drop). From depth 1 onward, ~45% of
+ * floors also seal a rune-door into a wall face: clues beside the lock, elite stash behind it.
  */
-export function generateFloor(seed: number): GeneratedFloor {
+export function generateFloor(seed: number, depth = 0): GeneratedFloor {
   const rng = mulberry32(seed);
   const grid = new Uint8Array(MAP_W * MAP_H).fill(1);
   carveMaze(grid, rng);
@@ -186,6 +188,7 @@ export function generateFloor(seed: number): GeneratedFloor {
   let pi = 0;
   for (let n = 0; n < 3; n++) entities.set(picks[pi++], { kind: "chest" });
   entities.set(picks[pi++], { kind: "shrine" });
+  entities.set(picks[pi++], { kind: "riddle" });
 
   // Traps on corridor cells (exactly two open neighbours), avoiding placed entities.
   const corridors = shuffled(
@@ -194,11 +197,23 @@ export function generateFloor(seed: number): GeneratedFloor {
   );
   for (let n = 0; n < 4 && n < corridors.length; n++) entities.set(corridors[n], { kind: "trap" });
 
-  // Secret alcove: a wall cell touching exactly one open cell.
+  // Rune-seal door: a wall face (1–2 open neighbours) near traffic, from floor 2 down only.
+  const wallFaces = shuffled(
+    Array.from({ length: grid.length }, (_, id) => id).filter((id) => grid[id] === 1 && openDegree(grid, id) >= 1 && openDegree(grid, id) <= 2),
+    rng,
+  );
+  let sealedCell = -1;
+  if (depth >= 1 && wallFaces.length > 0 && rng() < 0.45) {
+    sealedCell = wallFaces[0];
+    entities.set(sealedCell, { kind: "sealed" });
+  }
+
+  // Secret alcove: a wall cell touching exactly one open cell (never the door's face).
   const secretCandidates: number[] = [];
   for (let id = 0; id < grid.length; id++) {
-    if (grid[id] === 1 && openDegree(grid, id) === 1) secretCandidates.push(id);
+    if (grid[id] === 1 && openDegree(grid, id) === 1 && id !== sealedCell) secretCandidates.push(id);
   }
+
   if (secretCandidates.length) {
     entities.set(shuffled(secretCandidates, rng)[0], { kind: "secret" });
   }

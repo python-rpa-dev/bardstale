@@ -357,7 +357,7 @@ export function pcUse(cs: CombatState, pcIdx: number, itemId: string, targetIdx 
   const p = cs.pcs[pcIdx];
   if (!p || !pcAlive(p)) return { events: evs, consumed: false };
   const item = itemById(itemId);
-  if (!item.use) return { events: evs, consumed: false };
+  if (!item.use || item.use.kind === "light") return { events: evs, consumed: false }; // torches are for walking, not fighting
   switch (item.use.kind) {
     case "restore-hp": {
       const before = p.hp;

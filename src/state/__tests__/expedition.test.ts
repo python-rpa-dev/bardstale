@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { makePc, newGame, pcMax } from "../save";
-import { answerRiddle, campRest, campScout, campTrophy, gridFromSave, hermitGift, merchantWares, RARE_CHANCE, rollRare, trySeal } from "../expedition";
+import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -428,5 +428,33 @@ describe("riddle stones and rune-seal doors", () => {
     expect(trySeal(s, solution).solved).toBe(true);
     expect(gridFromSave(ag.map)[cell]).toBe(0); // open after
     expect(ag.map.entities.some(([, k]) => k === "sealed")).toBe(false);
+  });
+});
+
+describe("torchlight", () => {
+  it("starts lit at LIGHT_PER_FLOOR; darkness only when the flame dies", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const ag = s.activeGate!;
+    expect(ag.lightTurns).toBe(LIGHT_PER_FLOOR);
+    expect(isLit(ag)).toBe(true);
+    ag.lightTurns = 0;
+    expect(isLit(ag)).toBe(false);
+    delete (ag as { lightTurns?: number }).lightTurns; // legacy saves read as lit — never punish old codes
+    expect(isLit(ag)).toBe(true);
+  });
+
+  it("a new floor relights the torch even after a dark crawl", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const ag = s.activeGate!;
+    ag.lightTurns = 0;
+    descendFloor(s);
+    expect(ag.lightTurns).toBe(LIGHT_PER_FLOOR);
+  });
+
+  it("the dark emboldens foes: 0.18 lit vs 0.26 unlit", () => {
+    expect(encounterChance(true)).toBe(0.18);
+    expect(encounterChance(false)).toBe(0.26);
   });
 });

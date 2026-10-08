@@ -161,7 +161,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
     for (const it of usable) {
       list.append(
         button(`${it.name} ×${inv[it.id]}`, {
-          hint: it.use ? `${it.use.kind.replace(/-/g, " ")} ${it.use.amount}` : "",
+          disabled: it.use?.kind === "light", // torches are for walking, not fighting
+          hint: it.use ? (it.use.kind === "light" ? "Light the dark from the dungeon, never mid-fight" : `${it.use.kind.replace(/-/g, " ")} ${it.use.amount}`) : "",
           onClick: () => {
             close();
             let evs: CombatEvent[] = [];

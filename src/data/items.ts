@@ -11,7 +11,7 @@ export interface ItemDef {
   /** Equipped-item stat deltas (weapon/armor/trinket). */
   bonus?: Partial<{ atk: number; def: number; dex: number; mnd: number }>;
   critChanceBonus?: number; // lucky-charm: +6% (fraction)
-  use?: { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal"; amount: number };
+  use?: { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal" | "light"; amount: number };
 }
 
 export const ITEMS: ItemDef[] = [
@@ -34,6 +34,7 @@ export const ITEMS: ItemDef[] = [
   { id: "wyrmscale-mail", name: "Wyrm-Scale Mail", slot: "armor", price: 260, rarity: "rare", bonus: { def: 9, dex: -1 } },
   { id: "ember-sigil", name: "Ember Sigil", slot: "trinket", price: 200, rarity: "rare", bonus: { atk: 2, mnd: 2 } },
   { id: "potion-greater-hp", name: "Greater Health Potion", slot: "consumable", price: 75, rarity: "uncommon", use: { kind: "restore-hp", amount: 60 } },
+  { id: "torch", name: "Torch", slot: "consumable", price: 12, rarity: "common", use: { kind: "light", amount: 40 } },
 ];
 
 export function itemById(id: string): ItemDef {

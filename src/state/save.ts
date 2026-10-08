@@ -93,6 +93,20 @@ export interface ActiveGate {
   rareSpawn?: RareKind; // one-off event present for this whole run (see screens/dungeon event card)
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
   pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
+  lightTurns?: number; // steps of torchlight left on this floor; absent (legacy) reads as lit
+}
+// ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
+
+export interface Chronicle {
+  killsByFoe: Record<string, number>; // bestiary id → lifetime kills
+  battlesWon: number;
+  battlesFled: number;
+  partyWipes: number;
+  deepestFloor: number; // deepest floor+1 ever reached on any run
+}
+
+export function emptyChronicle(): Chronicle {
+  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0 };
 }
 
 // ---------- Root state ----------
@@ -109,6 +123,8 @@ export interface Settings {
    sfxVolume: number;
    /** Silence all SFX without losing the chosen volume. */
    sfxMuted: boolean;
+  /** BGM volume 0..1; the mute toggle silences SFX and music together. */
+  musicVolume: number;
 }
 
 /** itemId → count. Equipment and consumables both stack by id. */
@@ -125,6 +141,7 @@ export interface GameState {
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
+  chronicle?: Chronicle; // lifetime accumulator; migrate backfills older saves
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
   settings: Settings;
@@ -175,7 +192,8 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
-    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
+    chronicle: emptyChronicle(),
+    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, musicVolume: 0.35, sfxMuted: false },
 };
 }
 
@@ -225,6 +243,8 @@ function migrate(save: GameState & { version: number }): GameState | null {
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
+      s.chronicle ??= emptyChronicle(); // v1 saves predate the chronicle
+      s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

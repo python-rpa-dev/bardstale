@@ -15,6 +15,8 @@ export function useText(def: ItemDef): string {
       return `+${u.amount} ATK for this combat`;
     case "party-heal":
       return `Heals the whole party for ${u.amount} HP each`;
+    case "light":
+      return `Lights your way for ${u.amount} more steps`;
   }
 }
 

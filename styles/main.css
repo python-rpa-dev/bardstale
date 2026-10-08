@@ -345,7 +345,7 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .dpad button:nth-child(3) { grid-area: 2 / 2; font-size: 0.85rem; }
 .dpad button:nth-child(4) { grid-area: 2 / 3; }
 .dpad button:nth-child(5) { grid-area: 3 / 2; }
-@media (pointer: coarse) { .dpad { display: grid; } }
+@media (pointer: coarse) and (hover: none) { .dpad { display: grid; } } /* touch-only: not stylus-capable laptops */
 .view-col, .side-col { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
 /* Keep the map + command bar always visible: the info column pins to the viewport and scrolls itself. */
 .side-col .party-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -551,3 +551,10 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 .boon-opt { text-align: left; display: block; }
 .boon-opt strong { color: var(--gold); }
 .boon-opt .muted { font-size: 0.85rem; margin-top: 2px; }
+
+/* Chronicle ledger rows */
+.deed-row { display: flex; justify-content: space-between; gap: var(--s3); padding: 0.15rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--gold) 25%, transparent); }
+
+/* Torchlight readout in the dungeon side column */
+.torch-chip { color: var(--gold); }
+.torch-chip.dark { color: var(--danger); font-weight: 600; }

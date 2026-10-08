@@ -55,6 +55,18 @@ export function renderTown(host: HTMLElement, ctx: RouteCtx): void {
       ),
     ),
   );
+  // The Chronicle is a ledger, not a building — linked under the services, no hotspot on the art.
+  host.append(
+    el("div", { class: "service-row" },
+      button("Chronicle", {
+        hint: "Lifetime deeds of your party",
+        onClick: () => {
+          ctx.sfx.click();
+          ctx.navigate("#/chronicle");
+        },
+      }),
+    ),
+  );
   // first-run coach marks; no-op once the save records tourSeen
   maybeStartTour(ctx);
 }

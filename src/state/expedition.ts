@@ -8,12 +8,25 @@ import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/
 import { gateById, gateIndex } from "../data/gates";
 import { dayNumber, modifierForGate } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
-import { pcMax } from "./save";
+import { emptyChronicle, pcMax } from "./save";
 import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
 
 /** Per-floor rng seed derived from the run seed. */
 export function floorSeed(runSeed: number, floor: number): number {
   return hashStr(`${runSeed}:${floor}`);
+}
+
+/** Steps of torchlight granted at run start and on every new floor. */
+export const LIGHT_PER_FLOOR = 30;
+
+/** A gate without the field (legacy saves) reads as lit — never punish old codes. */
+export function isLit(ag: ActiveGate): boolean {
+  return ag.lightTurns === undefined || ag.lightTurns > 0;
+}
+
+/** Encounter odds on open corridor cells; the dark emboldens foes. Pure for tests. */
+export function encounterChance(lit: boolean): number {
+  return lit ? 0.18 : 0.26;
 }
 
 export function toFloorSave(gen: GeneratedFloor): FloorMapSave {
@@ -77,12 +90,15 @@ export function startExpedition(s: GameState, gateId: string): void {
     chests: [],
     flags: {},
     steps: 0,
+    lightTurns: LIGHT_PER_FLOOR, // the first torch is struck at the threshold
     loot: { gold: 0, items: {} },
   };
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
   const rare = rollRare(seed);
   if (rare) ag.rareSpawn = rare;
   s.activeGate = ag;
+  const chron = (s.chronicle ??= emptyChronicle()); // reaching floor 0 is depth 1
+  chron.deepestFloor = Math.max(chron.deepestFloor, ag.floor + 1);
   reveal(ag);
 }
 
@@ -91,6 +107,8 @@ export function descendFloor(s: GameState): void {
   const ag = s.activeGate;
   if (!ag) return;
   ag.floor += 1;
+  const chron = (s.chronicle ??= emptyChronicle());
+  chron.deepestFloor = Math.max(chron.deepestFloor, ag.floor + 1);
   ag.map = toFloorSave(generateFloor(floorSeed(ag.seed, ag.floor), ag.floor));
   ag.pos = { x: 1, y: 1 };
   ag.dir = 1;
@@ -98,6 +116,7 @@ export function descendFloor(s: GameState): void {
   ag.chests = [];
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
   ag.steps = 0;
+  ag.lightTurns = LIGHT_PER_FLOOR; // new floor, fresh flame
   delete ag.pendingMonsters;
   reveal(ag);
 }

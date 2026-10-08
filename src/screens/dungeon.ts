@@ -28,12 +28,13 @@ import {
   stepRng,
   trySeal,
   type SealOutcome,
+  LIGHT_PER_FLOOR, encounterChance, isLit,
 } from "../state/expedition";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
 import { renderMinimap } from "../render/minimap";
 
-const CHEST_CONSUMABLES = ["potion-hp", "potion-sp"];
+const CHEST_CONSUMABLES = ["potion-hp", "potion-sp", "torch"];
 
 /** "cave-rat" → "Cave Rat" (monsters have no display-name field). */
 function titleCase(id: string): string {
@@ -86,11 +87,17 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (stuck) logEl.scrollTop = logEl.scrollHeight; // follow new lines unless they scrolled up to read history
   }
 
+  let torchChip: HTMLElement | null = null; // side-column light readout, refreshed in drawView
   function drawView(): void {
     const ag = ctx.state().activeGate;
     if (!ag || !viewCanvas.isConnected) return;
-    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex);
+    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) });
     renderMinimap(miniCanvas, { map: ag.map, visited: ag.visited, pos: ag.pos, dir: ag.dir, chests: ag.chests });
+    if (torchChip) {
+      const lit = isLit(ag);
+      torchChip.textContent = lit ? `Torchlight holds for ${ag.lightTurns ?? LIGHT_PER_FLOOR} more steps` : "In the dark — things move between the flickers";
+      torchChip.classList.toggle("dark", !lit);
+    }
   }
 
   function refreshParty(): void {
@@ -171,6 +178,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       lastLookCell = -1; // a new vantage changes what "look again" means
       const cell = cellId(nx, ny);
       reveal(ag);
+      if (ag.lightTurns !== undefined && ag.lightTurns > 0) ag.lightTurns -= 1; // one step, one breath of flame
 
       // Traps spring when stepped on, once per cell.
       if (entityAt(ag, cell) === "trap" && !ag.flags[`trap${cell}`]) {
@@ -197,7 +205,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
-      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < 0.18) {
+      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag))) {
         const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
         if (elite !== null) ag.pendingElites = [elite];
@@ -597,7 +605,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                 ? "Elixirs sharpen blades mid-fight"
                 : def.use?.kind === "party-heal"
                   ? `Heals every living party member ${def.use.amount}`
-                  : `Restores ${def.use?.amount} — auto-targets whoever needs it most`,
+                  : def.use?.kind === "light"
+                    ? "Chases back the dark; foes grow bolder where torches die"
+                    : `Restores ${def.use?.amount} — auto-targets whoever needs it most`,
               onClick: () => {
                 ctx.commit((d) => {
                   d.inventory[id] -= 1;
@@ -620,10 +630,17 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                       if (p.hp > 0) p.hp = Math.min(pcMax(p).hp, p.hp + def.use!.amount);
                     }
                     toast("Warm light passes through the party.");
+                  } else if (def.use?.kind === "light") {
+                    const ag = d.activeGate;
+                    if (ag) {
+                      ag.lightTurns = (ag.lightTurns ?? LIGHT_PER_FLOOR) + def.use.amount;
+                      toast("Your torch catches. The dark falls back a step.");
+                    }
                   }
                 });
                 ctx.sfx.heal();
                 refreshParty();
+                drawView(); // repaint view + torch chip immediately (item use commits without a move)
                 close();
               },
             }),
@@ -883,6 +900,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     el("div", { class: "side-col" },
       el("div", { class: "panel mini-card" },
         el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
+        (torchChip = el("p", { class: "torch-chip muted" })),
         miniCanvas,
         el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine · ◈ riddle — explored cells only; ▣ marks a rune-sealed wall" }),
       ),

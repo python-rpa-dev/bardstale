@@ -211,7 +211,7 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
   cs.order = entries.map((e) => [e.side, e.idx]);
   cs.calls = rng.calls();
   const names = foeIds.map((id, i) => `${opts.elites?.includes(i) ? "Elite " : ""}${titleCase(id)}${foeIds.filter((x) => x === id).length > 1 ? ` ${i + 1}` : ""}`);
-  pushLog(cs, opts.boss && foeIds.length === 1 ? `The ${names[0]} lifts its head from the hoard — the gate lord has noticed you.` : `A ${names.join(", ")} block the way!`);
+  pushLog(cs, opts.boss && foeIds.length === 1 ? `The ${names[0]} lifts its head from the hoard — the gate lord has noticed you.` : foeIds.length === 1 ? `A ${names[0]} blocks the way!` : `${names.join(", ")} block the way!`);
    normalizeActiveTurn(cs);
    return cs;
 }

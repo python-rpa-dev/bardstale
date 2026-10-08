@@ -56,7 +56,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   // A live fight owns the screen (covers reloads mid-battle and fresh ambushes).
-  if (ctx.state().activeCombat) {
+  // pendingMonsters without activeCombat = reloaded between the roll and combat mount;
+  // renderCombat's beginCombat fallback picks the fight up — never strand the player mid-floor.
+  if (ctx.state().activeCombat || ctx.state().activeGate?.pendingMonsters?.length) {
     ctx.navigate("#/combat");
     return;
   }
@@ -409,7 +411,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         return;
       }
       if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
-      if (out.finished || out.trapMsg || out.avoided || out.encounter) {
+      // A dodged trap is a non-event for walking — keep rolling; only real damage (or a finish) halts.
+      if (out.finished || out.trapMsg || out.encounter) {
         stopAuto();
         if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
       }
@@ -844,7 +847,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   // ---------- layout ----------
-  const autoBtn = button("Auto-Walk", { cls: "auto-btn", icon: "fast-forward", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, traps, chests", onClick: () => toggleAuto() });
+  const autoBtn = button("Auto-Walk", { cls: "auto-btn", icon: "fast-forward", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, damaging traps, chests", onClick: () => toggleAuto() });
   autoBtn.setAttribute("aria-pressed", "false");
   const cmdBar = el("div", { class: "cmd-bar" },
     button("Forward", { icon: "forward", hint: "W / ↑ — step ahead (traps spring, encounters roll)", onClick: () => doMove(false) }),

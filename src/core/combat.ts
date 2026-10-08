@@ -62,6 +62,8 @@ export interface CombatState {
   fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
   blessDef: number; // party-wide DEF bonus for the combat (bless)
   tauntPc: number | null; // fighter who taunted: highest-ATK foe must target them
+  bestHit?: number; // biggest single PC hit this fight (synced to Chronicle on victory)
+  crits?: number; // critical hits landed by PCs this fight (same sync)
   pcs: CombatPc[];
   foes: CombatFoe[];
   phase: "input" | "won" | "lost" | "fled";
@@ -117,6 +119,18 @@ export function hitChance(aDex: number, dDex: number, aLvl: number, dLvl: number
   return clamp(0.8 + 0.03 * (aDex - dDex) + 0.02 * (aLvl - dLvl), 0.25, 0.97);
 }
 
+/** Blind stings the eyes rather than the arm: −15% to hit while marked, with a floor of hope. */
+export const BLIND_PENALTY = 0.15;
+
+/** Hit chance for an attacker adjusted for its own lingering marks (blind). */
+export function attackHitChance(aDex: number, dDex: number, aLvl: number, dLvl: number, attacker: readonly StatusMark[]): number {
+  const pen = attacker.some((s) => s.kind === "blind") ? BLIND_PENALTY : 0;
+  return Math.max(0.05, hitChance(aDex, dDex, aLvl, dLvl) - pen);
+}
+
+/** Burn ticks at end of round: flat damage through guard, can kill. */
+export const BURN_DMG = 3;
+
 /** Flee chance per plan M6: 0.5 + 3%·(partyAvgDex − foeAvgDex), floor 0.1. */
 export function fleeChance(partyAvgDex: number, foeAvgDex: number): number {
   return clamp(0.5 + 0.03 * (partyAvgDex - foeAvgDex), 0.1, 1);
@@ -153,6 +167,12 @@ const titleCase = (id: string): string =>
 function pushLog(cs: CombatState, line: string): void {
   cs.log.push(line);
   if (cs.log.length > 80) cs.log.shift();
+}
+
+/** Central PC-damage ledger: biggest single hit + crit count for the Chronicle. */
+function recordDeed(cs: CombatState, dmg: number, isCrit: boolean): void {
+  if (dmg > (cs.bestHit ?? 0)) cs.bestHit = dmg;
+  if (isCrit) cs.crits = (cs.crits ?? 0) + 1;
 }
 
 // ---------- setup ----------
@@ -247,7 +267,7 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
   const firstStrike = p.classId === "rogue" && cs.round === 1 && !cs.foesActed;
   const critRoll = rng();
   const isCrit = firstStrike || critRoll < 0.06 + critChanceBonus(p);
-  if (rng() >= hitChance(a.dex, fd.dex, p.level, fd.lvl)) {
+  if (rng() >= attackHitChance(a.dex, fd.dex, p.level, fd.lvl, p.statuses)) {
     cs.calls = rng.calls();
     pushLog(cs, `${p.name} swings at the ${titleCase(f.mid)} — misses.`);
     evs.push({ kind: "miss", src: ["pc", pcIdx], dst: ["foe", foeIdx], text: "miss" });
@@ -256,6 +276,7 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
   let dmg = Math.max(1, Math.round(a.atk * (0.85 + rng() * 0.3)) - Math.floor(fd.def / 2));
   if (isCrit) dmg *= 2;
   f.hp = Math.max(0, f.hp - dmg);
+  recordDeed(cs, dmg, isCrit);
   cs.calls = rng.calls();
   pushLog(cs, isCrit ? `${p.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${p.name} hits the ${titleCase(f.mid)} for ${dmg}.`);
   evs.push({ kind: isCrit ? "crit" : "hit", src: ["pc", pcIdx], dst: ["foe", foeIdx], amount: dmg, text: String(dmg) });
@@ -328,6 +349,7 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
       const crit = rng() < critChance;
       if (crit) dmg *= 2;
       f.hp = Math.max(0, f.hp - dmg);
+      recordDeed(cs, dmg, crit);
       pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" ? "slashes" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
       evs.push({ kind: crit ? "crit" : "spell", src: ["pc", pcIdx], dst: ["foe", t], amount: dmg, text: String(dmg) });
       if (!foeAlive(f)) {
@@ -411,7 +433,7 @@ function finishTurn(cs: CombatState, evs: CombatEvent[]): CombatEvent[] {
   let ptr = cs.turnPtr + 1;
   for (;;) {
     if (ptr >= order.length) {
-      endOfRound(cs);
+      endOfRound(cs, evs);
       ptr = 0;
       if (cs.phase !== "input") return evs;
     }
@@ -442,8 +464,25 @@ export function normalizeActiveTurn(cs: CombatState): void {
   }
 }
 
-function endOfRound(cs: CombatState): void {
+function endOfRound(cs: CombatState, evs: CombatEvent[]): void {
   const rng = countedStream(cs.seed, cs.calls);
+  // burn sears first — a full-duration mark always lands its last tick before expiring
+  for (const p of cs.pcs) {
+    if (!pcAlive(p)) continue;
+    if (!p.statuses.some((s) => s.kind === "burn")) continue;
+    p.hp = Math.max(0, p.hp - BURN_DMG);
+    pushLog(cs, `The flames sear ${p.name} for ${BURN_DMG}.`);
+    evs.push({ kind: "hit", dst: ["pc", cs.pcs.indexOf(p)], amount: BURN_DMG, text: String(BURN_DMG) });
+    if (!pcAlive(p)) {
+      pushLog(cs, `${p.name} succumbs to the burns!`);
+      evs.push({ kind: "death", dst: ["pc", cs.pcs.indexOf(p)], text: "" });
+    }
+  }
+  checkEnd(cs); // a burn wipe must end the fight before finishTurn scans for living combatants
+  if (cs.phase !== "input") {
+    cs.calls = rng.calls();
+    return;
+  }
   // status ticks
   for (const p of cs.pcs) {
     if (!pcAlive(p)) continue;
@@ -542,6 +581,14 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
       const dmg = hurtPc(cs, t, Math.max(1, Math.round((br.base - mnd) * fury)));
       pushLog(cs, `The ${titleCase(f.mid)} breathes fire on ${cs.pcs[t].name} for ${dmg}.`);
       evs.push({ kind: "breath", src: ["foe", foeIdx], dst: ["pc", t], amount: dmg, text: String(dmg) });
+      const bp = cs.pcs[t]; // fire clings: a fresh mark announces itself, a refresh just extends
+      if (!bp.statuses.some((s) => s.kind === "burn")) {
+        bp.statuses.push({ kind: "burn", roundsLeft: 2 });
+        pushLog(cs, `${bp.name} is burning! (${BURN_DMG} dmg/round)`);
+        evs.push({ kind: "status", dst: ["pc", t], text: "burn" });
+      } else {
+        bp.statuses.find((s) => s.kind === "burn")!.roundsLeft = 2;
+      }
     }
     cs.calls = rng.calls();
     for (const [pi, pv] of cs.pcs.entries()) {
@@ -585,6 +632,14 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     else p.statuses.push({ kind: "poison", roundsLeft: fd.special.rounds } as StatusMark);
     pushLog(cs, `${p.name} is poisoned! (−1 DEX, ${fd.special.rounds} rounds)`);
     evs.push({ kind: "status", dst: ["pc", t], text: "poison" });
+  }
+  // ash-wight soul-gaze dims the eyes on a damaging hit — refresh extends, never stacks
+  if (fd.special?.kind === "blind") {
+    const mark = p.statuses.find((s) => s.kind === "blind");
+    if (mark) mark.roundsLeft = fd.special.rounds;
+    else p.statuses.push({ kind: "blind", roundsLeft: fd.special.rounds });
+    pushLog(cs, `${p.name}'s eyes sting — blinded! (−15% to hit, ${fd.special.rounds} rounds)`);
+    evs.push({ kind: "status", dst: ["pc", t], text: "blind" });
   }
   if (!pcAlive(p)) {
     pushLog(cs, `${p.name} falls!`);

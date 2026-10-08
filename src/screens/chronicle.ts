@@ -34,6 +34,8 @@ export function renderChronicle(host: HTMLElement, ctx: RouteCtx): void {
     deed("Battles fled", c.battlesFled),
     deed("Party wipes", c.partyWipes),
     deed("Deepest floor reached", c.deepestFloor),
+    deed("Biggest single hit", c.bestHit),
+    deed("Critical hits landed", c.crits),
     deed("Expeditions begun", expeditions),
     deed("Bounties completed", s.bounties.completed.length),
     deed("Medals earned", s.medals.length),

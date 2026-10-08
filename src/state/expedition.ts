@@ -6,7 +6,7 @@ import { bountyId } from "../data/bounties";
 import { ITEMS } from "../data/items";
 import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/rng";
 import { gateById, gateIndex } from "../data/gates";
-import { dayNumber, modifierForGate } from "../data/modifiers";
+import { dayNumber, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
 import { emptyChronicle, pcMax } from "./save";
 import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
@@ -68,13 +68,14 @@ export function reveal(ag: ActiveGate): void {
   }
 }
 
-/** Begin a fresh run: increments the gate's run counter and installs ActiveGate. */
-export function startExpedition(s: GameState, gateId: string): void {
+/** Begin a fresh run: increments the gate's run counter and installs ActiveGate.
+ *  `omen` is the drafted sign carried below; omitted falls back to today's ambient modifier. */
+export function startExpedition(s: GameState, gateId: string, omen?: ModifierId): void {
   gateById(gateId); // validates the id
   const runNumber = (s.runs[gateId] ?? 0) + 1;
   s.runs[gateId] = runNumber;
   const seed = expeditionSeed(s.seed, gateId, runNumber);
-  const modifier = modifierForGate(gateIndex(gateId), dayNumber()).id;
+  const modifier = omen ?? modifierForGate(gateIndex(gateId), dayNumber()).id;
 
   const ag: ActiveGate = {
     gateId,

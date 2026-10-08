@@ -222,6 +222,8 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   background: color-mix(in srgb, var(--uncommon) 30%, var(--panel));
 }
 .chip-wound { background: color-mix(in srgb, var(--hp) 30%, var(--panel)); }
+.chip-blind { background: color-mix(in srgb, var(--rare) 30%, var(--panel)); }
+.chip-burn { background: color-mix(in srgb, #e0762f 35%, var(--panel)); }
 .status-chips { display: flex; gap: 0.25rem; min-height: 1.2em; }
 
 .party-grid {
@@ -456,6 +458,8 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 }
 .status-chip.poison { background: color-mix(in srgb, #58c26b 25%, var(--panel)); }
 .status-chip.wound { background: color-mix(in srgb, var(--danger) 25%, var(--panel)); }
+.status-chip.blind { background: color-mix(in srgb, var(--rare) 28%, var(--panel)); }
+.status-chip.burn { background: color-mix(in srgb, #e0762f 32%, var(--panel)); }
 .status-chip.guard { background: color-mix(in srgb, var(--gold) 22%, var(--panel)); }
 .combat-log {
   background: var(--panel);
@@ -558,3 +562,9 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 /* Torchlight readout in the dungeon side column */
 .torch-chip { color: var(--gold); }
 .torch-chip.dark { color: var(--danger); font-weight: 600; }
+
+/* Accepted-bounty progress in the dungeon side column */
+.bounty-chip { color: var(--uncommon); font-size: 0.85rem; }
+
+/* Omen draft cards in the gate-entry modal */
+.omen-list { display: grid; gap: 0.45rem; margin: 0.6rem 0; }

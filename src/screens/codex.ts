@@ -13,8 +13,10 @@ function specialText(s: Special | undefined): string {
       return `Drain: −${s.spPerTurn} SP per turn to target`;
     case "regen":
       return `Regeneration: +${s.hpPerRound} HP per round`;
+    case "blind":
+      return `Blind: soul-gaze dims a hero's eyes — −15% to hit for ${s.rounds} rounds`;
     case "breath":
-      return `Breath: hits the whole party for 8, once every 3 rounds`;
+      return `Breath: hits the whole party for ~${s.base}, once every ${s.everyRounds} rounds`;
   }
 }
 

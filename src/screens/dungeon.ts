@@ -8,6 +8,7 @@ import { DIR_VECS, MAP_W, bfsPath, cellId, idToXY, openDegree } from "../core/ma
 import { randInt } from "../core/rng";
 import { gateById } from "../data/gates";
 import { itemById } from "../data/items";
+import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
 import {
@@ -88,6 +89,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   let torchChip: HTMLElement | null = null; // side-column light readout, refreshed in drawView
+  let bountyChip: HTMLElement | null = null; // accepted-bounty progress, refreshed with the view
   function drawView(): void {
     const ag = ctx.state().activeGate;
     if (!ag || !viewCanvas.isConnected) return;
@@ -97,6 +99,12 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       const lit = isLit(ag);
       torchChip.textContent = lit ? `Torchlight holds for ${ag.lightTurns ?? LIGHT_PER_FLOOR} more steps` : "In the dark — things move between the flickers";
       torchChip.classList.toggle("dark", !lit);
+    }
+    if (bountyChip) {
+      const st = ctx.state();
+      const offer = st.bounties.offers.find((o) => bountyId(o) === st.bounties.active) ?? null;
+      bountyChip.textContent = offer ? `Bounty: ${offer.count} × ${offer.family} — slain ${Math.min(offer.kills, offer.count)}/${offer.count}` : "";
+      bountyChip.classList.toggle("muted", !offer);
     }
   }
 
@@ -901,6 +909,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       el("div", { class: "panel mini-card" },
         el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
         (torchChip = el("p", { class: "torch-chip muted" })),
+        (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,
         el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine · ◈ riddle — explored cells only; ▣ marks a rune-sealed wall" }),
       ),

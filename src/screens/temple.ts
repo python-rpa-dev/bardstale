@@ -2,7 +2,7 @@ import { el, button, bar, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { classById } from "../data/classes";
-import { pcMax } from "../state/save";
+import { pcMax, statusLabel } from "../state/save";
 import { TEMPLE, pay } from "../state/party";
 
 export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
@@ -57,7 +57,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                   ...pc.statuses.map((st) =>
                     el("span", {
                       class: `chip chip-${st.kind}`,
-                      text: `${st.kind === "poison" ? "Poison" : "Wound"} ${st.roundsLeft}`,
+                      text: `${statusLabel(st.kind)} ${st.roundsLeft}`,
                     }),
                   ),
                 )
@@ -124,7 +124,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                   },
                 }),
             button(`Cure Status — ${TEMPLE.cureCost} g`, {
-              hint: `Remove all poison and wounds for ${TEMPLE.cureCost} gold.`,
+              hint: `Cure every ailment — poison, wound, blind, burn — for ${TEMPLE.cureCost} gold.`,
               disabled: pc.statuses.length === 0 || affordable < TEMPLE.cureCost,
               onClick: () => {
                 let cured = false;

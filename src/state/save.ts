@@ -19,16 +19,19 @@ export interface Pc {
   points: number; // unallocated stat points (from level 2)
   alloc: { atk: number; def: number; dex: number; mnd: number };
   gear: { weapon?: string; armor?: string; trinket?: string }; // item ids
-  statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound)
+  statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound/blind/burn)
   boons?: string[]; // permanent level-up perk ids (see data/boons)
   boonQueue?: number; // level-ups whose boon pick is still owed
 }
 
 /** A lingering condition on a PC; rounds tick only during combat. */
 export interface StatusMark {
-  kind: "poison" | "wound";
+  kind: "poison" | "wound" | "blind" | "burn";
   roundsLeft: number;
 }
+
+/** Display name for a status kind ("blind" → "Blind"). */
+export const statusLabel = (kind: StatusMark["kind"]): string => kind[0].toUpperCase() + kind.slice(1);
 
 /** Effective maxima from class formula + growth + boons (gear handled separately). */
 export function pcMax(pc: Pc): { hp: number; sp: number } {
@@ -103,10 +106,12 @@ export interface Chronicle {
   battlesFled: number;
   partyWipes: number;
   deepestFloor: number; // deepest floor+1 ever reached on any run
+  bestHit: number; // biggest single PC hit ever dealt (synced from CombatState.bestHit)
+  crits: number; // lifetime critical hits landed by the party
 }
 
 export function emptyChronicle(): Chronicle {
-  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0 };
+  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0 };
 }
 
 // ---------- Root state ----------

@@ -92,6 +92,8 @@ export function claimVictory(d: GameState): VictorySummary | null {
     }
   }
   chron.battlesWon++;
+  chron.bestHit = Math.max(chron.bestHit ?? 0, cs.bestHit ?? 0); // fight ledger → lifetime record
+  chron.crits += cs.crits ?? 0;
 
   // elite kills guarantee an uncommon equipment drop (deterministic per fight/slot)
   const eliteLoot: string[] = [];

@@ -3,7 +3,7 @@
 import { el, button, modal, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { GATES, gateById, gateIndex } from "../data/gates";
-import { dayNumber, modifierForGate } from "../data/modifiers";
+import { dayNumber, modifierForGate, omensFor, type ModifierId } from "../data/modifiers";
 import { bountyId } from "../data/bounties";
 import { BESTIARY } from "../data/bestiary";
 import { describeRare, endExpedition, startExpedition } from "../state/expedition";
@@ -81,24 +81,35 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
         disabled: !!ag,
         onClick: () => {
           ctx.sfx.click();
+          const descend = (omenName: string | null, omenId?: ModifierId) => {
+            close();
+            ctx.commit((d) => startExpedition(d, g.id, omenId));
+            const n = ctx.state().activeGate?.runNumber ?? 1;
+            toast(omenName ? `Run #${n} begins under ${omenName}. Steel yourselves.` : `Run #${n} begins unbound. Steel yourselves.`);
+            ctx.sfx.descend();
+            ctx.navigate("#/dungeon");
+          };
+          const omens = omensFor(gateIndex(g.id), dayNumber(), runs + 1);
           const close = modal(
             `Enter ${g.name}?`,
             el("div", {},
               el("p", { text: `Monsters level ${g.levels[0]}–${g.levels[1]} · ${g.floors} floors · run #${runs + 1}.` }),
-              el("p", { class: "muted", text: mod.id === "none" ? "Fair Weather — no tricks below." : mod.rumor.replace("{gate}", g.name) }),
               bountyHere
                 ? el("p", {}, el("span", { class: "badge badge-mod", text: `Bounty here: ${bountyHere.count} × ${bountyHere.family} for ${bountyHere.gold} g` }))
                 : null,
+              el("p", { class: "muted", text: "Choose the omen you carry below — today's sign is among them, as the tavern promised." }),
+              el("div", { class: "omen-list" },
+                ...omens.map((o) =>
+                  button(o.id === "none" ? "Fair Weather — no tricks below" : `Descend under ${o.name}`, {
+                    hint: o.effect,
+                    onClick: () => descend(o.id === "none" ? null : o.name, o.id),
+                  }),
+                ),
+              ),
               el("div", { class: "modal-actions" },
-                button("Descend", {
-                  onClick: () => {
-                    close();
-                    ctx.commit((d) => startExpedition(d, g.id));
-                    const n = ctx.state().activeGate?.runNumber ?? 1;
-                    toast(`Run #${n} begins. Steel yourselves.`);
-                    ctx.sfx.descend();
-                    ctx.navigate("#/dungeon");
-                  },
+                button("Descend unbound — no omen", {
+                  hint: "Refuse every sign and trust plain steel.",
+                  onClick: () => descend(null),
                 }),
                 button("Not Yet", { onClick: () => close() }),
               ),

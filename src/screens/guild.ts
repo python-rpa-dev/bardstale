@@ -6,7 +6,7 @@ import { itemById } from "../data/items";
 import { useText } from "./shop";
 import { xpForNext, LEVEL_CAP } from "../data/progression";
 import type { Pc } from "../state/save";
-import { pcMax } from "../state/save";
+import { pcMax, statusLabel } from "../state/save";
 import {
   effectiveStats,
   equipFromInventory,
@@ -26,7 +26,7 @@ function statusChips(pc: Pc): HTMLElement {
     "div",
     { class: "status-chips" },
     ...pc.statuses.map((s) =>
-      el("span", { class: `chip chip-${s.kind}`, text: `${s.kind === "poison" ? "Poison" : "Wound"} ${s.roundsLeft}` }),
+      el("span", { class: `chip chip-${s.kind}`, text: `${statusLabel(s.kind)} ${s.roundsLeft}` }),
     ),
   );
 }

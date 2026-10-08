@@ -6,7 +6,8 @@ export type Special =
   | { kind: "poison"; dex: number; rounds: number } // spider: −1 DEX, 5 rounds on target
   | { kind: "drain"; spPerTurn: number } // wraith: −3 SP/turn to target
   | { kind: "regen"; hpPerRound: number } // troll: +3 HP/round
-  | { kind: "breath"; base: number; everyRounds: number }; // wyrm-whelp: all PCs, MND-equivalent 8, once / 3 rounds
+  | { kind: "breath"; base: number; everyRounds: number } // wyrm-whelp: all PCs, MND-equivalent 8, once / 3 rounds; also sets them burning (2 rounds, see core/combat.ts)
+  | { kind: "blind"; rounds: number }; // ash-wight: soul-gaze dims the eyes — −15% to hit for N rounds
 
 export interface MonsterDef {
   id: string;
@@ -39,7 +40,7 @@ export const BESTIARY: MonsterDef[] = [
   { id: "bog-troll", lvl: 8, hp: 74, atk: 18, def: 12, dex: 6, mr: 4, xp: 70, gold: [18, 44], family: "giant", special: { kind: "regen", hpPerRound: 2 } },
   { id: "cinder-spider", lvl: 10, hp: 64, atk: 22, def: 9, dex: 14, mr: 5, xp: 88, gold: [16, 38], family: "vermin", special: { kind: "poison", dex: -2, rounds: 5 } },
   { id: "ash-guardian", lvl: 11, hp: 105, atk: 25, def: 15, dex: 8, mr: 8, xp: 110, gold: [30, 64], family: "humanoid" },
-  { id: "ash-wight", lvl: 13, hp: 88, atk: 24, def: 10, dex: 10, mr: 11, xp: 118, gold: [26, 56], family: "undead", special: { kind: "drain", spPerTurn: 3 } },
+  { id: "ash-wight", lvl: 13, hp: 88, atk: 24, def: 10, dex: 10, mr: 11, xp: 118, gold: [26, 56], family: "undead", special: { kind: "blind", rounds: 3 } },
   // gate lords — final-floor guardians (see gates.ts); never roll in random encounters
   { id: "bark-thrall", lvl: 5, hp: 60, atk: 13, def: 9, dex: 6, mr: 4, xp: 55, gold: [25, 55], family: "giant", boss: true },
   { id: "cloister-lich", lvl: 8, hp: 55, atk: 15, def: 8, dex: 7, mr: 12, xp: 70, gold: [30, 70], family: "undead", special: { kind: "drain", spPerTurn: 4 }, boss: true },

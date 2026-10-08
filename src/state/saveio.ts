@@ -69,7 +69,7 @@ function parsePc(raw: Record<string, unknown>): Pc | null {
   if (Array.isArray(raw.statuses)) {
     for (const mark of raw.statuses) {
       if (!isObj(mark)) continue;
-      const kind = mark.kind === "poison" || mark.kind === "wound" ? mark.kind : null;
+      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" ? mark.kind : null;
       if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
     }
   }
@@ -172,6 +172,8 @@ export function importSave(raw: string): ImportResult {
     battlesFled: nonNeg(rc.battlesFled),
     partyWipes: nonNeg(rc.partyWipes),
     deepestFloor: nonNeg(rc.deepestFloor),
+    bestHit: nonNeg(rc.bestHit),
+    crits: nonNeg(rc.crits),
   };
 
   const rs = isObj(parsed.settings) ? parsed.settings : {};

@@ -43,6 +43,21 @@ describe("importSave", () => {
     if (res.ok) expect(res.state).toEqual(s);
   });
 
+  it("round-trips riddle stones and rune-seal doors through import", () => {
+    const s = okState();
+    const gate = sampleGate(s.party.map((p) => ({ id: p.id, hp: p.hp, sp: p.sp })));
+    gate.map.entities = [[12, "stairs"], [23, "riddle"], [43, "sealed"]];
+    gate.flags["sealed-f2"] = true;
+    s.activeGate = gate;
+    const res = importSave(serialize(s));
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      // unknown-but-legal kinds must survive verbatim — dropping them would erase the encounter mid-run
+      expect(res.state.activeGate?.map.entities).toEqual([[12, "stairs"], [23, "riddle"], [43, "sealed"]]);
+      expect(res.state.activeGate?.flags["sealed-f2"]).toBe(true);
+    }
+  });
+
   it("preserves boons and clamps a forged boonQueue to levels earned", () => {
     const s = okState();
     s.party[0].boons = ["iron-vitality", "killer-instinct"];

@@ -69,7 +69,7 @@ export interface FloorMapSave {
   w: number;
   h: number;
   cells: string; // row-major "0"/"1", 1 = wall
-  entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret")
+  entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret"|"riddle"|"sealed")
 }
 
 /** One-off expedition event rolled at run start (8% chance). */

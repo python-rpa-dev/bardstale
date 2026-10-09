@@ -11,6 +11,7 @@ import { itemById } from "../data/items";
 import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
+import { earn } from "../state/party";
 import {
   activeBountyFamily,
   answerRiddle,
@@ -29,7 +30,7 @@ import {
   stepRng,
   trySeal,
   type SealOutcome,
-  LIGHT_PER_FLOOR, encounterChance, isLit,
+  LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal,
 } from "../state/expedition";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
@@ -173,6 +174,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     avoided?: string; // trap detected and stilled before springing
     finished?: { loot: { gold: number; items: Record<string, number> }; gateName: string };
     boss?: string; // gate lord stirred on the final floor — display name
+    revealed?: string[]; // witchlight uncovered hidden entities near the flame this move
   }
 
   /** One grid step in the facing direction (or straight back). Traps spring and encounters roll here. */
@@ -229,7 +231,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
-      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag))) {
+      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke)) {
         const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
         if (elite !== null) ag.pendingElites = [elite];
@@ -241,6 +243,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         });
         out.encounter = [...counts].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label));
       }
+
+      // Witchlight marks hidden walls, traps and sealed doors near the flame — no Look needed.
+      const uncovered = witchReveal(ag);
+      if (uncovered.length) out.revealed = uncovered;
 
       if (kind === "stairs") {
         if (ag.floor + 1 >= def.floors) out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
@@ -261,6 +267,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.encounter) ctx.sfx.encounter(); // foes drop in before the screen flips
     else if (out.boss) ctx.sfx.encounter();
     if (out.descended) ctx.sfx.descend();
+    if (out.revealed?.length) {
+      const names = out.revealed.map((k) => (k === "secret" ? "a hidden alcove" : k === "trap" ? "a concealed trap" : "a rune-sealed door"));
+      log(`The witchlight's cold glow uncovers ${names.join(", ")}.`);
+    }
     return out;
   }
 
@@ -322,7 +332,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           lastLookCell = -1;
           const rng = stepRng(ag);
           const gold = randInt(rng, 6 + ag.floor * 4, 12 + ag.floor * 8);
-          d.gold += gold; // expedition gold is safe from a wipe — only unclaimed items are forfeited
+          earn(d, gold); // expedition gold is safe from a wipe — only unclaimed items are forfeited
           ag.loot.gold += gold;
           msgs.push(`The chest yields ${gold} gold.`);
           sfxKinds.push("chest", "coin");
@@ -658,7 +668,14 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                     const ag = d.activeGate;
                     if (ag) {
                       ag.lightTurns = (ag.lightTurns ?? LIGHT_PER_FLOOR) + def.use.amount;
-                      toast("Your torch catches. The dark falls back a step.");
+                      ag.torchKind = def.id; // the run's flame keeps this kind's perk while lit
+                      toast(
+                        def.use.smoke
+                          ? "Tallow spits greasy smoke. The dark leans back, half-blind."
+                          : def.use.reveal
+                            ? "A cold witchlight blooms. Hidden things squirm under it."
+                            : "Your torch catches. The dark falls back a step.",
+                      );
                     }
                   }
                 });

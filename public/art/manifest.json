@@ -55,6 +55,9 @@
     "item.wyrmscale-mail": { "file": "art/items/wyrmscale-mail.svg", "w": 32, "h": 32 },
     "item.ember-sigil": { "file": "art/items/ember-sigil.svg", "w": 32, "h": 32 },
     "item.potion-greater-hp": { "file": "art/items/potion-greater-hp.svg", "w": 32, "h": 32 },
+    "item.torch": { "file": "art/items/torch.svg", "w": 32, "h": 32 },
+    "item.tallow-torch": { "file": "art/items/tallow-torch.svg", "w": 32, "h": 32 },
+    "item.witchlight": { "file": "art/items/witchlight.svg", "w": 32, "h": 32 },
     "wall.fen": { "file": "art/walls/fen.svg", "w": 64, "h": 64 },
     "wall.ember": { "file": "art/walls/ember.svg", "w": 64, "h": 64 }
   }

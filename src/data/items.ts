@@ -11,7 +11,9 @@ export interface ItemDef {
   /** Equipped-item stat deltas (weapon/armor/trinket). */
   bonus?: Partial<{ atk: number; def: number; dex: number; mnd: number }>;
   critChanceBonus?: number; // lucky-charm: +6% (fraction)
-  use?: { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal" | "light"; amount: number };
+  use?:
+    | { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal"; amount: number }
+    | { kind: "light"; amount: number; smoke?: boolean; reveal?: number };
 }
 
 export const ITEMS: ItemDef[] = [
@@ -35,7 +37,15 @@ export const ITEMS: ItemDef[] = [
   { id: "ember-sigil", name: "Ember Sigil", slot: "trinket", price: 200, rarity: "rare", bonus: { atk: 2, mnd: 2 } },
   { id: "potion-greater-hp", name: "Greater Health Potion", slot: "consumable", price: 75, rarity: "uncommon", use: { kind: "restore-hp", amount: 60 } },
   { id: "torch", name: "Torch", slot: "consumable", price: 12, rarity: "common", use: { kind: "light", amount: 40 } },
+  { id: "tallow-torch", name: "Tallow Torch", slot: "consumable", price: 26, rarity: "common", use: { kind: "light", amount: 60, smoke: true } },
+  { id: "witchlight", name: "Witchlight", slot: "consumable", price: 34, rarity: "uncommon", use: { kind: "light", amount: 45, reveal: 2 } },
 ];
+
+/** Career gold (chronicle) the merchant requires before stocking rare wares. Pure for tests. */
+export const RARE_UNLOCK_GOLD = 300;
+export function rareUnlocked(goldEarned: number): boolean {
+  return goldEarned >= RARE_UNLOCK_GOLD;
+}
 
 export function itemById(id: string): ItemDef {
   const def = ITEMS.find((i) => i.id === id);

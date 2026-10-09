@@ -10,6 +10,7 @@ import { dayNumber, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
 import { emptyChronicle, pcMax } from "./save";
 import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
+import { earn } from "./party";
 
 /** Per-floor rng seed derived from the run seed. */
 export function floorSeed(runSeed: number, floor: number): number {
@@ -24,9 +25,40 @@ export function isLit(ag: ActiveGate): boolean {
   return ag.lightTurns === undefined || ag.lightTurns > 0;
 }
 
-/** Encounter odds on open corridor cells; the dark emboldens foes. Pure for tests. */
-export function encounterChance(lit: boolean): number {
-  return lit ? 0.18 : 0.26;
+/** Encounter odds on open corridor cells; the dark emboldens foes. Tallow smoke (while lit) dulls them ~10%. Pure for tests. */
+export function encounterChance(lit: boolean, smoke = false): number {
+  if (!lit) return 0.26;
+  return smoke ? 0.18 * 0.9 : 0.18;
+}
+
+/** Perks of the run's current torch kind (tallow smokes, witchlight reveals). Pure for tests. */
+export function lightMods(ag: ActiveGate): { smoke: boolean; reveal: number } {
+  const def = ag.torchKind ? ITEMS.find((i) => i.id === ag.torchKind) : undefined;
+  const u = def?.use;
+  if (u?.kind !== "light") return { smoke: false, reveal: 0 };
+  return { smoke: !!u.smoke, reveal: u.reveal ?? 0 };
+}
+
+/**
+ * Witchlight's cold glow marks hidden secret walls, traps and sealed doors within its radius
+ * (Chebyshev) as explored — glyphs appear on the minimap without a Look. Once per cell per run;
+ * returns the kinds newly uncovered so the screen can log them. Mutates visited + flags in place.
+ */
+export function witchReveal(ag: ActiveGate): EntityKind[] {
+  const mods = lightMods(ag);
+  if (!isLit(ag) || mods.reveal <= 0) return [];
+  const found: EntityKind[] = [];
+  for (const [id, kind] of ag.map.entities) {
+    if (kind !== "secret" && kind !== "trap" && kind !== "sealed") continue;
+    const ex = id % MAP_W;
+    const ey = Math.floor(id / MAP_W);
+    if (Math.max(Math.abs(ex - ag.pos.x), Math.abs(ey - ag.pos.y)) > mods.reveal) continue;
+    if (ag.flags[`witch-${id}`]) continue;
+    ag.flags[`witch-${id}`] = true;
+    if (!ag.visited.includes(id)) ag.visited.push(id);
+    found.push(kind);
+  }
+  return found;
 }
 
 export function toFloorSave(gen: GeneratedFloor): FloorMapSave {
@@ -92,6 +124,7 @@ export function startExpedition(s: GameState, gateId: string, omen?: ModifierId)
     flags: {},
     steps: 0,
     lightTurns: LIGHT_PER_FLOOR, // the first torch is struck at the threshold
+    torchKind: "torch",
     loot: { gold: 0, items: {} },
   };
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
@@ -210,6 +243,7 @@ export function campTrophy(d: GameState): { gold: number; ambush: MonsterDef[] |
   if (ag.flags[`trophy-f${ag.floor}`]) return { gold: 0, ambush: null };
   ag.flags[`trophy-f${ag.floor}`] = true;
   const gold = 12 * (ag.floor + 1);
+  earn(d, gold); // trophy gold lands in the purse on the spot — loot tally mirrors it for the summary
   ag.loot.gold += gold;
   if (stepRng(ag)() < 0.6) {
     const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
@@ -231,6 +265,7 @@ export function answerRiddle(d: GameState, pickIndex: number): { correct: boolea
   const view = riddleFor(ag.seed, ag.floor);
   if (pickIndex === view.correctAt) {
     const gold = 18 * (ag.floor + 1);
+    earn(d, gold); // riddle gold lands in the purse on the spot
     ag.loot.gold += gold;
     return { correct: true, gold, ambush: null };
   }
@@ -267,6 +302,7 @@ export function trySeal(d: GameState, guess: string[]): SealOutcome {
       ag.map.entities = ag.map.entities.filter(([id]) => id !== door[0]);
     }
     const gold = 25 * (ag.floor + 1);
+    earn(d, gold); // seal gold lands in the purse on the spot
     ag.loot.gold += gold;
     const rng = stepRng(ag);
     const stash = ITEMS.filter((it) => it.rarity !== "common" && it.slot !== "consumable");

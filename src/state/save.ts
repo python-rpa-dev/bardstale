@@ -97,6 +97,7 @@ export interface ActiveGate {
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
   pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
   lightTurns?: number; // steps of torchlight left on this floor; absent (legacy) reads as lit
+  torchKind?: string; // id of the last light item used this run — tallow smoke / witchlight reveal perks
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 
@@ -108,10 +109,11 @@ export interface Chronicle {
   deepestFloor: number; // deepest floor+1 ever reached on any run
   bestHit: number; // biggest single PC hit ever dealt (synced from CombatState.bestHit)
   crits: number; // lifetime critical hits landed by the party
+  goldEarned: number; // lifetime gold taken into the purse (career earnings)
 }
 
 export function emptyChronicle(): Chronicle {
-  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0 };
+  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0, goldEarned: 0 };
 }
 
 // ---------- Root state ----------
@@ -249,6 +251,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
       s.chronicle ??= emptyChronicle(); // v1 saves predate the chronicle
+      s.chronicle.goldEarned ??= 0; // chronicles predate the career-gold stat
       s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);

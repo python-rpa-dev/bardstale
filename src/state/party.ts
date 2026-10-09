@@ -2,7 +2,7 @@ import { classById, RECRUIT_COST, type ClassId } from "../data/classes";
 import { itemById } from "../data/items";
 import { xpForNext, LEVEL_CAP } from "../data/progression";
 import { boonById } from "../data/boons";
-import { pcBase, pcMax, makePc, type GameState, type Pc } from "./save";
+import { pcBase, pcMax, makePc, emptyChronicle, type GameState, type Pc } from "./save";
 
 export interface EffectiveStats {
   atk: number;
@@ -115,6 +115,13 @@ export function pay(state: GameState, cost: number): boolean {
   if (state.gold < cost) return false;
   state.gold -= cost;
   return true;
+}
+/** Income chokepoint: every coin earned lands in the purse AND the chronicle's career tally. */
+export function earn(state: GameState, amount: number): void {
+  const g = Math.floor(amount);
+  if (g <= 0) return;
+  state.gold += g;
+  (state.chronicle ??= emptyChronicle()).goldEarned += g;
 }
 
 

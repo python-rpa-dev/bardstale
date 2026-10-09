@@ -174,6 +174,7 @@ export function importSave(raw: string): ImportResult {
     deepestFloor: nonNeg(rc.deepestFloor),
     bestHit: nonNeg(rc.bestHit),
     crits: nonNeg(rc.crits),
+    goldEarned: nonNeg(rc.goldEarned),
   };
 
   const rs = isObj(parsed.settings) ? parsed.settings : {};

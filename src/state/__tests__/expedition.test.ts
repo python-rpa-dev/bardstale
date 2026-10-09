@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { makePc, newGame, pcMax } from "../save";
-import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -456,5 +456,104 @@ describe("torchlight", () => {
   it("the dark emboldens foes: 0.18 lit vs 0.26 unlit", () => {
     expect(encounterChance(true)).toBe(0.18);
     expect(encounterChance(false)).toBe(0.26);
+  });
+});
+
+// ---------- torch quality tiers + career gold (torch/shop batch) ----------
+
+describe("torch quality tiers", () => {
+  it("tallow smoke dulls lit encounter odds by a tenth; the dark is untouched", () => {
+    expect(encounterChance(true)).toBe(0.18);
+    expect(encounterChance(false, true)).toBe(0.26); // smoke means nothing in pitch dark
+    expect(encounterChance(true, true)).toBeLessThan(encounterChance(true));
+    expect(encounterChance(true, true)).toBeCloseTo(0.18 * 0.9, 10);
+  });
+
+  it("lightMods reads perks off the run's torch kind; absent or unknown kinds have none", () => {
+    const ag = gateFor(7);
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 }); // plain flame by default
+    ag.torchKind = "torch";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 });
+    ag.torchKind = "tallow-torch";
+    expect(lightMods(ag)).toEqual({ smoke: true, reveal: 0 });
+    ag.torchKind = "witchlight";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 2 });
+    ag.torchKind = "not-an-item";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 });
+  });
+
+  it("witchlight marks hidden entities within radius 2 explored — once per cell", () => {
+    const ag = gateFor(7); // pos (10,11) on a 21-wide grid → cell 241
+    const near = 11 * 21 + 12; // (12,11): Chebyshev distance 2 — inside the glow
+    const far = 8 * 21 + 15; // (15,8): distance 5 — outside it
+    ag.map.entities = [
+      [near, "trap"],
+      [far, "secret"],
+      [241, "sealed"],
+    ];
+    ag.lightTurns = 5;
+    ag.torchKind = "witchlight";
+    const found = witchReveal(ag);
+    expect(found).toContain("trap");
+    expect(found).toContain("sealed");
+    expect(found).not.toContain("secret"); // out of radius stays hidden
+    expect(ag.visited).toContain(near);
+    expect(ag.visited).not.toContain(far);
+    expect(witchReveal(ag)).toEqual([]); // once per cell — no re-logging
+  });
+
+  it("witchlight does nothing once the flame is out", () => {
+    const ag = gateFor(7);
+    ag.torchKind = "witchlight";
+    ag.lightTurns = 0;
+    ag.map.entities = [[243, "trap"]]; // a cell not already in the starting visited set
+    expect(witchReveal(ag)).toEqual([]);
+    expect(ag.visited).not.toContain(243);
+  });
+
+  it("tallow and witchlight carry the documented payloads", () => {
+    expect(itemById("tallow-torch").use).toEqual({ kind: "light", amount: 60, smoke: true });
+    expect(itemById("witchlight").use).toEqual({ kind: "light", amount: 45, reveal: 2 });
+  });
+});
+
+describe("camp windfalls land in the purse (income regression)", () => {
+  it("trophy gold hits d.gold and the chronicle once per floor", () => {
+    const s = runState(7);
+    const g0 = s.gold;
+    const r = campTrophy(s);
+    expect(r.gold).toBeGreaterThan(0);
+    expect(s.gold).toBe(g0 + r.gold);
+    expect(s.chronicle!.goldEarned).toBe(r.gold);
+  });
+
+  it("riddle gold hits the purse", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const view = riddleFor(ag.seed, ag.floor);
+    const g0 = s.gold;
+    expect(answerRiddle(s, view.correctAt).correct).toBe(true);
+    expect(s.gold).toBe(g0 + 18 * (ag.floor + 1));
+  });
+
+  it("seal gold hits the purse", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const { solution } = sealPuzzle(ag.seed, ag.floor);
+    const g0 = s.gold;
+    expect(trySeal(s, [...solution]).solved).toBe(true);
+    expect(s.gold).toBe(g0 + 25 * (ag.floor + 1));
+  });
+});
+
+describe("torch kind lifecycle", () => {
+  it("a fresh run strikes a plain torch; descending keeps an upgraded flame", () => {
+    const s = newGame(clock);
+    startExpedition(s, "hollow-roots");
+    expect(s.activeGate!.torchKind).toBe("torch"); // the threshold torch is the cheap one
+    s.activeGate!.torchKind = "witchlight";
+    descendFloor(s);
+    expect(s.activeGate!.torchKind).toBe("witchlight"); // the perk survives the new floor
+    expect(s.activeGate!.lightTurns).toBe(LIGHT_PER_FLOOR); // but the flame is re-struck fresh
   });
 });

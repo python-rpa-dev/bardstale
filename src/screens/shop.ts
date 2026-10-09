@@ -1,8 +1,8 @@
 import { el, button } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
-import { ITEMS, itemById, sellPrice, type ItemDef } from "../data/items";
-import { pay } from "../state/party";
+import { ITEMS, itemById, rareUnlocked, RARE_UNLOCK_GOLD, sellPrice, type ItemDef } from "../data/items";
+import { pay, earn } from "../state/party";
 
 export function useText(def: ItemDef): string {
   const u = def.use!;
@@ -15,8 +15,10 @@ export function useText(def: ItemDef): string {
       return `+${u.amount} ATK for this combat`;
     case "party-heal":
       return `Heals the whole party for ${u.amount} HP each`;
-    case "light":
-      return `Lights your way for ${u.amount} more steps`;
+    case "light": {
+      const perk = u.smoke ? " Greasy smoke dulls ambushes while lit." : u.reveal ? ` Cold light uncovers hidden things within ${u.reveal}.` : "";
+      return `Lights your way for ${u.amount} more steps.${perk}`;
+    }
   }
 }
 
@@ -35,29 +37,32 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
     el(
       "div",
       { class: "shop-grid" },
-      ...ITEMS.map((def) =>
-        el(
+      ...ITEMS.map((def) => {
+        const locked = def.rarity === "rare" && !rareUnlocked(s.chronicle?.goldEarned ?? 0);
+        return el(
           "div",
-          { class: "shop-card" },
+          { class: locked ? "shop-card locked" : "shop-card" },
           slotImg(`item.${def.id}`, 32),
           el("span", { class: `item-name rar-${def.rarity}`, text: def.name }),
           el("span", { class: "muted", text: effectText(def) }),
           el("span", { class: "price", text: `${def.price} g` }),
-          button("Buy", {
-            hint: `Buy ${def.name} (${effectText(def)}) for ${def.price} gold.`,
-            disabled: s.gold < def.price,
-            onClick: () => {
-              let paid = false;
-              ctx.commit((st) => {
-                paid = pay(st, def.price);
-                if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
-              });
-              if (paid) ctx.sfx.coin();
-              ctx.refresh();
-            },
-          }),
-        ),
-      ),
+          locked
+            ? el("span", { class: "muted lock-line", text: `Locked — earn ${RARE_UNLOCK_GOLD} career gold to trade rare wares.` })
+            : button("Buy", {
+                hint: `Buy ${def.name} (${effectText(def)}) for ${def.price} gold.`,
+                disabled: s.gold < def.price,
+                onClick: () => {
+                  let paid = false;
+                  ctx.commit((st) => {
+                    paid = pay(st, def.price);
+                    if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
+                  });
+                  if (paid) ctx.sfx.coin();
+                  ctx.refresh();
+                },
+              }),
+        );
+      }),
     ),
   );
 
@@ -83,7 +88,7 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
                   ctx.commit((st) => {
                     st.inventory[iid] = (st.inventory[iid] ?? 0) - 1;
                     if ((st.inventory[iid] ?? 0) <= 0) delete st.inventory[iid];
-                    st.gold += sellPrice(def);
+                    earn(st, sellPrice(def));
                   });
                   ctx.sfx.coin();
                   ctx.refresh();

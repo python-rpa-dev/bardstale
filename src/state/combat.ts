@@ -8,7 +8,7 @@ import { bountyId } from "../data/bounties";
 import { gateById } from "../data/gates";
 import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
-import { applyXpToPc } from "./party";
+import { applyXpToPc, earn } from "./party";
 import { endExpedition } from "./expedition";
 import { emptyChronicle } from "./save";
 import type { GameState } from "./save";
@@ -74,8 +74,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
     if (res.levels > 0) levelsByPc[pcId] = res.levels;
   }
 
-  // combat gold is claimed immediately, like chest gold — safe from a wipe
-  d.gold += v.gold;
+  earn(d, v.gold); // combat gold is claimed immediately, like chest gold — safe from a wipe
   if (d.activeGate) d.activeGate.loot.gold += v.gold;
 
   // codex stamps → family medals when a page set completes
@@ -119,7 +118,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
         offer.done = true;
         let payout = offer.gold;
         if (d.medals.includes("vermin")) payout = Math.floor(payout * 1.1); // vermin medal: +10% bounty gold
-        d.gold += payout;
+        earn(d, payout);
         d.bounties.completed.push(activeId);
         d.bounties.active = undefined;
         bountyDone = { family: offer.family, gold: payout };

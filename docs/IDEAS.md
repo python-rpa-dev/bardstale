@@ -18,8 +18,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 - **Daily Challenge mode** (M) — a gate card locked to `dailySeed(today)` shared by all players,
   local best-score board, shareable result string ("HV-2026-10-08 #7: 3F/41 kills/912 g").
   Hooks: `dailySeed` exists; settings export/download UI is half-built.
-- **Trophy economy** (S–M) — each gate lord drops a trophy granting a town-wide buff, displayed in
-  the Guild; extends the existing camp "take a trophy" action into medal-style perks.
+- **Trophy economy** — shipped; see the gate-lord trophies line under Run structure & economy in FEATURES.
 - **Quest chains** (L) — 2–3 step quests layered on the bounty board (recover X from gate A,
   deliver to NPC Y). Extends `data/bounties.ts` offer shape with item/flag objectives; biggest
   content win per line of code after gates.

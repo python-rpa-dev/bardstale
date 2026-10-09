@@ -165,6 +165,7 @@ export interface GameState {
   inventory: Inventory;
   codex: string[]; // stamped bestiary ids
   medals: string[]; // family ids with completed codex
+  trophies?: string[]; // gate ids whose lord's trophy is raised — permanent town-wide perks
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count

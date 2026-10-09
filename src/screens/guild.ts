@@ -8,6 +8,7 @@ import { xpForNext, LEVEL_CAP } from "../data/progression";
 import type { GameState, Pc } from "../state/save";
 import { pcMax, statusLabel } from "../state/save";
 import { GATES } from "../data/gates";
+import { TROPHIES } from "../data/trophies";
 import {
   effectiveStats,
   equipFromInventory,
@@ -221,6 +222,26 @@ function hallShelf(s: GameState): HTMLElement {
   return wrap;
 }
 
+function trophyShelf(s: GameState): HTMLElement {
+  const wrap = el("div", { class: "hall" });
+  const owned = s.trophies ?? [];
+  wrap.append(el("h2", { text: "Trophy Shelf" }));
+  wrap.append(el("p", { class: "muted", text: `${owned.length} of ${TROPHIES.length} gate-lord trophies raised — each a standing boon to Hollow Vale.` }));
+  for (const t of TROPHIES) {
+    const got = owned.includes(t.gateId);
+    const gateName = GATES.find((g) => g.id === t.gateId)?.name ?? t.gateId;
+    wrap.append(
+      el(
+        "div",
+        { class: `hall-row${got ? "" : " muted"}` },
+        el("b", { text: got ? t.name : `${gateName} — lord unslain` }),
+        el("span", { class: "muted", text: got ? ` ${t.blurb}` : ` Fell the ${t.lord.replace(/-/g, " ")} to claim this shelf.` }),
+      ),
+    );
+  }
+  return wrap;
+}
+
 export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
   if (selectedId && !s.party.some((p) => p.id === selectedId)) selectedId = null;
@@ -252,4 +273,5 @@ export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
     button("← Town", { hint: "Back to the town square", onClick: () => ctx.navigate("#/town") }),
   );
   host.append(hallShelf(s));
+  host.append(trophyShelf(s));
 }

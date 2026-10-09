@@ -3,6 +3,7 @@ import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { itemById, rareUnlocked, RARE_UNLOCK_GOLD, sellPrice, stallPrice, stallStock, STALLS, type ItemDef } from "../data/items";
 import { pay, earn } from "../state/party";
+import { perkMult } from "../data/trophies";
 
 export function useText(def: ItemDef): string {
   const u = def.use!;
@@ -33,7 +34,7 @@ export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
   const stocks = STALLS.map((_, i) => stallStock(s.dayKey, i));
   const card = (def: ItemDef, stallIndex: number) => {
-    const price = stallPrice(def, stocks[1 - stallIndex]);
+    const price = Math.floor(stallPrice(def, stocks[1 - stallIndex]) * perkMult(s.trophies, "shop")); // Wyrm Hoard: the Row haggles for you
     const deal = price < def.price;
     const locked = def.rarity === "rare" && !rareUnlocked(s.chronicle?.goldEarned ?? 0);
     return el(

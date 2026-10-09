@@ -233,6 +233,7 @@ export function importSave(raw: string): ImportResult {
     inventory,
     codex: Array.isArray(parsed.codex) ? parsed.codex.filter(str) : [],
     medals: Array.isArray(parsed.medals) ? parsed.medals.filter(str) : [],
+    ...(Array.isArray(parsed.trophies) && parsed.trophies.length ? { trophies: parsed.trophies.filter(str) } : {}), // trophy perks survive a round-trip
     bounties: {
       offers,
       completed: parsed.bounties.completed.filter(str),

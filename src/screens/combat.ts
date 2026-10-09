@@ -8,6 +8,7 @@ import { ITEMS } from "../data/items";
 import { pcMax } from "../state/save";
 import { spellsKnownAt } from "../data/spells";
 import { medalForFamily } from "../data/medals";
+import { TROPHIES } from "../data/trophies";
 import {
   foeAct,
   foeDef,
@@ -291,6 +292,13 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
               ctx.sfx.coin();
             }
             if (summary?.eliteLoot?.length) toast(`Elite loot: ${summary.eliteLoot.join(", ")}!`);
+            for (const gid of summary?.trophies ?? []) {
+              const t = TROPHIES.find((x) => x.gateId === gid);
+              if (t) {
+                toast(`${t.name} raised! ${t.blurb}`);
+                ctx.sfx.fanfare();
+              }
+            }
             for (const fam of summary?.newMedals ?? []) {
               const med = medalForFamily(fam);
               modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));

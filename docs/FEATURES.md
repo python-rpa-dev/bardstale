@@ -39,6 +39,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 - Level-up boons: deterministic 7-boon offers that never repeat while fresh ones remain; camp actions Rest / Scout / Trophy once per floor with shared 35% ambush risk.
 - One wallet (purse + bank merged; v1 saves migrate automatically); every gold inflow — victory, bounty, chest, camp windfall — flows through a single `earn()` chokepoint that feeds the chronicle.
+- Gate-lord trophies: each of the five lords drops its trophy on the first kill, displayed on the Guild's Trophy Shelf with a permanent town-wide perk — temple healing −25%, revives −40%, bounty payouts +30% (stacks with medals), Merchants' Row prices −20%, hearth brewing −30%.
 - Critical-HP pulse with a once-per-run hint toward shrines and temple; the defeat modal shows your heroes' closing fight lines.
 
 ## Presentation

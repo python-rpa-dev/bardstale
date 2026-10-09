@@ -2,7 +2,7 @@ import { el, button, bar, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { itemById, RECIPES } from "../data/items";
-import { brewPotion } from "../state/tavern";
+import { brewPotion, brewCoinFor } from "../state/tavern";
 import { BESTIARY, type Family } from "../data/bestiary";
 import { bountyId } from "../data/bounties";
 import { GATES, gateById, gateIndex } from "../data/gates";
@@ -87,15 +87,16 @@ export function renderTavern(host: HTMLElement, ctx: RouteCtx): void {
   );
   for (const r of RECIPES) {
     const out = itemById(r.out);
+    const coin = brewCoinFor(s, r.gold); // Ashbrand keeps the kettle fuel cheap
     host.append(
       el(
         "div",
         { class: "shop-row" },
         el("span", { text: out.name }),
-        el("span", { class: "muted", text: `${r.herbs} sprigs + ${r.gold} g` }),
+        el("span", { class: "muted", text: `${r.herbs} sprigs + ${coin} g` }),
         button("Brew", {
           hint: `Bottle one ${out.name} (buys for ${out.price} g) from shrine herbs and kettle fuel.`,
-          disabled: herbs < r.herbs || s.gold < r.gold,
+          disabled: herbs < r.herbs || s.gold < coin,
           onClick: () => {
             ctx.commit((st) => brewPotion(st, r.out));
             ctx.sfx.coin();

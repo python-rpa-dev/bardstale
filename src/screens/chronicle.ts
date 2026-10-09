@@ -40,6 +40,7 @@ export function renderChronicle(host: HTMLElement, ctx: RouteCtx): void {
     deed("Expeditions begun", expeditions),
     deed("Bounties completed", s.bounties.completed.length),
     deed("Medals earned", s.medals.length),
+    deed("Trophies raised", s.trophies?.length ?? 0),
   );
 
   const kills = Object.entries(c.killsByFoe)

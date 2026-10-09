@@ -4,15 +4,18 @@ import { slotImg } from "../render/art";
 import { classById } from "../data/classes";
 import { pcMax, statusLabel } from "../state/save";
 import { TEMPLE, pay } from "../state/party";
+import { perkMult } from "../data/trophies";
 
 export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
+  const healMult = perkMult(s.trophies, "heal"); // Heartwood Trophy: temple healing −25%
+  const reviveFee = Math.floor(TEMPLE.reviveCost * perkMult(s.trophies, "revive")); // Bone Reliquary: revives −40%
   host.append(
     el("h1", { text: "Temple of the Quiet Light" }),
     el("p", { class: "muted quote", text: "Your heroes never die forever." }),
     (() => {
       const hurt = s.party.filter((p) => p.hp > 0 && p.hp < pcMax(p).hp);
-      const total = hurt.reduce((n, p) => n + TEMPLE.healCost(p), 0);
+      const total = hurt.reduce((n, p) => n + Math.floor(TEMPLE.healCost(p) * healMult), 0);
       return button(hurt.length ? `Heal All — ${total} g` : "Heal All", {
         hint: hurt.length
           ? `Restore the HP of all ${hurt.length} wounded heroes for ${total} gold.`
@@ -38,7 +41,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
       ...s.party.map((pc) => {
         const max = pcMax(pc);
         const downed = pc.hp <= 0;
-        const healCost = TEMPLE.healCost(pc);
+        const healCost = Math.floor(TEMPLE.healCost(pc) * healMult);
         const affordable = s.gold;
         return el(
           "div",
@@ -86,14 +89,14 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                       ctx.refresh();
                     },
                   })
-                : button(`Revive — ${TEMPLE.reviveCost} g`, {
-                    hint: `Restore to 1 HP for ${TEMPLE.reviveCost} gold.`,
-                    disabled: affordable < TEMPLE.reviveCost,
+                : button(`Revive — ${reviveFee} g`, {
+                    hint: `Restore to 1 HP for ${reviveFee} gold.`,
+                    disabled: affordable < reviveFee,
                     onClick: () => {
                       let revived = false;
                       ctx.commit((st) => {
                         const p = st.party.find((x) => x.id === pc.id);
-                        if (p && pay(st, TEMPLE.reviveCost)) {
+                        if (p && pay(st, reviveFee)) {
                           p.hp = 1;
                           revived = true;
                         }
@@ -105,7 +108,7 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                     },
                   })
               : button(`Heal — ${healCost} g`, {
-                  hint: `Restore HP to ${max.hp} for ${healCost} gold (2 × level).`,
+                  hint: `Restore HP to ${max.hp} for ${healCost} gold.`,
                   disabled: pc.hp >= max.hp || affordable < healCost,
                   onClick: () => {
                     let healed = false;

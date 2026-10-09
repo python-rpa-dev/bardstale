@@ -8,6 +8,7 @@ import { bountyId } from "../data/bounties";
 import { gateById } from "../data/gates";
 import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
+import { perkMult } from "../data/trophies";
 import { applyXpToPc, earn } from "./party";
 import { endExpedition, isDarkFloor } from "./expedition";
 import { emptyChronicle } from "./save";
@@ -60,6 +61,7 @@ export interface VictorySummary {
   newMedals: Family[]; // families whose codex just completed
   bountyDone?: { family: Family; gold: number }; // active bounty finished by this fight's kills
   eliteLoot?: string[]; // item names granted by elite kills (guaranteed uncommons)
+  trophies?: string[]; // gate ids whose lord's trophy was raised by this kill
 }
 
 /** Claim a won fight: XP, gold, codex stamps, bounty kills + medals. */
@@ -122,6 +124,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
         offer.done = true;
         let payout = offer.gold;
         if (d.medals.includes("vermin")) payout = Math.floor(payout * 1.1); // vermin medal: +10% bounty gold
+        payout = Math.floor(payout * perkMult(d.trophies, "bounty")); // Spinner's Idol swells the purse
         earn(d, payout);
         d.bounties.completed.push(activeId);
         d.bounties.active = undefined;
@@ -131,9 +134,15 @@ export function claimVictory(d: GameState): VictorySummary | null {
   }
 
   // gate lord slain: the final floor is cleared, stairs finish the run next step
+  const newTrophies: string[] = [];
   const gateDef = d.activeGate ? gateById(d.activeGate.gateId) : null;
   if (gateDef?.boss && cs.foes.some((f) => f.mid === gateDef.boss)) {
     d.activeGate!.flags["boss"] = true;
+    const gid = d.activeGate!.gateId; // the trophy outlives the run — a permanent town perk
+    if (!(d.trophies ??= []).includes(gid)) {
+      d.trophies.push(gid);
+      newTrophies.push(gid);
+    }
   }
 
   syncPartyFromCombat(d);
@@ -142,7 +151,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
     delete d.activeGate.pendingElites;
   }
   delete d.activeCombat;
-  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone, eliteLoot: eliteLoot.length ? eliteLoot : undefined };
+  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone, eliteLoot: eliteLoot.length ? eliteLoot : undefined, trophies: newTrophies.length ? newTrophies : undefined };
 }
 
 /** Wipe: everyone crawls home at 1 HP and unbanked loot items are forfeited (gold stays banked). */

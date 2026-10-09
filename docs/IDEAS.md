@@ -9,7 +9,9 @@ the old "Combat log panel" item below), critical-HP pulse with a once-per-run re
 deterministic full-loop Playwright spec (`e2e/fullrun.spec.ts`, pinned clock), and foe behaviors —
 skittish vermin rout below 25% HP for half XP and no gold, undead guardians bar all escape, and
 captains rally living allies with a damage aura (codex cards teach each tactic; Flee disables itself
-against guardians).
+against guardians). Also shipped since capture: installable PWA offline shell, global `?` keybind
+overlay, GitHub Pages deploy confirmed live, plus a title-screen build stamp
+(version + git hash) so players can identify their deploy.
 Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run depth
@@ -42,14 +44,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
   potions (new `items.ts` rows, no new screens). Makes shrines a real decision instead of free HP.
 - **Merchant rivalry** (S) — two rival stalls, each discounts items the other doesn't stock that
   day (`dailySeed` again). Sits on top of shop stock tiers.
-
-## Platform
-
-- **Installable PWA offline** (S) — `public/manifest.webmanifest` + icon already ship; add a
-  ~30-line service worker + registration for install-to-desktop and full offline play.
-- **GitHub Pages deploy check** (S) — `.github/workflows/deploy.yml` exists; confirm it actually
-  publishes and share the public URL.
-- **Keybind overlay** (S) — `?` opens a cheat sheet of existing bindings; pure DOM modal.
 
 ## Atmosphere & dark
 

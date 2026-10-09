@@ -99,12 +99,14 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
                 : null,
               el("p", { class: "muted", text: "Choose the omen you carry below — today's sign is among them, as the tavern promised." }),
               el("div", { class: "omen-list" },
-                ...omens.map((o) =>
-                  button(o.id === "none" ? "Fair Weather — no tricks below" : `Descend under ${o.name}`, {
+                ...omens.map((o, i) => {
+                  const card = button(o.id === "none" ? "Fair Weather — no tricks below" : `Descend under ${o.name}`, {
                     hint: o.effect,
                     onClick: () => descend(o.id === "none" ? null : o.name, o.id),
-                  }),
-                ),
+                  });
+                  if (i === 0) card.append(el("span", { class: "omen-badge", text: "today's sign" })); // omensFor() always lists the ambient omen first
+                  return card;
+                }),
               ),
               el("div", { class: "modal-actions" },
                 button("Descend unbound — no omen", {

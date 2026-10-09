@@ -568,3 +568,15 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 
 /* Omen draft cards in the gate-entry modal */
 .omen-list { display: grid; gap: 0.45rem; margin: 0.6rem 0; }
+.omen-badge {
+  position: absolute;
+  top: var(--s1);
+  right: var(--s2);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}

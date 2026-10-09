@@ -1,17 +1,7 @@
 # Hollow Vale — Future Ideas Backlog
 
 Captured 2026-10-08 from the post-polish feature review, plus a second batch the same evening.
-Implemented since capture (see git log): omen draft at gate entry, blind + burn statuses with a
-central damage recorder, biggest-hit / crit-count Chronicle rows, bounty tracker HUD in the dungeon,
-cross-floor Auto-Walk with shrine glyphs on the minimap, Temple "Heal All", new-day boot toast,
-"today's sign" badge on the ambient omen card, closing fight lines in the defeat modal (this closes
-the old "Combat log panel" item below), critical-HP pulse with a once-per-run retreat hint, and a
-deterministic full-loop Playwright spec (`e2e/fullrun.spec.ts`, pinned clock), and foe behaviors —
-skittish vermin rout below 25% HP for half XP and no gold, undead guardians bar all escape, and
-captains rally living allies with a damage aura (codex cards teach each tactic; Flee disables itself
-against guardians). Also shipped since capture: installable PWA offline shell, global `?` keybind
-overlay, GitHub Pages deploy confirmed live, plus a title-screen build stamp
-(version + git hash) so players can identify their deploy.
+Everything shipped since capture is recorded in [FEATURES.md](FEATURES.md) — this file holds only open ideas.
 Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run depth
@@ -38,8 +28,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Town life
 
-- **Shop stock tiers** (S) — rare tier unlocks at cumulative banked gold so town visibly grows with
-  progress. One predicate over existing wallet + `items.rarity`.
 - **Herbalism & brewing** (M) — shrine visits yield 1 herb; the tavern kitchen brews herb+gold into
   potions (new `items.ts` rows, no new screens). Makes shrines a real decision instead of free HP.
 - **Merchant rivalry** (S) — two rival stalls, each discounts items the other doesn't stock that
@@ -50,9 +38,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 - **Darkness as a place, not a timer** (M) — dedicated "black floors" per gate: raycast radius 1.5,
   traps invisible to Look unless lit, but loot tables upgrade one rarity tier. Risk/reward per
   floor; pure mapgen flag + `isLit` checks that already exist on ActiveGate.lightTurns.
-- **Torch quality tiers** (S) — Torch (30 steps) / Tallow (60, smoke: −10% ambush encounters while
-  lit) / Witchlight (cold: reveals hidden cells within 2). One field on the use payload; shop
-  restocks by day via existing `dailySeed`.
 - **Dark-layer ambience** (S–M) — the music engine exists: add a low drone layer that fades in as
   `lightTurns` drops below 10 and out when relit. Per-oscillator `setVolume` is already wired.
 

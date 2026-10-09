@@ -580,3 +580,7 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
 }
+
+/* Closing combat lines inside the defeat modal — diagnose a Quick Resolve loss without dismissing it */
+.fight-lines { margin: 0.7rem 0; padding-left: 0.8rem; border-left: 2px solid var(--panel-edge); }
+.fight-lines p { margin: 0.15rem 0; font-size: 0.85rem; color: var(--muted); }

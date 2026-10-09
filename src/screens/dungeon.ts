@@ -84,7 +84,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function log(msg: string): void {
     const stuck = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 16; // at the tail (tolerance must stay under one line so a real scroll-up always escapes)
     logEl.append(el("p", { text: msg }));
-    while (logEl.children.length > 24) logEl.removeChild(logEl.firstChild!);
+    while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild!); // holds a full floor of events; the region scrolls internally
     if (stuck) logEl.scrollTop = logEl.scrollHeight; // follow new lines unless they scrolled up to read history
   }
 

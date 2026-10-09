@@ -1,7 +1,7 @@
 import { el, button } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
-import { ITEMS, itemById, rareUnlocked, RARE_UNLOCK_GOLD, sellPrice, type ItemDef } from "../data/items";
+import { itemById, rareUnlocked, RARE_UNLOCK_GOLD, sellPrice, stallPrice, stallStock, STALLS, type ItemDef } from "../data/items";
 import { pay, earn } from "../state/party";
 
 export function useText(def: ItemDef): string {
@@ -31,41 +31,61 @@ function effectText(def: ItemDef): string {
 
 export function renderShop(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
-  host.append(
-    el("h1", { text: "General Store" }),
-    el("p", { class: "muted", text: `Gold in hand: ${s.gold} g. Sell prices are half.` }),
-    el(
+  const stocks = STALLS.map((_, i) => stallStock(s.dayKey, i));
+  const card = (def: ItemDef, stallIndex: number) => {
+    const price = stallPrice(def, stocks[1 - stallIndex]);
+    const deal = price < def.price;
+    const locked = def.rarity === "rare" && !rareUnlocked(s.chronicle?.goldEarned ?? 0);
+    return el(
       "div",
-      { class: "shop-grid" },
-      ...ITEMS.map((def) => {
-        const locked = def.rarity === "rare" && !rareUnlocked(s.chronicle?.goldEarned ?? 0);
-        return el(
-          "div",
-          { class: locked ? "shop-card locked" : "shop-card" },
-          slotImg(`item.${def.id}`, 32),
-          el("span", { class: `item-name rar-${def.rarity}`, text: def.name }),
-          el("span", { class: "muted", text: effectText(def) }),
-          el("span", { class: "price", text: `${def.price} g` }),
-          locked
-            ? el("span", { class: "muted lock-line", text: `Locked — earn ${RARE_UNLOCK_GOLD} career gold to trade rare wares.` })
-            : button("Buy", {
-                hint: `Buy ${def.name} (${effectText(def)}) for ${def.price} gold.`,
-                disabled: s.gold < def.price,
-                onClick: () => {
-                  let paid = false;
-                  ctx.commit((st) => {
-                    paid = pay(st, def.price);
-                    if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
-                  });
-                  if (paid) ctx.sfx.coin();
-                  ctx.refresh();
-                },
-              }),
-        );
-      }),
+      { class: locked ? "shop-card locked" : "shop-card" },
+      slotImg(`item.${def.id}`, 32),
+      el("span", { class: `item-name rar-${def.rarity}`, text: def.name }),
+      el("span", { class: "muted", text: effectText(def) }),
+      deal && !locked
+        ? el(
+            "span",
+            { class: "price" },
+            el("s", { text: `${def.price} g` }),
+            ` ${price} g`,
+            el("span", { class: "deal", text: "rivalry deal" }),
+          )
+        : el("span", { class: "price", text: `${price} g` }),
+      locked
+        ? el("span", { class: "muted lock-line", text: `Locked — earn ${RARE_UNLOCK_GOLD} career gold to trade rare wares.` })
+        : button("Buy", {
+            hint: deal
+              ? `Buy ${def.name} (${effectText(def)}) for ${price} gold — the rival cart doesn't stock it today, so this one slashes the price.`
+              : `Buy ${def.name} (${effectText(def)}) for ${price} gold.`,
+            disabled: s.gold < price,
+            onClick: () => {
+              let paid = false;
+              ctx.commit((st) => {
+                paid = pay(st, price);
+                if (paid) st.inventory[def.id] = (st.inventory[def.id] ?? 0) + 1;
+              });
+              if (paid) ctx.sfx.coin();
+              ctx.refresh();
+            },
+          }),
+    );
+  };
+  host.append(
+    el("h1", { text: "Merchants' Row" }),
+    el(
+      "p",
+      { class: "muted", text: `Gold in hand: ${s.gold} g. Two rivals, one street — each cuts prices on goods the other doesn't carry today. Sell prices are half.` },
+    ),
+    ...STALLS.map((stall, i) =>
+      el(
+        "div",
+        { class: "stall" },
+        el("h2", { text: stall.name }),
+        el("p", { class: "muted stall-tagline", text: stall.tagline }),
+        el("div", { class: "shop-grid" }, ...stocks[i].map((def) => card(def, i))),
+      ),
     ),
   );
-
   const sellable = Object.entries(s.inventory).filter(([, n]) => n > 0);
   host.append(
     el("h2", { text: "Sell" }),

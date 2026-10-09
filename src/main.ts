@@ -78,7 +78,7 @@ const LOC_NAMES: Record<string, string> = {
   title: "Hollow Vale",
   town: "Town Square",
   party: "Adventurers' Guild",
-  shop: "General Store",
+  shop: "Merchants' Row",
   temple: "Temple of the Quiet Light",
   tavern: "The Broken Antler",
   codex: "Codex Library",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BESTIARY, monsterById } from "../bestiary";
 import { GATES } from "../gates";
-import { ITEMS } from "../items";
+import { ITEMS, stallPrice, stallStock } from "../items";
 import { SPELLS, SPELL_UNLOCKS } from "../spells";
 
 /**
@@ -72,5 +72,51 @@ describe("data integrity", () => {
     expect(multi.map((s) => s.id).sort()).toEqual(
       ["bless", "cleave", "flame-wave", "frost-nova", "mass-heal"].sort()
     );
+  });
+});
+
+describe("merchant rivalry", () => {
+  const iso = (d: number) => new Date(Date.UTC(2026, 9, d)).toISOString().slice(0, 10);
+  const take = Math.ceil(ITEMS.length * 0.7);
+
+  it("carts are deterministic per day and rotate with the dawn", () => {
+    const a1 = stallStock("2026-10-09", 0).map((d) => d.id);
+    expect(stallStock("2026-10-09", 0).map((d) => d.id)).toEqual(a1);
+    expect(stallStock("2026-10-10", 0).map((d) => d.id)).not.toEqual(a1);
+  });
+
+  it("each cart holds ~70%, the street covers the catalogue, and both rivals hold exclusives", () => {
+    for (let d = 1; d <= 30; d++) {
+      const dayKey = iso(d);
+      const a = stallStock(dayKey, 0);
+      const b = stallStock(dayKey, 1);
+      expect(a.length).toBe(take);
+      expect(b.length).toBe(take);
+      const union = new Set([...a.map((x) => x.id), ...b.map((x) => x.id)]);
+      for (const def of ITEMS) expect(union.has(def.id)).toBe(true); // nothing vanishes from the street
+      const idsA = new Set(a.map((x) => x.id));
+      const idsB = new Set(b.map((x) => x.id));
+      expect(a.some((x) => !idsB.has(x.id))).toBe(true); // Mira always has something Bram lacks…
+      expect(b.some((x) => !idsA.has(x.id))).toBe(true); // …and vice versa, so deals exist on both carts
+    }
+  });
+
+  it("exclusives carry the rivalry cut while shared goods stay at base price", () => {
+    for (let d = 1; d <= 30; d++) {
+      const dayKey = iso(d);
+      const a = stallStock(dayKey, 0);
+      const b = stallStock(dayKey, 1);
+      let deals = 0;
+      for (const def of a) {
+        const p = stallPrice(def, b);
+        if (b.some((x) => x.id === def.id)) expect(p).toBe(def.price); // shared: full price
+        else {
+          expect(p).toBe(Math.max(1, Math.round(def.price * 0.75)));
+          expect(p).toBeLessThan(def.price);
+          deals++;
+        }
+      }
+      expect(deals).toBeGreaterThan(0); // every day offers at least one rivalry deal on Mira's cart
+    }
   });
 });

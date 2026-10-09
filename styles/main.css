@@ -299,6 +299,9 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .shop-card .muted { flex: 1; font-size: 0.85rem; }
 .shop-card.locked { opacity: 0.6; }
 .lock-line { font-size: 0.78rem; font-style: italic; }
+.stall-tagline { font-style: italic; margin-top: calc(var(--s1) * -1); }
+.price s { opacity: 0.55; margin-right: var(--s1); }
+.deal { color: var(--uncommon); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; margin-left: var(--s1); white-space: nowrap; }
 .sell-list { display: grid; gap: 0.4rem; margin-block: 0.75rem; }
 .sell-row,
 .temple-row {

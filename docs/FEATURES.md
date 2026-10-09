@@ -9,7 +9,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 ## Core loop
 
 - Town hub — Guild · Temple · Tavern · Shop · Codex — → Gate of Adventures → raycast dungeon → surface and bank.
-- Daily rotation keyed to `dailySeed(today)`: three bounty offers from an 11-def pool, ambient gate omen, shop restock; a new-day toast greets you on boot.
+- Daily rotation keyed to `dailySeed(today)`: three bounty offers from an 11-def pool, ambient gate omen, the rivals' daily carts; a new-day toast greets you on boot.
 - Omen draft at the gate: carry one of three daily modifiers into the run; the tavern-promised "today's sign" is badged in the descend modal.
 
 ## Gates & floors
@@ -30,7 +30,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 ## Town services
 
 - Guild: party roster and leveling. Temple of the Quiet Light: per-member heal, bulk "Heal All", revive tokens — death is a fee, not an ending.
-- The Broken Antler tavern: bounty board and ambient omen promise. Shop: daily restock; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
+- The Broken Antler tavern: bounty board and ambient omen promise. Merchants' Row: Mira and Bram run rival carts — overlapping daily stock (~70% each, union complete), and each discounts the goods the other doesn't carry that day; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
 - Codex: first kills stamp pages; completing a foe family earns its medal — permanent perks. Chronicle: lifetime deeds ledger including biggest hit, crit count, and career gold.
 
 ## Run structure & economy

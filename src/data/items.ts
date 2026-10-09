@@ -1,3 +1,4 @@
+import { dailySeed, mulberry32 } from "../core/rng";
 export type ItemSlot = "weapon" | "armor" | "trinket" | "consumable";
 export type Rarity = "common" | "uncommon" | "rare";
 
@@ -47,13 +48,46 @@ export function rareUnlocked(goldEarned: number): boolean {
   return goldEarned >= RARE_UNLOCK_GOLD;
 }
 
+/** Two merchants who despise each other share the street; every dawn they roll out overlapping but different carts. */
+export const STALLS = [
+  { id: "mira", name: "Mira's Wares", tagline: "Best prices in town — ask Bram why." },
+  { id: "bram", name: "Bram & Sons", tagline: "Old forge, honest steel, cheaper than *her*." },
+] as const;
+
+/** Price cut on goods the rival merchant does not carry today. */
+export const RIVALRY_DISCOUNT = 0.25;
+
+const STALL_SHARE = 0.7; // each cart holds ~70% of the catalogue, so the two carts always cover it all
+
+/**
+ * Daily cart contents: shuffle the catalogue with mulberry32(dailySeed(dayKey)), then stall 0 takes
+ * the first ceil(70%) and stall 1 the last ceil(70%). The overlap is full-price goods; both ends
+ * are exclusives. Pure — nothing to persist, save-compatible by construction.
+ */
+export function stallStock(dayKey: string, stallIndex: number): ItemDef[] {
+  const pool = [...ITEMS];
+  const rnd = mulberry32(dailySeed(dayKey));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const take = Math.ceil(pool.length * STALL_SHARE);
+  return stallIndex === 0 ? pool.slice(0, take) : pool.slice(pool.length - take);
+}
+
+/** Exclusive goods (absent from the rival's cart today) carry the rivalry discount. */
+export function stallPrice(def: ItemDef, rivalStock: readonly ItemDef[]): number {
+  if (rivalStock.some((d) => d.id === def.id)) return def.price;
+  return Math.max(1, Math.round(def.price * (1 - RIVALRY_DISCOUNT)));
+}
+
 export function itemById(id: string): ItemDef {
   const def = ITEMS.find((i) => i.id === id);
   if (!def) throw new Error(`unknown item ${id}`);
   return def;
 }
 
-/** Shop stock is the full table; sell price is half. */
+/** Salvage buys at half of base price — rivalry discounts never apply to selling. */
 export function sellPrice(def: ItemDef): number {
   return Math.floor(def.price / 2);
 }

@@ -4,12 +4,12 @@ import { riddleFor, sealPuzzle } from "../data/riddles";
 import { generateFloor, MAP_H, MAP_W, type EntityKind, type GeneratedFloor } from "../core/mapgen";
 import { bountyId } from "../data/bounties";
 import { ITEMS } from "../data/items";
-import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/rng";
-import { gateById, gateIndex } from "../data/gates";
-import { dayNumber, modifierForGate, type ModifierId } from "../data/modifiers";
+import { dailySeed, expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/rng";
+import { GATES, gateById, gateIndex } from "../data/gates";
+import { dayNumber, MODIFIERS, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
 import { emptyChronicle, HALL_SIZE, pcMax } from "./save";
-import type { ActiveGate, FloorMapSave, GameState, RareKind, RunRecord } from "./save";
+import type { ActiveGate, DailyBest, FloorMapSave, GameState, RareKind, RunRecord } from "./save";
 import { earn } from "./party";
 
 /** Per-floor rng seed derived from the run seed. */
@@ -110,12 +110,13 @@ export function reveal(ag: ActiveGate): void {
 }
 
 /** Begin a fresh run: increments the gate's run counter and installs ActiveGate.
- *  `omen` is the drafted sign carried below; omitted falls back to today's ambient modifier. */
-export function startExpedition(s: GameState, gateId: string, omen?: ModifierId): void {
+ *  `omen` is the drafted sign carried below; omitted falls back to today's ambient modifier.
+ *  `runSeed` overrides the per-save derivation — the daily challenge uses one shared seed. */
+export function startExpedition(s: GameState, gateId: string, omen?: ModifierId, runSeed?: number): void {
   gateById(gateId); // validates the id
   const runNumber = (s.runs[gateId] ?? 0) + 1;
   s.runs[gateId] = runNumber;
-  const seed = expeditionSeed(s.seed, gateId, runNumber);
+  const seed = runSeed ?? expeditionSeed(s.seed, gateId, runNumber);
   const modifier = omen ?? modifierForGate(gateIndex(gateId), dayNumber()).id;
 
   const ag: ActiveGate = {
@@ -168,7 +169,7 @@ export function descendFloor(s: GameState): void {
 
 /** Finish the run (exit or abandon). The loot tally is already committed live during the run;
  * surfacing pins the run's memory to the Guild's Hall of Runs — newest first, capped at HALL_SIZE. */
-export function endExpedition(s: GameState, surfaced = false): void {
+export function endExpedition(s: GameState, surfaced = false): DailyBest | undefined {
   const ag = s.activeGate;
   if (surfaced && ag) {
     const rec: RunRecord = {
@@ -185,7 +186,60 @@ export function endExpedition(s: GameState, surfaced = false): void {
     (s.hall ??= []).unshift(rec);
     if (s.hall.length > HALL_SIZE) s.hall.length = HALL_SIZE; // the shelf forgets its oldest memory
   }
+  const dailyRec = ag?.daily ? recordDaily(s, ag) : undefined; // dailies land on the board whether they surface or fall
   delete s.activeGate;
+  return dailyRec;
+}
+
+// ---------- daily challenge ----------
+
+/** The board keeps this many best attempts across all days. */
+export const DAILY_BOARD_SIZE = 10;
+
+/** Today's shared challenge: one gate, one omen, one seed — identical for every player on the date. */
+export function dailyChallenge(dayKey: string): { gateId: string; omen: ModifierId; seed: number } {
+  const day = dailySeed(dayKey);
+  const rng = mulberry32(day);
+  const gate = GATES[randInt(rng, 0, GATES.length - 1)];
+  const omens = MODIFIERS.filter((m) => m.id !== "none");
+  return {
+    gateId: gate.id,
+    omen: omens[randInt(rng, 0, omens.length - 1)].id as ModifierId,
+    seed: hashStr(`${day}:${gate.id}`),
+  };
+}
+
+/** Enter today's challenge from any save — same date means the same maze for everyone. */
+export function startDailyRun(s: GameState): void {
+  const dc = dailyChallenge(s.dayKey);
+  startExpedition(s, dc.gateId, dc.omen, dc.seed);
+  if (s.activeGate) s.activeGate.daily = true;
+}
+
+/** `HV-2026-10-08 #7: 3F/41 kills/912 g` — copy-pasteable bragging rights. */
+export function dailyShare(best: DailyBest): string {
+  return `HV-${best.dayKey} #${best.attempt}: ${best.depth}F/${best.kills} kills/${best.gold} g`;
+}
+
+/** Pin a finished daily run to the leaderboard — every exit path counts, best ten scores stand. */
+function recordDaily(s: GameState, ag: ActiveGate): DailyBest {
+  const depth = ag.floor + 1;
+  const kills = ag.killsThisRun ?? 0;
+  const entry: DailyBest = {
+    dayKey: s.dayKey,
+    gateId: ag.gateId,
+    attempt: ag.runNumber,
+    depth,
+    kills,
+    gold: ag.loot.gold,
+    crew: s.party.map((p) => p.name).join(", "),
+    score: depth * 100 + kills * 10 + ag.loot.gold,
+  };
+  const board = (s.dailyBests ??= []);
+  board.push(entry);
+  board.sort((a, b) => b.score - a.score || b.dayKey.localeCompare(a.dayKey));
+  if (board.length > DAILY_BOARD_SIZE) board.length = DAILY_BOARD_SIZE;
+  return entry;
 }
 
 /**

@@ -41,6 +41,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 - One wallet (purse + bank merged; v1 saves migrate automatically); every gold inflow — victory, bounty, chest, camp windfall — flows through a single `earn()` chokepoint that feeds the chronicle.
 - Gate-lord trophies: each of the five lords drops its trophy on the first kill, displayed on the Guild's Trophy Shelf with a permanent town-wide perk — temple healing −25%, revives −40%, bounty payouts +30% (stacks with medals), Merchants' Row prices −20%, hearth brewing −30%.
 - Critical-HP pulse with a once-per-run hint toward shrines and temple; the defeat modal shows your heroes' closing fight lines.
+- Daily Challenge: one date picks one gate, omen and seed for every player — `dailyChallenge(dayKey)` derives all three from the day hash, so everyone fights the same maze. Scores (depth·100 + kills·10 + gold) land on a local best-ten board from any exit path; the finish modal offers a copy-pasteable share string (`HV-2026-10-09 #2: 4F/16 kills/533 g`).
 
 ## Presentation
 

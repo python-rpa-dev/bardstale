@@ -3,10 +3,10 @@
 import { el, button, modal, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { GATES, gateById, gateIndex } from "../data/gates";
-import { dayNumber, modifierForGate, omensFor, type ModifierId } from "../data/modifiers";
+import { dayNumber, MODIFIERS, modifierForGate, omensFor, type ModifierId } from "../data/modifiers";
 import { bountyId } from "../data/bounties";
 import { BESTIARY } from "../data/bestiary";
-import { describeRare, endExpedition, startExpedition } from "../state/expedition";
+import { dailyChallenge, dailyShare, describeRare, endExpedition, startDailyRun, startExpedition } from "../state/expedition";
 
 export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
@@ -55,6 +55,32 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
   const avg = s.party.length ? Math.round((s.party.reduce((a, p) => a + p.level, 0) / s.party.length) * 10) / 10 : 0;
   host.append(
     el("p", { class: "muted", text: `Party average level ${avg}. The gates do not scale — choose your depth.` }),
+  );
+
+  // Daily Challenge — one date means one gate, one omen and one seed for every player on earth.
+  const dc = dailyChallenge(s.dayKey);
+  const dcGate = gateById(dc.gateId);
+  const dcOmen = MODIFIERS.find((m) => m.id === dc.omen)!;
+  const todays = (s.dailyBests ?? []).filter((b) => b.dayKey === s.dayKey).slice(0, 3);
+  host.append(
+    el("div", { class: "panel daily-card" },
+      el("h3", {}, document.createTextNode("Daily Challenge — "), el("b", { text: dcGate.name })),
+      el("p", { class: "muted", text: `${dcOmen.rumor.replace("{gate}", dcGate.name)} Everyone who enters today walks the same maze.` }),
+      todays.length
+        ? el("ul", { class: "daily-board muted" }, ...todays.map((b) => el("li", { text: dailyShare(b) })))
+        : el("p", { class: "muted", text: "No attempts yet today — set the first score." }),
+      button(ag ? "Resume Current Run First" : "Enter the Daily", {
+        hint: ag ? "Finish or abandon your current expedition before starting a new one" : `Today's shared maze under ${dcOmen.name}`,
+        disabled: !!ag,
+        onClick: () => {
+          ctx.sfx.click();
+          ctx.commit((d) => startDailyRun(d));
+          toast(`The Daily Challenge opens — ${dcGate.name} under ${dcOmen.name}. The same maze awaits everyone today.`);
+          ctx.sfx.descend();
+          ctx.navigate("#/dungeon");
+        },
+      }),
+    ),
   );
 
   const cards = GATES.map((g) => {

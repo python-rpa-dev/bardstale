@@ -100,6 +100,7 @@ export interface ActiveGate {
   torchKind?: string; // id of the last light item used this run — tallow smoke / witchlight reveal perks
   killsThisRun?: number; // monsters felled this run — feeds the Hall of Runs record
   medalsThisRun?: number; // family medals completed this run — the Hall's trophy line
+  daily?: boolean; // today's shared Daily Challenge maze — scores land on the leaderboard
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 
@@ -131,6 +132,18 @@ export interface RunRecord {
   gold: number; // loot tally carried to the surface
   items: Inventory;
   crew: { name: string; level: number }[]; // party as it walked out
+}
+
+/** One daily-challenge attempt: score = depth·100 + kills·10 + gold. */
+export interface DailyBest {
+  dayKey: string; // ISO date of the challenge this was played on
+  gateId: string;
+  attempt: number; // the gate's own run counter at start — the #N in the share string
+  score: number;
+  depth: number; // deepest floor reached, 1-based
+  kills: number;
+  gold: number;
+  crew: string; // hero names as they walked out (or fell)
 }
 
 /** The shelf holds this many memories; older runs are forgotten. */
@@ -173,6 +186,7 @@ export interface GameState {
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
   hall?: RunRecord[]; // Guild shelf — the last surfaced runs, newest first; migrate backfills older saves
+  dailyBests?: DailyBest[]; // daily-challenge leaderboard — best ten attempts, highest score first
   settings: Settings;
   activeGate?: ActiveGate;
   activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls

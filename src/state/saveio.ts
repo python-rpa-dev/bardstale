@@ -234,6 +234,7 @@ export function importSave(raw: string): ImportResult {
     codex: Array.isArray(parsed.codex) ? parsed.codex.filter(str) : [],
     medals: Array.isArray(parsed.medals) ? parsed.medals.filter(str) : [],
     ...(Array.isArray(parsed.trophies) && parsed.trophies.length ? { trophies: parsed.trophies.filter(str) } : {}), // trophy perks survive a round-trip
+    ...(Array.isArray(parsed.dailyBests) && parsed.dailyBests.length ? { dailyBests: parsed.dailyBests.filter((b) => b && typeof b.score === "number" && str(b.dayKey) && str(b.gateId)) } : {}), // the leaderboard survives export/import
     bounties: {
       offers,
       completed: parsed.bounties.completed.filter(str),

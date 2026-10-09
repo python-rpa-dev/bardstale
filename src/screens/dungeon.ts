@@ -10,7 +10,7 @@ import { gateById } from "../data/gates";
 import { itemById, upgradeDrop } from "../data/items";
 import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
-import type { GameState } from "../state/save";
+import type { DailyBest, GameState } from "../state/save";
 import { earn } from "../state/party";
 import {
   activateShrine,
@@ -31,7 +31,7 @@ import {
   stepRng,
   trySeal,
   type SealOutcome,
-  LIGHT_PER_FLOOR, encounterChance, isDarkFloor, isLit, lightMods, witchReveal,
+  LIGHT_PER_FLOOR, encounterChance, dailyShare, isDarkFloor, isLit, lightMods, witchReveal,
 } from "../state/expedition";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
@@ -159,7 +159,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     stopAuto();
     const rare = ctx.state().activeGate?.rareSpawn; // read before endExpedition clears the run
     ctx.sfx.victory();
-    ctx.commit((d) => endExpedition(d, true)); // surfaced — pin this run to the Hall of Runs
+    let dailyRec: DailyBest | undefined; // this run's leaderboard entry when it was the Daily Challenge
+    ctx.commit((d) => { dailyRec = endExpedition(d, true); }); // surfaced — pin this run to the Hall of Runs
+    const dailyEntry = dailyRec;
     const rows = Object.entries(loot.items).map(([id, n]) => `${itemById(id).name} ×${n}`);
     const close = modal(
       "Expedition Complete",
@@ -170,6 +172,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           ...(rows.length ? rows.map((r) => el("li", { text: r })) : [el("li", { class: "muted", text: "No items recovered" })]),
         ),
         rare ? el("p", { class: "muted rare-line", text: describeRare(rare) }) : null,
+        dailyEntry ? el("p", { class: "daily-share" },
+          el("code", { text: dailyShare(dailyEntry) }),
+          button("Copy Result", { hint: "Copy your daily result string to brag with", onClick: () => { void navigator.clipboard.writeText(dailyShare(dailyEntry)); toast("Result copied — go brag."); } }),
+        ) : null,
         button("Back to Town", { onClick: () => { close(); if (rare) toast(describeRare(rare)); ctx.navigate("#/town"); } }),
       ),
     );
@@ -949,7 +955,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     el("div", { class: "view-col" }, viewStage, cmdBar, dpad),
     el("div", { class: "side-col" },
       el("div", { class: "panel mini-card" },
-        el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
+        el("p", { class: "muted", text: `${def.name}${ag.daily ? " — Daily Challenge" : ""} · Floor ${ag.floor + 1}/${def.floors}` }),
         (torchChip = el("p", { class: "torch-chip muted" })),
         (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,

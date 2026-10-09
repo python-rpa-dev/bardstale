@@ -5,7 +5,7 @@ import { generateFloor, MAP_H, MAP_W, type EntityKind, type GeneratedFloor } fro
 import { bountyId } from "../data/bounties";
 import { ITEMS } from "../data/items";
 import { dailySeed, expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/rng";
-import { GATES, gateById, gateIndex } from "../data/gates";
+import { GATES, gateById, gateIndex, type GateDef } from "../data/gates";
 import { dayNumber, MODIFIERS, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
 import { emptyChronicle, HALL_SIZE, pcMax } from "./save";
@@ -78,6 +78,7 @@ export function toFloorSave(gen: GeneratedFloor): FloorMapSave {
     h: gen.h,
     cells,
     entities: [...gen.entities.entries()].map(([id, e]) => [id, e.kind]),
+    ...(gen.flood.length ? { flood: gen.flood } : {}), // dry floors stay byte-identical to old saves
   };
 }
 
@@ -90,6 +91,16 @@ export function gridFromSave(map: FloorMapSave): Uint8Array {
 export function entityAt(ag: ActiveGate, cell: number): EntityKind | null {
   const hit = ag.map.entities.find(([id]) => id === cell);
   return hit ? (hit[1] as EntityKind) : null;
+}
+
+/** True when `cell` lies under brackish water — steps there cost double (extra encounter roll). */
+export function isFlooded(ag: ActiveGate, cell: number): boolean {
+  return ag.map.flood?.includes(cell) ?? false;
+}
+
+/** Flood-gimmick gates drown their deeper floors; 0.9 means a pool forms on nearly every descent. */
+function floodChanceFor(def: GateDef): number {
+  return def.gimmick === "flood" ? 0.9 : 0;
 }
 
 /** Reveal `cell` and its open orthogonal neighbours on the minimap. */
@@ -113,7 +124,7 @@ export function reveal(ag: ActiveGate): void {
  *  `omen` is the drafted sign carried below; omitted falls back to today's ambient modifier.
  *  `runSeed` overrides the per-save derivation — the daily challenge uses one shared seed. */
 export function startExpedition(s: GameState, gateId: string, omen?: ModifierId, runSeed?: number): void {
-  gateById(gateId); // validates the id
+  const def = gateById(gateId); // validates the id
   const runNumber = (s.runs[gateId] ?? 0) + 1;
   s.runs[gateId] = runNumber;
   const seed = runSeed ?? expeditionSeed(s.seed, gateId, runNumber);
@@ -125,7 +136,7 @@ export function startExpedition(s: GameState, gateId: string, omen?: ModifierId,
     seed,
     modifier,
     floor: 0,
-    map: toFloorSave(generateFloor(floorSeed(seed, 0), 0)),
+    map: toFloorSave(generateFloor(floorSeed(seed, 0), 0, floodChanceFor(def))),
     pos: { x: 1, y: 1 },
     dir: 1,
     visited: [],
@@ -155,7 +166,7 @@ export function descendFloor(s: GameState): void {
   ag.floor += 1;
   const chron = (s.chronicle ??= emptyChronicle());
   chron.deepestFloor = Math.max(chron.deepestFloor, ag.floor + 1);
-  ag.map = toFloorSave(generateFloor(floorSeed(ag.seed, ag.floor), ag.floor));
+  ag.map = toFloorSave(generateFloor(floorSeed(ag.seed, ag.floor), ag.floor, floodChanceFor(gateById(ag.gateId))));
   ag.pos = { x: 1, y: 1 };
   ag.dir = 1;
   ag.visited = [];

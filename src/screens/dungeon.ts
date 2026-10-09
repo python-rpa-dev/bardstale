@@ -31,7 +31,7 @@ import {
   stepRng,
   trySeal,
   type SealOutcome,
-  LIGHT_PER_FLOOR, encounterChance, dailyShare, isDarkFloor, isLit, lightMods, witchReveal,
+  LIGHT_PER_FLOOR, encounterChance, dailyShare, isDarkFloor, isFlooded, isLit, lightMods, witchReveal,
 } from "../state/expedition";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
@@ -190,6 +190,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     finished?: { loot: { gold: number; items: Record<string, number> }; gateName: string };
     boss?: string; // gate lord stirred on the final floor — display name
     revealed?: string[]; // witchlight uncovered hidden entities near the flame this move
+    slowed?: string; // flooded cell — the water doubles the odds of being found
   }
 
   /** One grid step in the facing direction (or straight back). Traps spring and encounters roll here. */
@@ -247,7 +248,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
-      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke)) {
+      const rollFoe = (): void => {
         const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
         if (elite !== null) ag.pendingElites = [elite];
@@ -258,6 +259,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           counts.set(label, (counts.get(label) ?? 0) + 1);
         });
         out.encounter = [...counts].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label));
+      };
+      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke)) rollFoe();
+
+      // Flooded cells slow the party and double its odds of being found.
+      if (!out.encounter && isFlooded(ag, cell)) {
+        out.slowed = "Brackish water swallows your boots — every step takes twice as long.";
+        if (stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke)) rollFoe();
       }
 
       // Witchlight marks hidden walls, traps and sealed doors near the flame — no Look needed.
@@ -283,6 +291,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.encounter) ctx.sfx.encounter(); // foes drop in before the screen flips
     else if (out.boss) ctx.sfx.encounter();
     if (out.descended) ctx.sfx.descend();
+    if (out.slowed) log(out.slowed);
     if (out.revealed?.length) {
       const names = out.revealed.map((k) => (k === "secret" ? "a hidden alcove" : k === "trap" ? "a concealed trap" : "a rune-sealed door"));
       log(`The witchlight's cold glow uncovers ${names.join(", ")}.`);
@@ -425,7 +434,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       const cur = ctx.state().activeGate!;
       let stairsNow = -1;
       for (const [id, kind] of cur.map.entities) if (kind === "stairs") stairsNow = id;
-      const path = bfsPath(gridFromSave(cur.map), cellId(cur.pos.x, cur.pos.y), stairsNow);
+      const base = gridFromSave(cur.map);
+      let path = bfsPath(base, cellId(cur.pos.x, cur.pos.y), stairsNow);
+      if (cur.map.flood?.length) {
+        const dry = Uint8Array.from(base); // auto-walk wades only when no dry route exists
+        for (const id of cur.map.flood) dry[id] = 1;
+        path = bfsPath(dry, cellId(cur.pos.x, cur.pos.y), stairsNow) ?? path;
+      }
       if (path === null) {
         stopAuto(); // no route at all — tell the player instead of silently reverting the button
         log("The stair lies beyond walls — no way from here.");
@@ -959,7 +974,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         (torchChip = el("p", { class: "torch-chip muted" })),
         (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,
-        el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine · ◈ riddle — explored cells only; ▣ marks a rune-sealed wall" }),
+        el("p", { class: "muted legend", text: `■ stairs · ? chest · ✚ shrine · ◈ riddle${def.gimmick === "flood" ? " · ≈ flood (wading is slow)" : ""} — explored cells only; ▣ marks a rune-sealed wall` }),
       ),
       partyHost,
       logEl,

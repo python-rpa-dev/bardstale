@@ -73,6 +73,7 @@ export interface FloorMapSave {
   h: number;
   cells: string; // row-major "0"/"1", 1 = wall
   entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret"|"riddle"|"sealed")
+  flood?: number[]; // flooded cell ids (gimmick gates); absent = bone-dry floors and pre-flood saves
 }
 
 /** One-off expedition event rolled at run start (8% chance). */

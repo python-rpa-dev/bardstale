@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, isDarkFloor, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -643,5 +643,27 @@ describe("black floors - darkness with richer spoils", () => {
       expect(dst!.price).toBeGreaterThan(src.price); // ...and cost more than the rung below it
     }
     for (const plain of ["witchlight", "potion-sp"]) expect(upgradeDrop(plain)).toBe(plain); // top rung and off-ladder items stay as-is
+  });
+});
+
+describe("flooded floors - the Sunken Cloister gimmick", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+
+  it("cloister descents drown cells below floor 1; other gates stay dry", () => {
+    const s = newGame(clock);
+    startExpedition(s, "sunken-cloister");
+    expect(s.activeGate!.map.flood).toBeUndefined(); // the threshold is never wet
+    descendFloor(s); // floor 2 — the water starts here
+    const ag = s.activeGate!;
+    const wet = ag.map.flood;
+    expect(wet === undefined || wet.length >= 4).toBe(true); // chance 0.9: a real pool or none, never a drizzle
+    if (wet) {
+      expect(isFlooded(ag, wet[0])).toBe(true);
+      for (const [id, kind] of ag.map.entities) if (kind === "stairs") expect(wet).not.toContain(id);
+    }
+    const h = newGame(clock);
+    startExpedition(h, "hollow-roots");
+    descendFloor(h);
+    expect(h.activeGate!.map.flood).toBeUndefined(); // bone dry outside the cloister
   });
 });

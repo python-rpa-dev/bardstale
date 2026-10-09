@@ -125,4 +125,30 @@ describe("riddle stones and rune-seal doors (placement)", () => {
       for (const [id, e] of gen.entities) if (e.kind === "secret") expect(sealedIds, `seed ${seed}`).not.toContain(id);
     }
   });
+
+  it("floods only gimmick floors, and only from floor 2 down", () => {
+    expect(generateFloor(7, 0, 0.9).flood).toHaveLength(0); // floor 1 stays dry
+    expect(generateFloor(7, 1, 0).flood).toHaveLength(0); // non-gimmick gates never flood
+    let wet = 0;
+    for (let seed = 0; seed < 50; seed++) if (generateFloor(seed * 7919 + 13, 1, 0.9).flood.length) wet++;
+    expect(wet).toBeGreaterThanOrEqual(40); // chance 0.9 → nearly every descent floods
+  });
+
+  it("flood pools sit on open, entity-free cells and repeat exactly for one seed", () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const gen = generateFloor(seed * 7919 + 13, 1, 1);
+      const startId = cellId(gen.start.x, gen.start.y);
+      let stairs = -1;
+      for (const [id, e] of gen.entities) if (e.kind === "stairs") stairs = id;
+      expect(gen.flood.length).toBeGreaterThanOrEqual(4);
+      for (const id of gen.flood) {
+        expect(gen.grid[id], `seed ${seed}: cell ${id} open`).toBe(0);
+        expect(gen.entities.has(id), `seed ${seed}: cell ${id} entity-free`).toBe(false);
+        expect(id).not.toBe(startId);
+        expect(id).not.toBe(stairs);
+      }
+      const again = generateFloor(seed * 7919 + 13, 1, 1);
+      expect(again.flood).toEqual(gen.flood); // same seed, same pools — daily runs included
+    }
+  });
 });

@@ -38,8 +38,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 - **Darkness as a place, not a timer** (M) — dedicated "black floors" per gate: raycast radius 1.5,
   traps invisible to Look unless lit, but loot tables upgrade one rarity tier. Risk/reward per
   floor; pure mapgen flag + `isLit` checks that already exist on ActiveGate.lightTurns.
-- **Dark-layer ambience** (S–M) — the music engine exists: add a low drone layer that fades in as
-  `lightTurns` drops below 10 and out when relit. Per-oscillator `setVolume` is already wired.
 
 ## Run structure
 

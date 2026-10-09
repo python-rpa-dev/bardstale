@@ -425,8 +425,9 @@ export function effectiveOrder(cs: CombatState): [CombatSide, number][] {
   return cs.order;
 }
 
-/** Advance to the next living combatant; wrap = end of round. Clears guard at owner's turn start. */
-function finishTurn(cs: CombatState, evs: CombatEvent[]): CombatEvent[] {
+/** Advance to the next living combatant; wrap = end of round. Clears guard at owner's turn start.
+ *  Exported so headless drivers (tests) can advance stale pointers exactly like quickResolve. */
+export function finishTurn(cs: CombatState, evs: CombatEvent[]): CombatEvent[] {
   checkEnd(cs);
   if (cs.phase !== "input") return evs;
   const order = effectiveOrder(cs);
@@ -549,8 +550,8 @@ export function tallyVictory(cs: CombatState): VictoryTally {
   for (const f of cs.foes) {
     const fd = foeDef(f);
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
+    if (rogueAlive) g += 3; // pocket-luck rides under the omen so riches' advertised +50% holds on all kill gold
     if (cs.riches) g = Math.floor(g * 1.5);
-    if (rogueAlive) g += 3;
     gold += f.elite ? g * 2 : g; // elites pay double
   }
   return { xpByPc, gold, tooWeak };

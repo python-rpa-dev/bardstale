@@ -4,6 +4,10 @@ import { makePc, pcMax } from "../state/save";
 import { applyXpToPc } from "../state/party";
 import { xpForNext } from "../data/progression";
 import { startCombat, quickResolve } from "../core/combat";
+import { effectiveOrder, finishTurn, pcCast, pcAttack, foeAct, spCostFor } from "../core/combat";
+import type { CombatState } from "../core/combat";
+import { spellsKnownAt } from "../data/spells";
+import type { ModifierId } from "../data/modifiers";
 
 /**
  * P8 balance probe: seeded Monte-Carlo over the DOM-free combat core using
@@ -49,7 +53,7 @@ interface ProbeResult {
   avgGoldPerWin: number;
 }
 
-function probe(lvl: number, comps: string[][], n = 200): ProbeResult {
+function probe(lvl: number, comps: string[][], n = 200, extra: { frantic?: boolean; critFoe?: number; spellCostMod?: number; riches?: boolean; hollows?: boolean } = {}): ProbeResult {
   let wins = 0;
   let gold = 0;
   let hpCost = 0;
@@ -57,7 +61,7 @@ function probe(lvl: number, comps: string[][], n = 200): ProbeResult {
   for (let i = 0; i < n; i++) {
     const pcs = leveledParty(lvl);
     const totalMax = pcs.reduce((a, p) => a + pcMax(p).hp, 0);
-    const cs = startCombat(pcs, [...comps[i % comps.length]], { seed: (i * 2654435761) >>> 0 });
+    const cs = startCombat(pcs, [...comps[i % comps.length]], { seed: (i * 2654435761) >>> 0, ...extra });
     quickResolve(cs);
     maxRound = Math.max(maxRound, cs.round);
     if (cs.phase === "won") {
@@ -182,5 +186,125 @@ describe("balance probe (seeded Monte-Carlo over the combat core)", () => {
       }
     }
     expect(wiped / 40).toBeGreaterThanOrEqual(0.5); // attrition punishes, even though single fights mostly win
+  });
+});
+
+/* ---------- omen sweep: per-modifier chain survival & gold vs unbound ---------- */
+
+
+const OMENS: ModifierId[] = ["none", "cursed", "frantic", "riches", "hollows", "storm"];
+
+/** StartOpts fragment for an omen, mirroring state/combat.ts startRunCombat. */
+function omenOpts(m: ModifierId): { frantic?: boolean; critFoe?: number; spellCostMod?: number; riches?: boolean; hollows?: boolean } {
+  return {
+    frantic: m === "frantic" || undefined,
+    critFoe: m === "cursed" ? 0.12 : undefined,
+    spellCostMod: m === "storm" ? 2 : 0,
+    riches: m === "riches" || undefined,
+    hollows: m === "hollows" || undefined,
+  };
+}
+
+/** Headless fight with a casting policy (mirrors quickResolve's loop; returns casts landed). */
+function resolveCasting(cs: CombatState): number {
+  let casts = 0;
+  let guardCap = 600;
+  while (cs.phase === "input" && guardCap-- > 0) {
+    const [side, idx] = effectiveOrder(cs)[cs.turnPtr]; // mirror quickResolve exactly — normalizeActiveTurn would snap initiative back to the leader
+    if (side === "pc" ? cs.pcs[idx].hp <= 0 : cs.foes[idx].hp <= 0) { finishTurn(cs, []); continue; }
+    if (side === "foe") { foeAct(cs, idx); continue; }
+    const p = cs.pcs[idx];
+    const has = (id: string): boolean => spellsKnownAt(p.classId, p.level).some((sp) => sp.id === id) && p.sp >= spCostFor(id, cs);
+    let spell: string | null = null;
+    if (p.classId === "cleric") {
+      const hurtIdx = cs.pcs.map((q, j) => [j, q.hp / pcMax(q).hp] as const).filter(([j, r]) => cs.pcs[j].hp > 0 && r < 0.6)[0]?.[0] ?? -1;
+      spell = hurtIdx >= 0 && has("heal") ? "heal" : has("bless") && cs.blessDef === 0 ? "bless" : null;
+    } else if (p.classId === "mage") {
+      const foesLeft = cs.foes.filter((f) => f.hp > 0).length;
+      spell = foesLeft >= 2 && has("flame-wave") ? "flame-wave" : has("lightning") ? "lightning" : has("magic-missile") ? "magic-missile" : null;
+    } else if (p.classId === "fighter") {
+      spell = has("power-strike") ? "power-strike" : null;
+    }
+    let acted = false;
+    if (spell) {
+      const target = spell === "heal" ? cs.pcs.map((q, j) => [j, q.hp / pcMax(q).hp] as const).filter(([j]) => cs.pcs[j].hp > 0).sort((a, b) => a[1] - b[1])[0][0] : -1;
+      acted = pcCast(cs, idx, spell, target).length > 0;
+      if (acted) casts++;
+    }
+    if (!acted) {
+      const t = cs.foes.findIndex((f) => f.hp > 0);
+      if (t < 0) break; // no live foe but phase still input — bail, guardCap would catch anyway
+      pcAttack(cs, idx, t);
+    }
+  }
+  return casts;
+}
+
+interface OmenRun { chainLen: number; gold: number; survived: boolean; casts: number }
+
+/** One unhealed 6-fight chain under an omen; HP and SP carry between fights like the dungeon. */
+function runChain(lvl: number, comps: string[][], m: ModifierId, seedBase: number, castPolicy: boolean): OmenRun {
+  const pcs = leveledParty(lvl);
+  let fights = 0, gold = 0, casts = 0;
+  for (let i = 0; i < 6; i++) {
+    const cs = startCombat(pcs.map((p) => ({ ...p, statuses: [...p.statuses] })), [...comps[i % comps.length]], {
+      seed: (seedBase + i * 104729) >>> 0,
+      ...omenOpts(m),
+    });
+    if (castPolicy) casts += resolveCasting(cs); else quickResolve(cs);
+    cs.pcs.forEach((cp, j) => { pcs[j].hp = cp.hp; pcs[j].sp = cp.sp; });
+    if (cs.phase === "lost") return { chainLen: fights, gold, survived: false, casts };
+    gold += cs.victory?.gold ?? 0;
+    fights++;
+  }
+  return { chainLen: fights, gold, survived: true, casts };
+}
+
+interface SweepRow { chainLen: number; goldPerChain: number; survival: number; casts: number }
+function sweep(lvl: number, comps: string[][], m: ModifierId, castPolicy: boolean, trials = 80): SweepRow {
+  let len = 0, gold = 0, surv = 0, casts = 0;
+  for (let t = 0; t < trials; t++) {
+    const r = runChain(lvl, comps, m, (t * 2654435761) >>> 0, castPolicy);
+    len += r.chainLen; gold += r.gold; surv += r.survived ? 1 : 0; casts += r.casts;
+  }
+  return { chainLen: len / trials, goldPerChain: gold / trials, survival: surv / trials, casts: casts / trials };
+}
+
+const OM = Object.fromEntries(OMENS.map((m) => [m, sweep(3, HOLLOW, m, false)])) as Record<ModifierId, SweepRow>;
+const OM_C1 = Object.fromEntries(OMENS.map((m) => [m, sweep(1, CLOISTER, m, false)])) as Record<ModifierId, SweepRow>;
+const CAST_NONE = sweep(6, CLOISTER, "none", true);
+const CAST_STORM = sweep(6, CLOISTER, "storm", true);
+const NONE3 = probe(3, HOLLOW);
+const CURSED3 = probe(3, HOLLOW, 200, omenOpts("cursed"));
+const FRANTIC3 = probe(3, HOLLOW, 200, omenOpts("frantic"));
+
+describe("omen sweep (per-modifier chain survival & gold vs unbound)", () => {
+  it("sweep ran: log the omen table", () => {
+    const fmt = (r: SweepRow) => `chain ${r.chainLen.toFixed(2)} surv ${(r.survival * 100).toFixed(0)}% gold/chain ${r.goldPerChain.toFixed(1)} casts ${r.casts.toFixed(1)}`;
+    console.log(`${OMENS.map((m) => `H@3 ${m.padEnd(7)} ${fmt(OM[m])}   | C@1 ${m.padEnd(7)} ${fmt(OM_C1[m])}`).join("\n")}\ncast@6C none  ${fmt(CAST_NONE)}\ncast@6C storm ${fmt(CAST_STORM)}`);
+  });
+
+  it("riches pays strictly more gold without touching survival", () => {
+    expect(OM.riches.chainLen).toBe(OM.none.chainLen); // gold rolls consume no combat rng
+    expect(OM.riches.survival).toBe(OM.none.survival);
+    expect(OM.riches.goldPerChain).toBeGreaterThanOrEqual(OM.none.goldPerChain * 1.4);
+  });
+
+  it("no omen breaks the casual contract on its intended gate", () => {
+    for (const m of OMENS) expect(OM[m].survival).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("under-leveled chains feel every hostile omen", () => {
+    for (const m of ["cursed", "frantic", "hollows"] as ModifierId[]) expect(OM_C1[m].chainLen).toBeLessThanOrEqual(OM_C1.none.chainLen);
+  });
+
+  it("cursed and frantic are real downsides on paired seeds", () => {
+    expect(CURSED3.hpCostPerWin).toBeGreaterThan(NONE3.hpCostPerWin);
+    expect(FRANTIC3.hpCostPerWin).toBeGreaterThanOrEqual(NONE3.hpCostPerWin);
+  });
+
+  it("storm buys casts under SP pressure and never costs depth", () => {
+    expect(CAST_STORM.casts).toBeGreaterThan(CAST_NONE.casts);
+    expect(CAST_STORM.chainLen).toBeGreaterThanOrEqual(CAST_NONE.chainLen - 0.25);
   });
 });

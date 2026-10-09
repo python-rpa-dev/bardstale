@@ -25,6 +25,7 @@ export function renderTitle(host: HTMLElement, ctx: RouteCtx): void {
     el("div", { class: "title-screen" },
       el("h1", { class: "game-title", text: "Hollow Vale" }),
       el("p", { class: "subtitle", text: "A dungeon crawl in the old style — town, maze, and monster." }),
+      el("p", { class: "build-stamp", text: __GIT_HASH__ === "source" ? `v${__APP_VERSION__}` : `v${__APP_VERSION__} · build ${__GIT_HASH__}` }),
       el("div", { class: "title-buttons" },
         button("New Game", {
           hint: hasSave ? "Overwrite your save with a fresh party" : "Begin a new tale",

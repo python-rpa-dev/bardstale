@@ -133,7 +133,8 @@ body:not(.no-tooltips) .btn[data-hint]:not([data-hint=""]):active::after {
   letter-spacing: 0.12em;
   margin: var(--s4) 0 var(--s2);
 }
-.subtitle { color: var(--muted); margin-bottom: var(--s5); }
+.subtitle { color: var(--muted); margin-bottom: var(--s2); }
+.build-stamp { color: var(--muted); font-size: 0.8em; letter-spacing: 0.06em; margin: 0 0 var(--s5); }
 .title-buttons { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; }
 
 /* ---------- town ---------- */

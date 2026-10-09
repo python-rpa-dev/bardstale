@@ -7,8 +7,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 ## Run depth
 
 - **Rogue tricks** — shipped; see the class SP rails line under Combat in FEATURES.
-- **Gate lord phases** (M) — telegraphed specials ("the wyrm rears back…") and phase changes for
-  boss fights instead of stat-checks. Hook: boss branch in `core/combat.ts`.
+- **Gate lord phases** — shipped; see the gate lords line in FEATURES (telegraphed rear-up specials for the three non-breath lords).
 - **A 4th gate with a floor gimmick** (M–L) — e.g. collapsing floors (stairs relocate after N
   turns) or flooded cells that slow movement. Hooks: `data/gates.ts` + manifest wall-texture slots
   + one new mapgen placement rule.

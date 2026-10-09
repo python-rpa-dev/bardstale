@@ -21,6 +21,7 @@ export interface CombatFoe {
   boss?: boolean; // gate lord: enrages below 30% max HP (see enraged)
   maxHp?: number; // starting HP for bosses — the enrage threshold reference
   enraged?: boolean; // one-time trigger at ≤30% HP: +50% damage dealt
+  telegraph?: boolean; // gate lord phase cycle: reared back — its next action unleashes a signature special
   fled?: boolean; // behavior "flee": routed below its HP threshold — half XP, no gold
   crippled?: boolean; // a rogue's crippling cut: this foe deals −30% damage for the rest of the fight
 }
@@ -586,6 +587,66 @@ export function captainAura(cs: CombatState, selfIdx: number): number {
 
 // ---------- foe turn ----------
 
+/** Signature specials the gate lords unleash the round after rearing back. */
+const LORD_SPECIALS: Record<string, { name: string; kind: "grasp" | "rime" | "brood"; mult: number }> = {
+  "bark-thrall": { name: "Root Grasp", kind: "grasp", mult: 0.8 },
+  "cloister-lich": { name: "Death Rime", kind: "rime", mult: 1.4 },
+  "fen-matriarch": { name: "Brood Cry", kind: "brood", mult: 0.35 },
+};
+
+/** Unleash the telegraphed special; every blow routes through hurtPc so Guard halves it. */
+function unleashLordSpecial(cs: CombatState, foeIdx: number, fury: number, evs: CombatEvent[], rng: CountedRng): CombatEvent[] {
+  const f = cs.foes[foeIdx];
+  const fd = foeDef(f);
+  const sp = LORD_SPECIALS[f.mid]!;
+  const name = titleCase(f.mid);
+  const victims = alivePcIdxs(cs);
+  if (!victims.length) return finishTurn(cs, evs);
+  const physDmg = (t: number): number => {
+    const d = pcStats(cs, t);
+    return Math.max(1, Math.round(fd.atk * sp.mult * fury) - Math.floor((d.def + cs.blessDef) / 2));
+  };
+  if (sp.kind === "rime") {
+    const t = victims[randInt(rng, 0, victims.length - 1)];
+    cs.calls = rng.calls();
+    const p = cs.pcs[t];
+    const applied = hurtPc(cs, t, physDmg(t));
+    const drained = Math.floor(applied / 2);
+    f.hp = Math.min(f.maxHp ?? f.hp + drained, f.hp + drained);
+    pushLog(cs, `Death Rime lances from the ${name} into ${p.name} for ${applied}; the lich drinks deep (+${drained}).`);
+    evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+    if (!pcAlive(p)) {
+      pushLog(cs, `${p.name} falls!`);
+      evs.push({ kind: "death", dst: ["pc", t], text: "" });
+    }
+  } else {
+    // the AoE specials land on every living hero — no dodge roll; only Guard and armor blunt them
+    for (const t of victims) {
+      const p = cs.pcs[t];
+      if (sp.kind === "brood") {
+        const applied = hurtPc(cs, t, physDmg(t));
+        pushLog(cs, `The ${name}'s Brood Cry sprays stinging venom over ${p.name} for ${applied}!`);
+        evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+        const rounds = fd.special?.kind === "poison" ? fd.special.rounds : 3;
+        const mark = p.statuses.find((s) => s.kind === "poison");
+        if (mark) mark.roundsLeft = rounds;
+        else p.statuses.push({ kind: "poison", roundsLeft: rounds } as StatusMark);
+        pushLog(cs, `${p.name} is poisoned! (−1 DEX, ${rounds} rounds)`);
+        evs.push({ kind: "status", dst: ["pc", t], text: "poison" });
+      } else {
+        const applied = hurtPc(cs, t, physDmg(t));
+        pushLog(cs, `Roots erupt — the ${name}'s Root Grasp seizes ${p.name} for ${applied}!`);
+        evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+      }
+      if (!pcAlive(p)) {
+        pushLog(cs, `${p.name} falls!`);
+        evs.push({ kind: "death", dst: ["pc", t], text: "" });
+      }
+    }
+  }
+  return finishTurn(cs, evs);
+}
+
 export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const evs: CombatEvent[] = [];
   if (cs.phase !== "input") return evs;
@@ -607,6 +668,19 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     pushLog(cs, `The ${titleCase(f.mid)} swells with fury — its eyes burn!`);
   }
   const fury = f.enraged ? 1.5 : 1;
+
+  // Gate-lord phase cycle: every third round the lord rears back instead of striking, and its
+  // next action unleashes a signature special — telegraphed so Guard (and only Guard) can answer.
+  // The two breath-lords (vault-wyrm, ashfiend) are exempt — their cadenced fire already *is* a signature.
+  if (f.boss && f.telegraph) {
+    f.telegraph = false;
+    if (LORD_SPECIALS[f.mid]) return unleashLordSpecial(cs, foeIdx, fury, evs, rng);
+  } else if (f.boss && fd.special?.kind !== "breath" && cs.round % 3 === 0) {
+    f.telegraph = true;
+    pushLog(cs, `The ${titleCase(f.mid)} draws itself up, hoarding something terrible — Guard!`);
+    evs.push({ kind: "status", src: ["foe", foeIdx], text: "telegraph" });
+    return finishTurn(cs, evs); // no rng draw — the rear-up is deterministic
+  }
 
   // wyrm breath: every `everyRounds` rounds instead of a bite
   const br = fd.special?.kind === "breath" ? fd.special : null;

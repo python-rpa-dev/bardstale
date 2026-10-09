@@ -2,7 +2,11 @@
 
 Captured 2026-10-08 from the post-polish feature review, plus a second batch the same evening.
 Implemented since capture (see git log): omen draft at gate entry, blind + burn statuses with a
-central damage recorder, biggest-hit / crit-count Chronicle rows, bounty tracker HUD in the dungeon.
+central damage recorder, biggest-hit / crit-count Chronicle rows, bounty tracker HUD in the dungeon,
+cross-floor Auto-Walk with shrine glyphs on the minimap, Temple "Heal All", new-day boot toast,
+"today's sign" badge on the ambient omen card, closing fight lines in the defeat modal (this closes
+the old "Combat log panel" item below), critical-HP pulse with a once-per-run retreat hint, and a
+deterministic full-loop Playwright spec (`e2e/fullrun.spec.ts`, pinned clock).
 Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run depth
@@ -43,8 +47,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 - **GitHub Pages deploy check** (S) — `.github/workflows/deploy.yml` exists; confirm it actually
   publishes and share the public URL.
 - **Keybind overlay** (S) — `?` opens a cheat sheet of existing bindings; pure DOM modal.
-- **Combat log panel** (S) — fight events already carry text; surface the last 10 lines in a
-  collapsible side list so Quick Resolve losses are diagnosable.
 
 ## Atmosphere & dark
 

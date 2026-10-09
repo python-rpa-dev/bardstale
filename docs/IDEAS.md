@@ -6,7 +6,10 @@ central damage recorder, biggest-hit / crit-count Chronicle rows, bounty tracker
 cross-floor Auto-Walk with shrine glyphs on the minimap, Temple "Heal All", new-day boot toast,
 "today's sign" badge on the ambient omen card, closing fight lines in the defeat modal (this closes
 the old "Combat log panel" item below), critical-HP pulse with a once-per-run retreat hint, and a
-deterministic full-loop Playwright spec (`e2e/fullrun.spec.ts`, pinned clock).
+deterministic full-loop Playwright spec (`e2e/fullrun.spec.ts`, pinned clock), and foe behaviors —
+skittish vermin rout below 25% HP for half XP and no gold, undead guardians bar all escape, and
+captains rally living allies with a damage aura (codex cards teach each tactic; Flee disables itself
+against guardians).
 Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run depth
@@ -58,13 +61,6 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
   restocks by day via existing `dailySeed`.
 - **Dark-layer ambience** (S–M) — the music engine exists: add a low drone layer that fades in as
   `lightTurns` drops below 10 and out when relit. Per-oscillator `setVolume` is already wired.
-
-## Combat depth
-
-- **Foe behaviors** (S–M) — vermin flee at <25% HP (fleeing kill = half XP), undead guard-lock
-  adjacent PCs, humanoid captains buff allies. Data-driven `behavior?: string` on bestiary rows;
-  the per-family AI branch in `core/combat.ts` already exists. Pairs with the backlogged gate-lord
-  phases: telegraphs ("rears back → wide sweep") make row order matter.
 
 ## Run structure
 

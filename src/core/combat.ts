@@ -21,6 +21,7 @@ export interface CombatFoe {
   boss?: boolean; // gate lord: enrages below 30% max HP (see enraged)
   maxHp?: number; // starting HP for bosses — the enrage threshold reference
   enraged?: boolean; // one-time trigger at ≤30% HP: +50% damage dealt
+  fled?: boolean; // behavior "flee": routed below its HP threshold — half XP, no gold
 }
 
 /** Effective def view for a foe with the "hollows" ±1 level shift: hp/atk scale ±12% per level. */
@@ -152,7 +153,7 @@ export function pcStats(cs: CombatState, idx: number): { atk: number; def: numbe
 }
 
 const pcAlive = (p: CombatPc): boolean => p.hp > 0;
-const foeAlive = (f: CombatFoe): boolean => f.hp > 0;
+const foeAlive = (f: CombatFoe): boolean => f.hp > 0 && !f.fled;
 
 function alivePcIdxs(cs: CombatState): number[] {
   return cs.pcs.map((p, i) => (pcAlive(p) ? i : -1)).filter((i) => i >= 0);
@@ -540,7 +541,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
       const fd = foeDef(f);
       const mult = xpMult(fd.lvl, avg);
       if (mult < 0.5) tooWeak = true;
-      xp += fd.xp * mult * (f.elite ? 1.5 : 1);
+      xp += fd.xp * mult * (f.elite ? 1.5 : 1) * (f.fled ? 0.5 : 1); // routed foes pay half XP
     }
     xpByPc[p.id] = Math.round(xp);
   }
@@ -549,12 +550,24 @@ export function tallyVictory(cs: CombatState): VictoryTally {
   const rogueAlive = cs.pocketLuck && cs.pcs.some((p) => p.classId === "rogue" && pcAlive(p));
   for (const f of cs.foes) {
     const fd = foeDef(f);
+    if (f.fled) continue; // a routed foe escapes with its purse — no gold roll at all
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
     if (rogueAlive) g += 3; // pocket-luck rides under the omen so riches' advertised +50% holds on all kill gold
     if (cs.riches) g = Math.floor(g * 1.5);
     gold += f.elite ? g * 2 : g; // elites pay double
   }
   return { xpByPc, gold, tooWeak };
+}
+
+/** Rally aura for this foe's damage from living allied captains (self excluded). */
+export function captainAura(cs: CombatState, selfIdx: number): number {
+  let best = 0;
+  cs.foes.forEach((f, i) => {
+    if (i === selfIdx || !foeAlive(f)) return;
+    const b = monsterById(f.mid).behavior;
+    if (b?.kind === "captain") best = Math.max(best, b.auraPct);
+  });
+  return best;
 }
 
 // ---------- foe turn ----------
@@ -566,6 +579,14 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const f = cs.foes[foeIdx];
   if (!f || !foeAlive(f)) return finishTurn(cs, evs);
   const fd = foeDef(f);
+  // a cornered vermin routs below its HP threshold and escapes the fight entirely
+  const beh = monsterById(f.mid).behavior;
+  if (beh?.kind === "flee" && f.hp <= Math.ceil(beh.hpPct * fd.hp)) {
+    f.fled = true;
+    pushLog(cs, `The ${titleCase(f.mid)} breaks and flees into the dark!`);
+    evs.push({ kind: "status", src: ["foe", foeIdx], text: "fled" });
+    return finishTurn(cs, evs); // no rng draw — routing is deterministic
+  }
   // gate-lord enrage: one-time at ≤30% max HP, +50% damage from then on (breath included)
   if (f.boss && !f.enraged && f.maxHp && f.hp <= Math.ceil(0.3 * f.maxHp)) {
     f.enraged = true;
@@ -618,7 +639,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     evs.push({ kind: "miss", src: ["foe", foeIdx], dst: ["pc", t], text: "miss" });
     return finishTurn(cs, evs);
   }
-  let dmg = Math.max(1, Math.round(fd.atk * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2));
+  let dmg = Math.max(1, Math.round(fd.atk * (1 + captainAura(cs, foeIdx)) * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2)); // captains rally the line
   const crit = rng() < cs.critFoe;
   if (crit) dmg *= 2;
   if (f.enraged) dmg = Math.round(dmg * 1.5);
@@ -657,6 +678,11 @@ export function tryFlee(cs: CombatState): { events: CombatEvent[]; escaped: bool
     cs.phase = "fled";
     pushLog(cs, "The party melts into the shadows — nothing can hold them.");
     return { events: [{ kind: "status", text: "fled" }], escaped: true };
+  }
+  // undead guard-lock: while a guardian stands, escape is impossible — no roll, costs the initiative
+  if (cs.foes.some((f) => foeAlive(f) && monsterById(f.mid).behavior?.kind === "guard")) {
+    pushLog(cs, "The dead bar the way — there is no retreat from them.");
+    return { events: finishTurn(cs, [{ kind: "miss" as const, text: "blocked" }]), escaped: false };
   }
   const rng = countedStream(cs.seed, cs.calls);
   const partyAvgDex = avg(alivePcIdxs(cs).map((i) => pcStats(cs, i).dex));

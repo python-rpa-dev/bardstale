@@ -1,7 +1,7 @@
 import { el, bar, button } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg, slotSrc } from "../render/art";
-import { BESTIARY, FAMILIES, type MonsterDef, type Special } from "../data/bestiary";
+import { BESTIARY, FAMILIES, type Behavior, type MonsterDef, type Special } from "../data/bestiary";
 import { medalForFamily } from "../data/medals";
 
 function specialText(s: Special | undefined): string {
@@ -17,6 +17,18 @@ function specialText(s: Special | undefined): string {
       return `Blind: soul-gaze dims a hero's eyes — −15% to hit for ${s.rounds} rounds`;
     case "breath":
       return `Breath: hits the whole party for ~${s.base}, once every ${s.everyRounds} rounds`;
+  }
+}
+
+function behaviorText(b: Behavior | undefined): string | null {
+  if (!b) return null;
+  switch (b.kind) {
+    case "flee":
+      return `Skittish: breaks off below ${Math.round(b.hpPct * 100)}% HP — half XP, no gold`;
+    case "guard":
+      return `Guardian: the dead bar the way — no escape while it stands`;
+    case "captain":
+      return `Captain: living allies deal +${Math.round(b.auraPct * 100)}% damage`;
   }
 }
 
@@ -78,6 +90,7 @@ function monsterCard(m: MonsterDef, stamped: boolean): HTMLElement {
       `DEX ${m.dex} · MR ${m.mr} · XP ${m.xp}`,
       `Gold ${m.gold[0]}–${m.gold[1]}`,
       specialText(m.special),
+      ...(behaviorText(m.behavior) ? [behaviorText(m.behavior)!] : []),
     ].map((line) => el("li", { text: line }))),
   );
 }

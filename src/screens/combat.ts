@@ -23,6 +23,7 @@ import {
   type CombatState,
 } from "../core/combat";
 import { applyDefeat, beginCombat, claimVictory, resolveFlee, syncPartyFromCombat } from "../state/combat";
+import { monsterById } from "../data/bestiary";
 
 /** Mount token: pending foe-turn timeouts die when the screen re-renders. */
 let mountEpoch = 0;
@@ -363,6 +364,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
   addEventListener("resize", onResize);
   fitCombat();
 
+  // guard-lock (see core/combat tryFlee): while a guardian stands, fleeing is futile — say so up front
+  const guarded = cs.foes.some((f) => f.hp > 0 && !f.fled && monsterById(f.mid).behavior?.kind === "guard");
   if (cs.phase === "input") {
     const speedBtn = button("combat speed, click to toggle pacing", { icon: "bolt", hint: "Foe-turn pacing.", onClick: () => { speed = speed === 1 ? 2 : 1; ctx.refresh(); } });
     speedBtn.insertBefore(el("span", { class: "mult", text: `${speed}×` }), speedBtn.lastChild); // visible multiplier between glyph and sr-only label
@@ -373,7 +376,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       button("Cast", { icon: "spark", hint: "Spend SP on a known spell.", disabled: !pcTurn || spellsKnownAt(cs.pcs[activePcIdx].classId, cs.pcs[activePcIdx].level).length === 0, onClick: openSpells }),
       button("Use", { icon: "flask", hint: "Drink or read a consumable.", disabled: !pcTurn, onClick: openItems }),
       button("Guard", { icon: "shield", hint: "Halve damage until your next turn.", disabled: !pcTurn, onClick: guard }),
-      button("Flee", { icon: "door", hint: "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn, onClick: flee }),
+      button("Flee", { icon: "door", hint: guarded ? "The dead bar the way — no escape while a guardian stands." : "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn || guarded, onClick: flee }),
       speedBtn,
       button("Quick Resolve", { icon: "hourglass", hint: "Auto-run the rest of this fight on the same dice.", onClick: quick })
     );

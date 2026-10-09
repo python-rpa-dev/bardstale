@@ -24,6 +24,9 @@ export const SPELLS: SpellDef[] = [
   { id: "cleave", name: "Cleave", class: "fighter", sp: 7, target: "all-foes", effect: "All foes take round(ATK×1.2), halved by their DEF" },
   { id: "frost-nova", name: "Frost Nova", class: "mage", sp: 14, target: "all-foes", effect: "All foes take round(casterMND×1.2) − MR" },
   { id: "mass-heal", name: "Mass Heal", class: "cleric", sp: 12, target: "all-allies", effect: "Restore 6 + casterMND HP to every ally" },
+  { id: "backstab", name: "Backstab", class: "rogue", sp: 3, target: "one-foe", effect: "One foe takes round(DEX×1.5)+4 through half DEF; crit chance +15%" },
+  { id: "steal-gold", name: "Steal Purse", class: "rogue", sp: 3, target: "one-foe", effect: "Jab for round(DEX×0.5) and pocket 3+2×foeLvl gold — the coins are yours even if the foe escapes" },
+  { id: "crippling-cut", name: "Crippling Cut", class: "rogue", sp: 5, target: "one-foe", effect: "One foe takes round(DEX×1.2) through half DEF and deals −30% damage for the rest of the fight" },
 ];
 
 export function spellById(id: string): SpellDef {
@@ -32,7 +35,7 @@ export function spellById(id: string): SpellDef {
   return def;
 }
 
-/** Level-unlock table: class → level → spell id. Rogue has no spells (passives instead). */
+/** Level-unlock table: class → level → spell id. Rogues keep their passives on top of these tricks. */
 export const SPELL_UNLOCKS: Record<ClassId, { lvl: number; spell: string }[]> = {
   mage: [
     { lvl: 1, spell: "magic-missile" },
@@ -51,7 +54,11 @@ export const SPELL_UNLOCKS: Record<ClassId, { lvl: number; spell: string }[]> = 
     { lvl: 5, spell: "taunt" },
     { lvl: 9, spell: "cleave" },
   ],
-  rogue: [],
+  rogue: [
+    { lvl: 1, spell: "backstab" },
+    { lvl: 4, spell: "steal-gold" },
+    { lvl: 8, spell: "crippling-cut" },
+  ],
 };
 
 export function spellsKnownAt(classId: ClassId, level: number): SpellDef[] {

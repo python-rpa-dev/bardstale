@@ -22,6 +22,7 @@ export interface CombatFoe {
   maxHp?: number; // starting HP for bosses — the enrage threshold reference
   enraged?: boolean; // one-time trigger at ≤30% HP: +50% damage dealt
   fled?: boolean; // behavior "flee": routed below its HP threshold — half XP, no gold
+  crippled?: boolean; // a rogue's crippling cut: this foe deals −30% damage for the rest of the fight
 }
 
 /** Effective def view for a foe with the "hollows" ±1 level shift: hp/atk scale ±12% per level. */
@@ -61,6 +62,7 @@ export interface CombatState {
   pocketLuck: boolean; // living rogue: +3 gold per kill
   healDiscount: boolean; // undead medal: heal costs −2 SP
   fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
+  stolenGold?: number; // coins pickpocketed mid-fight — added to victory gold on top of the kill rolls
   blessDef: number; // party-wide DEF bonus for the combat (bless)
   tauntPc: number | null; // fighter who taunted: highest-ATK foe must target them
   bestHit?: number; // biggest single PC hit this fight (synced to Chronicle on victory)
@@ -342,20 +344,31 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
       else if (spellId === "power-strike") base = Math.round(pcStats(cs, pcIdx).atk * 1.8);
       else if (spellId === "cleave") base = Math.round(pcStats(cs, pcIdx).atk * 1.2);
       else if (spellId === "frost-nova") base = Math.round(mnd * 1.2);
+      else if (spellId === "backstab") { base = Math.round(pcStats(cs, pcIdx).dex * 1.5) + 4; critChance += 0.15; }
+      else if (spellId === "steal-gold") base = Math.round(pcStats(cs, pcIdx).dex * 0.5);
+      else if (spellId === "crippling-cut") base = Math.round(pcStats(cs, pcIdx).dex * 1.2);
       else throw new Error(`unhandled damage spell ${spellId}`);
       let dmg = Math.max(1, base - fd.mr);
-      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter; cleave is physical — full half-DEF
+      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter; cleave and the rogue's knives are physical — full half-DEF
       if (spellId === "power-strike") dmg = Math.max(1, base - Math.floor(fd.def / 4));
-      else if (spellId === "cleave") dmg = Math.max(1, base - Math.floor(fd.def / 2));
+      else if (spellId === "cleave" || spellId === "backstab" || spellId === "steal-gold" || spellId === "crippling-cut") dmg = Math.max(1, base - Math.floor(fd.def / 2));
       const crit = rng() < critChance;
       if (crit) dmg *= 2;
       f.hp = Math.max(0, f.hp - dmg);
       recordDeed(cs, dmg, crit);
-      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" ? "slashes" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
+      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" || spellId === "crippling-cut" ? "slashes" : spellId === "backstab" ? "stabs" : spellId === "steal-gold" ? "jinks" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
       evs.push({ kind: crit ? "crit" : "spell", src: ["pc", pcIdx], dst: ["foe", t], amount: dmg, text: String(dmg) });
       if (!foeAlive(f)) {
         pushLog(cs, `The ${titleCase(f.mid)} falls!`);
         evs.push({ kind: "death", dst: ["foe", t], text: "" });
+      }
+      if (spellId === "steal-gold") { // a pickpocketed purse is yours whether its owner lives, dies or runs
+        const g = 3 + Math.max(0, fd.lvl) * 2;
+        cs.stolenGold = (cs.stolenGold ?? 0) + g;
+        pushLog(cs, `${p.name} lifts ${g} gold from the ${titleCase(f.mid)}'s purse.`);
+      } else if (spellId === "crippling-cut" && foeAlive(f)) {
+        f.crippled = true;
+        pushLog(cs, `The ${titleCase(f.mid)} hangs a leg — its blows lose 30% of their force.`);
       }
     }
   }
@@ -556,6 +569,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
     if (cs.riches) g = Math.floor(g * 1.5);
     gold += f.elite ? g * 2 : g; // elites pay double
   }
+  gold += cs.stolenGold ?? 0; // pickpocketed coins ride outside the kill rolls and the riches omen
   return { xpByPc, gold, tooWeak };
 }
 
@@ -643,6 +657,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const crit = rng() < cs.critFoe;
   if (crit) dmg *= 2;
   if (f.enraged) dmg = Math.round(dmg * 1.5);
+  if (f.crippled) dmg = Math.round(dmg * 0.7); // a crippling cut keeps biting
   const applied = hurtPc(cs, t, dmg);
   cs.calls = rng.calls();
   pushLog(cs, crit ? `The ${titleCase(f.mid)} CRITS ${p.name} for ${applied}!` : `The ${titleCase(f.mid)} hits ${p.name} for ${applied}.`);

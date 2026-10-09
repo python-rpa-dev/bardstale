@@ -45,6 +45,17 @@ function titleCase(id: string): string {
 /** Module-scoped on purpose (like guild.ts selection): ctx.refresh() remounts this screen mid-auto-walk (boon picks), and the ticker must survive — each fresh mount takes it over with its own draw/log closures. */
 let autoTimer: number | null = null;
 let entryLoggedFor: string | null = null; // one "You step into" per run; mid-run remounts (boon-pick refresh) must not repeat it
+let lowHpHintKey = ""; // gateId:runNumber — one retreat hint per run, not per refresh or remount
+
+/** Once per run, point a failing party toward shrines and the temple. */
+function hintRetreatOnce(s: GameState): void {
+  const ag = s.activeGate;
+  if (!ag) return;
+  const key = `${ag.gateId}:${ag.runNumber}`;
+  if (key === lowHpHintKey) return;
+  lowHpHintKey = key;
+  toast("The party is failing — ? shrines glow on the minimap once explored, and the temple heals all. Leave while you can.");
+}
 
 export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   if (!ctx.state().activeGate) {
@@ -110,16 +121,21 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
   function refreshParty(): void {
     const s = ctx.state();
+    let lowestRatio = Infinity; // drives the critical pulse + the once-per-run retreat hint
     partyHost.replaceChildren(
       ...s.party.map((p) => {
         const max = pcMax(p);
-        return el("div", { class: `pc-card${p.hp <= 0 ? " downed" : ""}` },
+        const ratio = p.hp / Math.max(1, max.hp);
+        if (ratio < lowestRatio) lowestRatio = ratio;
+        const critical = p.hp > 0 && ratio < 0.25; // downed heroes read as "downed", not "critical"
+        return el("div", { class: `pc-card${p.hp <= 0 ? " downed" : ""}${critical ? " critical" : ""}` },
           el("div", { class: "pc-id" }, el("b", { text: p.name }), document.createTextNode(` ${titleCase(p.classId)} · Lv ${p.level}`)),
           bar(p.hp, max.hp, "var(--hp)", "✚", `${p.name} HP`),
           bar(p.sp, max.sp, "var(--sp)", "✦", `${p.name} SP`),
         );
       }),
     );
+    if (lowestRatio < 0.25) hintRetreatOnce(s);
   }
 
   function shake(): void {

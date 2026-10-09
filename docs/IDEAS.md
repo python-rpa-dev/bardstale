@@ -6,9 +6,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run depth
 
-- **Rogue tricks** (S–M) — give the rogue an SP rail (backstab / steal gold / disarm) instead of
-  passives-only; fixes the 3-of-4-classes-have-actions asymmetry. Hooks: `data/spells.ts`
-  unlock-table pattern + combat cast rail.
+- **Rogue tricks** — shipped; see the class SP rails line under Combat in FEATURES.
 - **Gate lord phases** (M) — telegraphed specials ("the wyrm rears back…") and phase changes for
   boss fights instead of stat-checks. Hook: boss branch in `core/combat.ts`.
 - **A 4th gate with a floor gimmick** (M–L) — e.g. collapsing floors (stairs relocate after N

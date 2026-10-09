@@ -30,8 +30,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 - **Herbalism & brewing** (M) — shrine visits yield 1 herb; the tavern kitchen brews herb+gold into
   potions (new `items.ts` rows, no new screens). Makes shrines a real decision instead of free HP.
-- **Merchant rivalry** (S) — two rival stalls, each discounts items the other doesn't stock that
-  day (`dailySeed` again). Sits on top of shop stock tiers.
+- **Merchant rivalry** — shipped; see the Merchants' Row line in FEATURES.
 
 ## Atmosphere & dark
 

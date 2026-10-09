@@ -43,7 +43,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 - First-person raycaster with per-gate wall palettes and tiled POV textures; minimap glyphs for stairs, chests, shrines, riddles, and seals (explored cells only).
 - Hand-authored SVG art across 35+ manifest slots: foes, bosses, items, torches, icons.
-- Icon command bar with tooltips, battle-mode icon rail, dungeon log capped at 60 lines; procedural BGM plus game-moment SFX with volume and mute.
+- Icon command bar with tooltips, battle-mode icon rail, dungeon log capped at 60 lines; procedural BGM plus game-moment SFX with volume and mute — including a dark-layer drone that breathes in as torchlight dims below the warning threshold and fades out when relit or leaving the dungeon.
 
 ## Accessibility & mobile
 

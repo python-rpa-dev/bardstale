@@ -35,6 +35,7 @@ import {
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
 import { renderMinimap } from "../render/minimap";
+import { darkIntensity } from "../core/music";
 
 const CHEST_CONSUMABLES = ["potion-hp", "potion-sp", "torch"];
 
@@ -102,8 +103,14 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
   let torchChip: HTMLElement | null = null; // side-column light readout, refreshed in drawView
   let bountyChip: HTMLElement | null = null; // accepted-bounty progress, refreshed with the view
+  let lastDark = -1; // intensity already handed to the music engine; a remount re-syncs it
   function drawView(): void {
     const ag = ctx.state().activeGate;
+    const dark = darkIntensity(ag?.lightTurns);
+    if (dark !== lastDark) {
+      lastDark = dark;
+      ctx.music?.setDark(dark); // the drone breathes in as the flame dies, out when relit
+    }
     if (!ag || !viewCanvas.isConnected) return;
     renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) });
     renderMinimap(miniCanvas, { map: ag.map, visited: ag.visited, pos: ag.pos, dir: ag.dir, chests: ag.chests });

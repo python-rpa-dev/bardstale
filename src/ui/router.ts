@@ -1,10 +1,13 @@
 import type { GameState } from "../state/save";
 import type { Sfx } from "../core/sfx";
+import type { Music } from "../core/music";
 
 export interface RouteCtx {
   state(): GameState;
   commit(mutator: (s: GameState) => void): void;
   sfx: Sfx;
+  /** BGM engine — the dungeon dark layer fades its drone with the flame; screens never switch tracks. */
+  music?: Music | null;
   navigate(hash: string): void;
   refresh(): void;
   /** Wipe the save and start a fresh game (title screen). */

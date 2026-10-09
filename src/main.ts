@@ -62,6 +62,7 @@ const ctx: RouteCtx = {
     applySettings();
   },
   sfx,
+  music,
   navigate: navigateTo,
   refresh: () => routerRef?.refresh(),
   newGame() {

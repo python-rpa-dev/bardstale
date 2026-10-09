@@ -571,6 +571,11 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 /* Chronicle ledger rows */
 .deed-row { display: flex; justify-content: space-between; gap: var(--s3); padding: 0.15rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--gold) 25%, transparent); }
 
+/* Guild shelf — Hall of Runs */
+.hall { margin-top: var(--s4); }
+.hall-row { padding: var(--s2) 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 20%, transparent); }
+.hall-row:last-child { border-bottom: none; }
+
 /* Torchlight readout in the dungeon side column */
 .torch-chip { color: var(--gold); }
 .torch-chip.dark { color: var(--danger); font-weight: 600; }

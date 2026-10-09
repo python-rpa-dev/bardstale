@@ -8,8 +8,8 @@ import { expeditionSeed, hashStr, mulberry32, randInt, type Rng } from "../core/
 import { gateById, gateIndex } from "../data/gates";
 import { dayNumber, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
-import { emptyChronicle, pcMax } from "./save";
-import type { ActiveGate, FloorMapSave, GameState, RareKind } from "./save";
+import { emptyChronicle, HALL_SIZE, pcMax } from "./save";
+import type { ActiveGate, FloorMapSave, GameState, RareKind, RunRecord } from "./save";
 import { earn } from "./party";
 
 /** Per-floor rng seed derived from the run seed. */
@@ -126,6 +126,8 @@ export function startExpedition(s: GameState, gateId: string, omen?: ModifierId)
     lightTurns: LIGHT_PER_FLOOR, // the first torch is struck at the threshold
     torchKind: "torch",
     loot: { gold: 0, items: {} },
+    killsThisRun: 0, // Hall of Runs kill counter for this expedition
+    medalsThisRun: 0,
   };
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
   const rare = rollRare(seed);
@@ -155,8 +157,25 @@ export function descendFloor(s: GameState): void {
   reveal(ag);
 }
 
-/** Finish the run (exit or abandon). The loot tally is already committed live during the run. */
-export function endExpedition(s: GameState): void {
+/** Finish the run (exit or abandon). The loot tally is already committed live during the run;
+ * surfacing pins the run's memory to the Guild's Hall of Runs — newest first, capped at HALL_SIZE. */
+export function endExpedition(s: GameState, surfaced = false): void {
+  const ag = s.activeGate;
+  if (surfaced && ag) {
+    const rec: RunRecord = {
+      gateId: ag.gateId,
+      dayKey: s.dayKey,
+      runNumber: ag.runNumber,
+      depth: ag.floor + 1, // a surfaced run ends on its deepest floor — completion is descent
+      kills: ag.killsThisRun ?? 0,
+      medals: ag.medalsThisRun ?? 0,
+      gold: ag.loot.gold,
+      items: { ...ag.loot.items },
+      crew: s.party.map((p) => ({ name: p.name, level: p.level })),
+    };
+    (s.hall ??= []).unshift(rec);
+    if (s.hall.length > HALL_SIZE) s.hall.length = HALL_SIZE; // the shelf forgets its oldest memory
+  }
   delete s.activeGate;
 }
 

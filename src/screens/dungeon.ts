@@ -157,7 +157,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     stopAuto();
     const rare = ctx.state().activeGate?.rareSpawn; // read before endExpedition clears the run
     ctx.sfx.victory();
-    ctx.commit((d) => endExpedition(d));
+    ctx.commit((d) => endExpedition(d, true)); // surfaced — pin this run to the Hall of Runs
     const rows = Object.entries(loot.items).map(([id, n]) => `${itemById(id).name} ×${n}`);
     const close = modal(
       "Expedition Complete",

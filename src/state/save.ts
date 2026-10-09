@@ -98,6 +98,8 @@ export interface ActiveGate {
   pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
   lightTurns?: number; // steps of torchlight left on this floor; absent (legacy) reads as lit
   torchKind?: string; // id of the last light item used this run — tallow smoke / witchlight reveal perks
+  killsThisRun?: number; // monsters felled this run — feeds the Hall of Runs record
+  medalsThisRun?: number; // family medals completed this run — the Hall's trophy line
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 
@@ -115,6 +117,24 @@ export interface Chronicle {
 export function emptyChronicle(): Chronicle {
   return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0, goldEarned: 0 };
 }
+
+// ---------- Hall of Runs (per-run memory; rendered on the Guild shelf) ----------
+
+/** One surfaced expedition. The Chronicle is lifetime totals — this is memory per run, newest first. */
+export interface RunRecord {
+  gateId: string;
+  dayKey: string; // in-world date at surfacing
+  runNumber: number; // the gate's own expedition counter at start
+  depth: number; // floors descended + 1 (deepest floor reached, 1-based)
+  kills: number;
+  medals: number; // family medals earned during this run
+  gold: number; // loot tally carried to the surface
+  items: Inventory;
+  crew: { name: string; level: number }[]; // party as it walked out
+}
+
+/** The shelf holds this many memories; older runs are forgotten. */
+export const HALL_SIZE = 8;
 
 // ---------- Root state ----------
 
@@ -151,6 +171,7 @@ export interface GameState {
   chronicle?: Chronicle; // lifetime accumulator; migrate backfills older saves
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
+  hall?: RunRecord[]; // Guild shelf — the last surfaced runs, newest first; migrate backfills older saves
   settings: Settings;
   activeGate?: ActiveGate;
   activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls
@@ -200,6 +221,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     dayKey: dayKey(now()),
     runs: {},
     chronicle: emptyChronicle(),
+    hall: [], // the Guild shelf starts empty
     settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, musicVolume: 0.35, sfxMuted: false },
 };
 }
@@ -253,6 +275,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
       s.chronicle ??= emptyChronicle(); // v1 saves predate the chronicle
       s.chronicle.goldEarned ??= 0; // chronicles predate the career-gold stat
       s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
+      s.hall ??= []; // v1 saves predate the Hall of Runs
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

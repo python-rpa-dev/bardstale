@@ -41,6 +41,4 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Run structure
 
-- **Hall of Runs** (M) — keep the last 8 finished runs (loadout, depth, loot, medals earned) as a
-  guild shelf. The Chronicle is lifetime totals; this is per-run memory. Serialize on
-  `endExpedition`, render beside the ledger.
+- **Hall of Runs** — shipped; see the Guild shelf line in FEATURES.

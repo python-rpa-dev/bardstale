@@ -84,10 +84,12 @@ export function claimVictory(d: GameState): VictorySummary | null {
     const def = monsterById(f.mid);
     if (!d.codex.includes(def.id)) d.codex.push(def.id);
     chron.killsByFoe[def.id] = (chron.killsByFoe[def.id] ?? 0) + 1;
+    if (d.activeGate) d.activeGate.killsThisRun = (d.activeGate.killsThisRun ?? 0) + 1; // Hall of Runs tally
     const members = BESTIARY.filter((x) => x.family === def.family);
     if (!d.medals.includes(def.family) && members.every((m) => d.codex.includes(m.id))) {
       d.medals.push(def.family);
       newMedals.push(def.family);
+      if (d.activeGate) d.activeGate.medalsThisRun = (d.activeGate.medalsThisRun ?? 0) + 1; // trophy line fodder
     }
   }
   chron.battlesWon++;

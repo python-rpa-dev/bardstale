@@ -3,8 +3,8 @@ import { foeAct, foeDef, normalizeActiveTurn, quickResolve, startCombat, tallyVi
 import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
-import { makePc, newGame, pcMax } from "../save";
-import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { HALL_SIZE, makePc, newGame, pcMax } from "../save";
+import { answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -555,5 +555,41 @@ describe("torch kind lifecycle", () => {
     descendFloor(s);
     expect(s.activeGate!.torchKind).toBe("witchlight"); // the perk survives the new floor
     expect(s.activeGate!.lightTurns).toBe(LIGHT_PER_FLOOR); // but the flame is re-struck fresh
+  });
+});
+
+describe("Hall of Runs", () => {
+  it("a surfaced run pins its stats and crew to the Guild shelf", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    descendFloor(s); // depth 2 by the time the run surfaces
+    const ag = s.activeGate!;
+    ag.killsThisRun = 7;
+    ag.medalsThisRun = 1;
+    ag.loot.gold = 41;
+    ag.loot.items["potion-hp"] = 2;
+    endExpedition(s, true);
+    expect(s.hall).toHaveLength(1);
+    const rec = s.hall![0];
+    expect(rec).toMatchObject({ gateId: "hollow-roots", dayKey: s.dayKey, runNumber: 1, depth: 2, kills: 7, medals: 1, gold: 41 });
+    expect(rec.items["potion-hp"]).toBe(2);
+    expect(rec.crew.map((c) => c.name)).toEqual(s.party.map((p) => p.name)); // crew as it walked out
+  });
+
+  it("retreats and abandons are not remembered — only surfacings", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    endExpedition(s); // leave() / abandon: no record
+    expect(s.hall).toEqual([]);
+  });
+
+  it("the shelf keeps the newest eight first and forgets older runs", () => {
+    const s = newGame();
+    for (let i = 0; i < 10; i++) {
+      startExpedition(s, "hollow-roots");
+      endExpedition(s, true);
+    }
+    expect(s.hall).toHaveLength(HALL_SIZE);
+    expect(s.hall!.map((r) => r.runNumber)).toEqual([10, 9, 8, 7, 6, 5, 4, 3]); // runs 1-2 forgotten
   });
 });

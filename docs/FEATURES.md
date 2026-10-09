@@ -29,7 +29,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 ## Town services
 
-- Guild: party roster and leveling. Temple of the Quiet Light: per-member heal, bulk "Heal All", revive tokens — death is a fee, not an ending.
+- Guild: party roster and leveling, plus the Hall of Runs shelf — the last 8 surfaced runs (depth, kills, medals, loot, crew) newest first; retreats and wipes are not remembered. Temple of the Quiet Light: per-member heal, bulk "Heal All", revive tokens — death is a fee, not an ending.
 - The Broken Antler tavern: bounty board and ambient omen promise. Merchants' Row: Mira and Bram run rival carts — overlapping daily stock (~70% each, union complete), and each discounts the goods the other doesn't carry that day; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
 - Codex: first kills stamp pages; completing a foe family earns its medal — permanent perks. Chronicle: lifetime deeds ledger including biggest hit, crit count, and career gold.
 

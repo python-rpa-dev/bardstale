@@ -1,7 +1,8 @@
 import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
 import { BOONS } from "../data/boons";
-import type { ActiveGate, Chronicle, GameState, Pc, Settings, StatusMark } from "./save";
+import type { ActiveGate, Chronicle, GameState, Inventory, Pc, RunRecord, Settings, StatusMark } from "./save";
+import { HALL_SIZE } from "./save";
 /**
  * Save-code import. Export is just `serialize(state)` — the state carries its
  * own `version`, so a code is plain JSON. Import re-validates everything the
@@ -177,6 +178,32 @@ export function importSave(raw: string): ImportResult {
     goldEarned: nonNeg(rc.goldEarned),
   };
 
+  // The Hall of Runs is cosmetic memory like the chronicle — clamp or drop records, never reject.
+  const hall: RunRecord[] = [];
+  if (Array.isArray(parsed.hall)) {
+    for (const rh of parsed.hall) {
+      if (!isObj(rh) || !str(rh.gateId)) continue; // a memory without its gate is no memory
+      const items: Inventory = {};
+      if (isObj(rh.items)) for (const [k, v] of Object.entries(rh.items)) if (int(v) && v > 0) items[k] = v;
+      hall.push({
+        gateId: rh.gateId,
+        dayKey: str(rh.dayKey) ? rh.dayKey : "",
+        runNumber: nonNeg(rh.runNumber),
+        depth: nonNeg(rh.depth),
+        kills: nonNeg(rh.kills),
+        medals: nonNeg(rh.medals),
+        gold: nonNeg(rh.gold),
+        items,
+        crew: Array.isArray(rh.crew)
+          ? rh.crew
+              .filter((c): c is { name: string; level?: number } => isObj(c) && str(c.name))
+              .map((c) => ({ name: c.name.slice(0, 40), level: nonNeg(c.level) }))
+          : [],
+      });
+      if (hall.length >= HALL_SIZE) break; // an export cannot bloat the shelf past its canonical size
+    }
+  }
+
   const rs = isObj(parsed.settings) ? parsed.settings : {};
   const settings: Settings = {
     quickBattle: boolOr(rs.quickBattle, false),
@@ -214,6 +241,7 @@ export function importSave(raw: string): ImportResult {
     dayKey: parsed.dayKey,
     runs,
     chronicle,
+    hall,
     settings,
     ...(boolOr(parsed.reviveToken, false) ? { reviveToken: true } : {}),
     ...(boolOr(parsed.tourSeen, false) ? { tourSeen: true } : {}),

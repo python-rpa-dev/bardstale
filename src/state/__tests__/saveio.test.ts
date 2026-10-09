@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActiveGate, GameState } from "../save";
-import { newGame, serialize } from "../save";
+import { HALL_SIZE, newGame, serialize } from "../save";
 import { importSave } from "../saveio";
 
 const clock = () => new Date("2026-10-04T12:00:00Z");
@@ -214,5 +214,28 @@ describe("importSave", () => {
       r.bounties.offers[1].family = "dragons";
     });
     expect(importSave(code).ok).toBe(false);
+  });
+});
+
+describe("Hall of Runs import", () => {
+  it("clamps or drops records instead of rejecting the code", () => {
+    const s = newGame(clock);
+    (s as { hall?: unknown[] }).hall = [
+      { gateId: "hollow-roots", dayKey: "2026-10-09", runNumber: -3, depth: 4, kills: 5, gold: 9, items: { "potion-hp": -2, torch: 3 }, crew: [{ name: "Aldric", level: -4 }, { nope: 1 }] },
+      { dayKey: "a memory without its gate" }, // dropped — no gateId
+      "junk", // dropped — not even an object
+      ...Array.from({ length: 12 }, (_, i) => ({ gateId: `g${i}`, runNumber: i, depth: 1, kills: 0, gold: 0, items: {}, crew: [] })),
+    ];
+    const res = importSave(JSON.stringify(s));
+    expect(res.ok).toBe(true); // cosmetic history never rejects a code
+    if (!res.ok) return;
+    const hall = res.state.hall!;
+    expect(hall.length).toBe(HALL_SIZE); // bloat truncated to the canonical shelf size
+    const first = hall[0];
+    expect(first.runNumber).toBe(0); // negatives clamp to zero
+    expect(first.medals).toBe(0); // a missing trophy count clamps to zero
+    expect(first.items).toEqual({ torch: 3 }); // negative counts dropped
+    expect(first.crew).toEqual([{ name: "Aldric", level: 0 }]); // junk member dropped, level clamped
+    expect(hall.every((r) => r.gateId.length > 0)).toBe(true);
   });
 });

@@ -590,3 +590,9 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 /* Closing combat lines inside the defeat modal — diagnose a Quick Resolve loss without dismissing it */
 .fight-lines { margin: 0.7rem 0; padding-left: 0.8rem; border-left: 2px solid var(--panel-edge); }
 .fight-lines p { margin: 0.15rem 0; font-size: 0.85rem; color: var(--muted); }
+
+/* "?" cheat sheet overlay */
+.help p { margin: 0.6rem 0 0.3rem; color: var(--muted); font-size: 0.85rem; }
+.keys { list-style: none; margin: 0 0 0.4rem; padding: 0; }
+.keys li { display: flex; gap: 0.6rem; align-items: baseline; margin: 0.2rem 0; }
+.keys kbd { min-width: 3.4rem; text-align: center; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 4px; padding: 0.05rem 0.4rem; font-size: 0.85rem; }

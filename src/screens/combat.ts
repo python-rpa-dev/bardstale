@@ -156,7 +156,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
 
   function openItems(): void {
     const inv = ctx.state().inventory;
-    const usable = ITEMS.filter((it) => it.slot === "consumable" && (inv[it.id] ?? 0) > 0);
+    const usable = ITEMS.filter((it) => it.slot === "consumable" && !it.material && (inv[it.id] ?? 0) > 0); // herbs wait for the hearth, not a fight
     const list = el("div", { class: "item-list" });
     if (!usable.length) list.append(el("p", { class: "muted", text: "Nothing usable in the pack." }));
     for (const it of usable) {

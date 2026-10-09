@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -591,5 +591,32 @@ describe("Hall of Runs", () => {
     }
     expect(s.hall).toHaveLength(HALL_SIZE);
     expect(s.hall!.map((r) => r.runNumber)).toEqual([10, 9, 8, 7, 6, 5, 4, 3]); // runs 1-2 forgotten
+  });
+});
+
+describe("activateShrine - healing springs and brewing herbs", () => {
+  it("fully heals the living, gifts exactly one moonpetal, then sleeps for this floor", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const p0 = s.party[0]!;
+    p0.hp = 1;
+    p0.sp = 0;
+    expect(activateShrine(s)).toBe(true);
+    const max = pcMax(p0);
+    expect(p0.hp).toBe(max.hp);
+    expect(p0.sp).toBe(max.sp);
+    expect(s.inventory.moonpetal).toBe(1); // one sprig per visit...
+    expect(s.activeGate!.loot.items.moonpetal).toBe(1); // ...tallied, so a wipe takes it back
+    expect(activateShrine(s)).toBe(false); // the spring sleeps until you descend deeper
+    expect(s.inventory.moonpetal).toBe(1); // no double-dipping on the same floor
+  });
+
+  it("shrines heal the living and leave the dead to the temple", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const fallen = s.party[0]!;
+    fallen.hp = 0; // downed members are revived at the temple, not here
+    expect(activateShrine(s)).toBe(true);
+    expect(fallen.hp).toBe(0);
   });
 });

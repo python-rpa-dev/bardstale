@@ -17,7 +17,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 - Three gates — Hollow Roots, Gallows Fen, Ember Spire — with level bands, wall palettes, and ambient modifiers ("hollows" shifts foe levels).
 - Gate lords: bark-thrall, cloister-lich, vault-wyrm (one-time enrage at 30%; wyrm breath cadence). Elites: +level, double gold, guaranteed uncommon drop.
 - Torchlight survival: 30 steps of flame per floor; darkness emboldens foes (18% → 26% ambushes). Tiers: Torch / Tallow (60 steps, smoke −10% ambushes while lit) / Witchlight (45 steps, reveals hidden cells within 2); the kind persists across floors.
-- Floor content: chests, secret walls, traps, healing shrines, riddle stones, rune-sealed vaults; rare-spawn merchant / hermit / villager (8%).
+- Floor content: chests, secret walls, traps, healing shrines (each also yields one moonpetal sprig), riddle stones, rune-sealed vaults; rare-spawn merchant / hermit / villager (8%).
 - Cross-floor Auto-Walk: paths to the stairs and descends floor after floor, halting on foes, traps, and unopened chests.
 
 ## Combat
@@ -30,7 +30,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 ## Town services
 
 - Guild: party roster and leveling, plus the Hall of Runs shelf — the last 8 surfaced runs (depth, kills, medals, loot, crew) newest first; retreats and wipes are not remembered. Temple of the Quiet Light: per-member heal, bulk "Heal All", revive tokens — death is a fee, not an ending.
-- The Broken Antler tavern: bounty board and ambient omen promise. Merchants' Row: Mira and Bram run rival carts — overlapping daily stock (~70% each, union complete), and each discounts the goods the other doesn't carry that day; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
+- The Broken Antler tavern: bounty board, ambient omen promise, and a hearth kitchen that brews shrine-grown moonpetal + coin into potions (cheaper than buying). Merchants' Row: Mira and Bram run rival carts — overlapping daily stock (~70% each, union complete), and each discounts the goods the other doesn't carry that day; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
 - Codex: first kills stamp pages; completing a foe family earns its medal — permanent perks. Chronicle: lifetime deeds ledger including biggest hit, crit count, and career gold.
 
 ## Run structure & economy

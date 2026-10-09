@@ -28,8 +28,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Town life
 
-- **Herbalism & brewing** (M) — shrine visits yield 1 herb; the tavern kitchen brews herb+gold into
-  potions (new `items.ts` rows, no new screens). Makes shrines a real decision instead of free HP.
+- **Herbalism & brewing** — shipped; see the tavern hearth kitchen in FEATURES.
 - **Merchant rivalry** — shipped; see the Merchants' Row line in FEATURES.
 
 ## Atmosphere & dark

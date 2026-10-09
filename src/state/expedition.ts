@@ -179,6 +179,27 @@ export function endExpedition(s: GameState, surfaced = false): void {
   delete s.activeGate;
 }
 
+/**
+ * Shrine activation: living members fully heal and the spring yields one brewing herb for the
+ * tavern kitchen. Once per floor; returns false when the shrine sleeps. Herb rides the loot
+ * tally, so a wipe forfeits it like any other unclaimed prize.
+ */
+export function activateShrine(s: GameState): boolean {
+  const ag = s.activeGate!;
+  const flag = `shrine-f${ag.floor}`;
+  if (ag.flags[flag]) return false; // one drink per floor
+  ag.flags[flag] = true;
+  for (const p of s.party) {
+    if (p.hp <= 0) continue; // shrines heal the living; the temple revives the dead
+    const m = pcMax(p);
+    p.hp = m.hp;
+    p.sp = m.sp;
+  }
+  s.inventory.moonpetal = (s.inventory.moonpetal ?? 0) + 1; // gathering is instant; brewing waits for the hearth
+  ag.loot.items.moonpetal = (ag.loot.items.moonpetal ?? 0) + 1;
+  return true;
+}
+
 /** Deterministic per-event rng: advances ActiveGate.steps so reloads replay identically. */
 export function stepRng(ag: ActiveGate): Rng {
   ag.steps += 1;

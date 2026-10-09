@@ -1,6 +1,8 @@
 import { el, button, bar, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
+import { itemById, RECIPES } from "../data/items";
+import { brewPotion } from "../state/tavern";
 import { BESTIARY, type Family } from "../data/bestiary";
 import { bountyId } from "../data/bounties";
 import { GATES, gateById, gateIndex } from "../data/gates";
@@ -71,6 +73,36 @@ export function renderTavern(host: HTMLElement, ctx: RouteCtx): void {
                 ctx.refresh();
               },
             }),
+      ),
+    );
+  }
+
+  host.append(el("h2", { text: "Hearth Kitchen" }));
+  const herbs = s.inventory.moonpetal ?? 0;
+  host.append(
+    el("p", {
+      class: "muted",
+      text: `The cook trades shrine-grown moonpetal for bottled potions — cheaper than the Row. Sprigs in your pack: ${herbs}.`,
+    }),
+  );
+  for (const r of RECIPES) {
+    const out = itemById(r.out);
+    host.append(
+      el(
+        "div",
+        { class: "shop-row" },
+        el("span", { text: out.name }),
+        el("span", { class: "muted", text: `${r.herbs} sprigs + ${r.gold} g` }),
+        button("Brew", {
+          hint: `Bottle one ${out.name} (buys for ${out.price} g) from shrine herbs and kettle fuel.`,
+          disabled: herbs < r.herbs || s.gold < r.gold,
+          onClick: () => {
+            ctx.commit((st) => brewPotion(st, r.out));
+            ctx.sfx.coin();
+            toast(`Brewed: ${out.name}. The kettle sings.`);
+            ctx.refresh();
+          },
+        }),
       ),
     );
   }

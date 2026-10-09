@@ -13,6 +13,7 @@ import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
 import { earn } from "../state/party";
 import {
+  activateShrine,
   activeBountyFamily,
   answerRiddle,
   campRest,
@@ -358,17 +359,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       }
 
       if (kind === "shrine") {
-        const flag = `shrine-f${ag.floor}`;
-        if (!ag.flags[flag]) {
-          ag.flags[flag] = true;
-          for (const p of d.party) {
-            if (p.hp <= 0) continue; // shrines heal the living; the temple revives the dead
-            const m = pcMax(p);
-            p.hp = m.hp;
-            p.sp = m.sp;
-          }
+        if (activateShrine(d)) {
           sfxKinds.push("heal");
           msgs.push("The shrine's quiet light knits flesh and spirit. Fully restored — its power now sleeps on this floor.");
+          msgs.push("Among the wet stones you cut a moonpetal sprig — the tavern kitchen brews with these.");
         } else {
           msgs.push("The shrine is dark. Its power sleeps until you descend deeper.");
         }
@@ -627,7 +621,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function openItems(): void {
     stopAuto();
     const s = ctx.state();
-    const usable = Object.entries(s.inventory).filter(([id, n]) => n > 0 && itemById(id).slot === "consumable");
+    const usable = Object.entries(s.inventory).filter(([id, n]) => n > 0 && itemById(id).slot === "consumable" && !itemById(id).material); // sprigs are brew stock, not rations
     if (!usable.length) {
       toast("Your packs hold nothing you can use down here.");
       return;

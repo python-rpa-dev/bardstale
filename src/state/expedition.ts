@@ -25,6 +25,15 @@ export function isLit(ag: ActiveGate): boolean {
   return ag.lightTurns === undefined || ag.lightTurns > 0;
 }
 
+/**
+ * Every third floor from the third down is pitch-black: torchlight shrinks to arm's reach,
+ * unlit traps bite twice as hard, and the dark hoards richer loot. Derived purely from the
+ * floor number, so saves can never desync and mapgen stays untouched.
+ */
+export function isDarkFloor(floor: number): boolean {
+  return floor >= 2 && (floor - 2) % 3 === 0; // floors 2, 5, 8… (0-based)
+}
+
 /** Encounter odds on open corridor cells; the dark emboldens foes. Tallow smoke (while lit) dulls them ~10%. Pure for tests. */
 export function encounterChance(lit: boolean, smoke = false): number {
   if (!lit) return 0.26;

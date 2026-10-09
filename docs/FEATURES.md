@@ -17,6 +17,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 - Three gates — Hollow Roots, Gallows Fen, Ember Spire — with level bands, wall palettes, and ambient modifiers ("hollows" shifts foe levels).
 - Gate lords: bark-thrall, cloister-lich, vault-wyrm (one-time enrage at 30%; wyrm breath cadence). Elites: +level, double gold, guaranteed uncommon drop.
 - Torchlight survival: 30 steps of flame per floor; darkness emboldens foes (18% → 26% ambushes). Tiers: Torch / Tallow (60 steps, smoke −10% ambushes while lit) / Witchlight (45 steps, reveals hidden cells within 2); the kind persists across floors.
+- Black floors: every third floor from the third down is pitch-black — even a lit torch reaches only 1.5 cells, unlit traps bite twice as hard, but chest drops climb one rarity rung and elite kills there drop rare gear instead of uncommon.
 - Floor content: chests, secret walls, traps, healing shrines (each also yields one moonpetal sprig), riddle stones, rune-sealed vaults; rare-spawn merchant / hermit / villager (8%).
 - Cross-floor Auto-Walk: paths to the stairs and descends floor after floor, halting on foes, traps, and unopened chests.
 

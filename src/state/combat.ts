@@ -9,7 +9,7 @@ import { gateById } from "../data/gates";
 import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
 import { applyXpToPc, earn } from "./party";
-import { endExpedition } from "./expedition";
+import { endExpedition, isDarkFloor } from "./expedition";
 import { emptyChronicle } from "./save";
 import type { GameState } from "./save";
 
@@ -96,9 +96,11 @@ export function claimVictory(d: GameState): VictorySummary | null {
   chron.bestHit = Math.max(chron.bestHit ?? 0, cs.bestHit ?? 0); // fight ledger → lifetime record
   chron.crits += cs.crits ?? 0;
 
-  // elite kills guarantee an uncommon equipment drop (deterministic per fight/slot)
+  // elite kills guarantee an equipment drop, one rarity tier up on black floors (deterministic per fight/slot)
   const eliteLoot: string[] = [];
-  const drops = ITEMS.filter((it) => it.rarity === "uncommon" && it.slot !== "consumable");
+  // black floors hoard richer spoils: elites there drop rare gear instead of uncommon
+  const dark = !!d.activeGate && isDarkFloor(d.activeGate.floor);
+  const drops = ITEMS.filter((it) => it.slot !== "consumable" && it.rarity === (dark ? "rare" : "uncommon"));
   cs.foes.forEach((f, i) => {
     if (!f.elite || !drops.length) return;
     const pick = drops[Math.floor(mulberry32(hashStr(`${cs.seed}:elite:${i}`))() * drops.length)];

@@ -64,6 +64,18 @@ export const RECIPES: Recipe[] = [
   { out: "potion-sp", herbs: 3, gold: 15 }, // buys for 40
 ];
 
+/** Black floors pay better: chest drops climb one rung of this ladder instead of the plain table. */
+const DROP_UPGRADES: Record<string, string> = {
+  "potion-hp": "potion-greater-hp",
+  torch: "tallow-torch",
+  "tallow-torch": "witchlight",
+};
+
+/** The next-better version of a consumable; identity when there is no upgrade. */
+export function upgradeDrop(id: string): string {
+  return DROP_UPGRADES[id] ?? id;
+}
+
 /** Two merchants who despise each other share the street; every dawn they roll out overlapping but different carts. */
 export const STALLS = [
   { id: "mira", name: "Mira's Wares", tagline: "Best prices in town — ask Bram why." },

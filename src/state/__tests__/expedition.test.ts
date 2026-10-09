@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { foeAct, foeDef, normalizeActiveTurn, quickResolve, startCombat, tallyVictory } from "../../core/combat";
 import { BESTIARY, monsterById } from "../../data/bestiary";
-import { ITEMS, itemById } from "../../data/items";
+import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, isDarkFloor, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
@@ -618,5 +618,30 @@ describe("activateShrine - healing springs and brewing herbs", () => {
     fallen.hp = 0; // downed members are revived at the temple, not here
     expect(activateShrine(s)).toBe(true);
     expect(fallen.hp).toBe(0);
+  });
+});
+
+describe("black floors - darkness with richer spoils", () => {
+  it("goes black every third floor from the third down", () => {
+    expect(isDarkFloor(0)).toBe(false);
+    expect(isDarkFloor(1)).toBe(false);
+    for (let f = 2; f <= 11; f++) expect(isDarkFloor(f)).toBe((f - 2) % 3 === 0); // floors 2, 5, 8 are black
+    expect(isDarkFloor(-1)).toBe(false);
+  });
+
+  it("upgrades chest drops one rung and leaves everything else alone", () => {
+    const ladder: [string, string][] = [
+      ["potion-hp", "potion-greater-hp"],
+      ["torch", "tallow-torch"],
+      ["tallow-torch", "witchlight"],
+    ];
+    for (const [from, to] of ladder) {
+      expect(upgradeDrop(from)).toBe(to);
+      const src = ITEMS.find((i) => i.id === from)!;
+      const dst = ITEMS.find((i) => i.id === to); // every rung must exist...
+      expect(dst).toBeDefined();
+      expect(dst!.price).toBeGreaterThan(src.price); // ...and cost more than the rung below it
+    }
+    for (const plain of ["witchlight", "potion-sp"]) expect(upgradeDrop(plain)).toBe(plain); // top rung and off-ladder items stay as-is
   });
 });

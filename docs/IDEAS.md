@@ -33,9 +33,7 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 ## Atmosphere & dark
 
-- **Darkness as a place, not a timer** (M) — dedicated "black floors" per gate: raycast radius 1.5,
-  traps invisible to Look unless lit, but loot tables upgrade one rarity tier. Risk/reward per
-  floor; pure mapgen flag + `isLit` checks that already exist on ActiveGate.lightTurns.
+- **Darkness as a place, not a timer** — shipped; see the black floors line in FEATURES.
 
 ## Run structure
 

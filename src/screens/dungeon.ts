@@ -7,7 +7,7 @@ import type { RouteCtx } from "../ui/router";
 import { DIR_VECS, MAP_W, bfsPath, cellId, idToXY, openDegree } from "../core/mapgen";
 import { randInt } from "../core/rng";
 import { gateById } from "../data/gates";
-import { itemById } from "../data/items";
+import { itemById, upgradeDrop } from "../data/items";
 import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
@@ -31,7 +31,7 @@ import {
   stepRng,
   trySeal,
   type SealOutcome,
-  LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal,
+  LIGHT_PER_FLOOR, encounterChance, isDarkFloor, isLit, lightMods, witchReveal,
 } from "../state/expedition";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
@@ -113,7 +113,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       ctx.music?.setDark(dark); // the drone breathes in as the flame dies, out when relit
     }
     if (!ag || !viewCanvas.isConnected) return;
-    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) });
+    const black = isDarkFloor(ag.floor); // even a lit torch reaches only arm's reach down here
+    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) || black, sight: black ? 1.5 : undefined });
     renderMinimap(miniCanvas, { map: ag.map, visited: ag.visited, pos: ag.pos, dir: ag.dir, chests: ag.chests });
     if (torchChip) {
       const lit = isLit(ag);
@@ -230,6 +231,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             : "You nearly don't notice the trigger. This time.";
         } else {
           let dmg = Math.floor((def.levels[1] - def.levels[0] + 1) / 2); // half the level-band width
+          if (isDarkFloor(ag.floor) && !isLit(ag)) dmg *= 2; // nobody sees the glint of steel in black dark
           if (rogues[0]) dmg = Math.floor(dmg / 2);
           const victim = d.party[randInt(rng, 0, d.party.length - 1)];
           victim.hp = Math.max(0, victim.hp - dmg);
@@ -345,7 +347,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           msgs.push(`The chest yields ${gold} gold.`);
           sfxKinds.push("chest", "coin");
           if (rng() < 0.25) {
-            const drop = CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)];
+            const drop = isDarkFloor(ag.floor) ? upgradeDrop(CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)]) : CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)]; // the dark hoards richer loot
             d.inventory[drop] = (d.inventory[drop] ?? 0) + 1;
             ag.loot.items[drop] = (ag.loot.items[drop] ?? 0) + 1;
             msgs.push(`Also: ${itemById(drop).name}.`);
@@ -453,7 +455,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         ctx.navigate("#/combat");
         return;
       }
-      if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
+      if (out.descended) {
+        log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
+        if (isDarkFloor(ctx.state().activeGate!.floor)) log("Black dark pools against the walls — your torchlight shrinks to arm's reach.");
+      }
       // A dodged trap is a non-event for walking — keep rolling; only real damage (or a finish) halts.
       if (out.finished || out.trapMsg || out.encounter) {
         stopAuto();
@@ -716,7 +721,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     }
     refreshParty();
     drawView();
-    if (out.descended) log("You descend. The air changes.");
+    if (out.descended) {
+      log("You descend. The air changes.");
+      if (isDarkFloor(ctx.state().activeGate!.floor)) log("Black dark pools against the walls — your torchlight shrinks to arm's reach.");
+    }
     if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
   }
 

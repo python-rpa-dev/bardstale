@@ -1,8 +1,10 @@
 import "../styles/main.css";
-import { el, toast } from "./ui/dom";
+import { button, el, modal, toast } from "./ui/dom";
+import { maybeBoonModal } from "./ui/boons";
 import { createRouter, navigateTo, type RouteCtx, type Router, type Screen } from "./ui/router";
 import { createStore } from "./state/save";
 import { createSfx } from "./core/sfx";
+import { createMusic } from "./core/music";
  import { settingsGear } from "./ui/settings";
 import { loadManifest } from "./render/art";
 import { renderTitle } from "./screens/title";
@@ -15,9 +17,13 @@ import { renderCodex } from "./screens/codex";
 import { renderGate } from "./screens/gate";
 import { renderDungeon } from "./screens/dungeon";
 import { renderCombat } from "./screens/combat";
+import { renderChronicle } from "./screens/chronicle";
 
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
+const music = createMusic(store.state.settings.musicVolume);
+// Debug/inspection seam: lets browser smokes assert which track is live.
+(window as unknown as { __music?: typeof music }).__music = music;
 
 // One source of truth for the compact sidebar tier (was a pure max-height media query):
 // large fonts inflate rem-sized cards past the viewport just like short windows do, so both
@@ -40,6 +46,7 @@ function applySettings(): void {
     dispatchEvent(new Event("resize"));
   }
    sfx.setVolume(st.sfxMuted ? 0 : st.sfxVolume);
+  music.setVolume(st.sfxMuted ? 0 : st.musicVolume);
 }
 
 let routerRef: Router | null = null;
@@ -74,6 +81,7 @@ const LOC_NAMES: Record<string, string> = {
   temple: "Temple of the Quiet Light",
   tavern: "The Broken Antler",
   codex: "Codex Library",
+  chronicle: "The Chronicle",
   gate: "Gate of Adventures",
   dungeon: "The Depths",
   combat: "Battle!",
@@ -91,6 +99,7 @@ document.querySelector("#app")!.append(
 
 let lastAnnounced = "";
 function updateHeader(route: string): void {
+  music.playFor(route); // BGM follows the screen; idempotent per track
   const locName = LOC_NAMES[route] ?? "Hollow Vale";
   locLabel.textContent = locName;
   if (locName !== lastAnnounced) {
@@ -113,6 +122,7 @@ const routes: Record<string, Screen> = {
   temple: renderTemple,
   tavern: renderTavern,
   codex: renderCodex,
+  chronicle: renderChronicle,
   gate: renderGate,
   dungeon: renderDungeon,
   combat: renderCombat,
@@ -123,6 +133,7 @@ for (const [name, fn] of Object.entries(routes)) {
   wrapped[name] = (host, c) => {
     updateHeader(name);
     fn(host, c);
+    setTimeout(() => maybeBoonModal(c), 0); // level-up picks surface after the screen paints
   };
 }
 
@@ -133,3 +144,42 @@ await loadManifest();
 applySettings();
 router.start();
 if (store.rotatedDay) toast("A new day dawns — today's bounties and gate omens have turned.");
+
+// Global "?" cheat sheet. Works on every screen; typing in an input never triggers it,
+// and an open modal already swallows keys (see dungeon's backdrop guard).
+const HELP_ROWS: [string, string][] = [
+  ["W / ↑", "step forward"],
+  ["S / ↓", "step back"],
+  ["A / ←", "turn left"],
+  ["D / →", "turn right"],
+  ["L", "look at the cell you face"],
+  ["E", "use: open a chest, probe a secret"],
+  ["R", "make camp"],
+];
+function openHelp(): void {
+  const row = (k: string, what: string) => el("li", {}, el("kbd", { text: k }), ` — ${what}`);
+  let close: () => void = () => {};
+  const body = el(
+    "div",
+    { class: "help" },
+    el("p", { text: "Below (the dungeon):" }),
+    el("ul", { class: "keys" }, ...HELP_ROWS.map(([k, what]) => row(k, what))),
+    el("p", { text: "Everywhere:" }),
+    el("ul", { class: "keys" }, row("?", "open this cheat sheet"), row("Esc", "close a dialog or the tour")),
+    button("Close", { onClick: () => close() }),
+  );
+  close = modal("How to play", body);
+}
+addEventListener("keydown", (e) => {
+  if (e.key !== "?" || document.querySelector(".modal-backdrop")) return;
+  const t = e.target as HTMLElement | null;
+  if (t?.closest?.("input, textarea, select")) return; // the save-import box types literal "?"
+  e.preventDefault();
+  openHelp();
+});
+
+// Install-to-desktop + full offline play. Prod only: dev server and vitest stay un-swerved.
+// Register immediately — this module's top-level await means "load" has already fired by now.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register(new URL("sw.js", document.baseURI).href).catch(() => {});
+}

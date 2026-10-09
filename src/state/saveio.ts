@@ -1,7 +1,7 @@
 import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
-import type { ActiveGate, GameState, Pc, Settings, StatusMark } from "./save";
-
+import { BOONS } from "../data/boons";
+import type { ActiveGate, Chronicle, GameState, Pc, Settings, StatusMark } from "./save";
 /**
  * Save-code import. Export is just `serialize(state)` — the state carries its
  * own `version`, so a code is plain JSON. Import re-validates everything the
@@ -69,11 +69,16 @@ function parsePc(raw: Record<string, unknown>): Pc | null {
   if (Array.isArray(raw.statuses)) {
     for (const mark of raw.statuses) {
       if (!isObj(mark)) continue;
-      const kind = mark.kind === "poison" || mark.kind === "wound" ? mark.kind : null;
+      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" ? mark.kind : null;
       if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
     }
   }
-  return { id: raw.id, classId: raw.classId, name: raw.name.slice(0, 40), level, xp, hp, sp, points, alloc, gear, statuses };
+  const boons: string[] = [];
+  if (Array.isArray(raw.boons)) {
+    for (const id of raw.boons) if (str(id) && BOONS.some((b) => b.id === id) && !boons.includes(id)) boons.push(id);
+  }
+  const boonQueue = Math.min(nonNegInt(raw.boonQueue), level); // can't owe more picks than levels earned
+  return { id: raw.id, classId: raw.classId, name: raw.name.slice(0, 40), level, xp, hp, sp, points, alloc, gear, statuses, boons, boonQueue };
 }
 
 /** Light structural check — enough that the dungeon screen can render it. */
@@ -154,6 +159,23 @@ export function importSave(raw: string): ImportResult {
     }
   }
 
+  // The chronicle is cosmetic history: never reject a code over stats — clamp them.
+  const rc = isObj(parsed.chronicle) ? parsed.chronicle : {};
+  const nonNeg = (v: unknown): number => (int(v) && v >= 0 ? v : 0);
+  const killsByFoe: Chronicle["killsByFoe"] = {};
+  if (isObj(rc.killsByFoe)) {
+    for (const [k, v] of Object.entries(rc.killsByFoe)) if (int(v) && v >= 0) killsByFoe[k] = v;
+  }
+  const chronicle: Chronicle = {
+    killsByFoe,
+    battlesWon: nonNeg(rc.battlesWon),
+    battlesFled: nonNeg(rc.battlesFled),
+    partyWipes: nonNeg(rc.partyWipes),
+    deepestFloor: nonNeg(rc.deepestFloor),
+    bestHit: nonNeg(rc.bestHit),
+    crits: nonNeg(rc.crits),
+  };
+
   const rs = isObj(parsed.settings) ? parsed.settings : {};
   const settings: Settings = {
     quickBattle: boolOr(rs.quickBattle, false),
@@ -164,6 +186,7 @@ export function importSave(raw: string): ImportResult {
     fontScale: num(rs.fontScale) && rs.fontScale >= 0.5 && rs.fontScale <= 2 ? rs.fontScale : 1,
     sfxVolume: num(rs.sfxVolume) && rs.sfxVolume >= 0 && rs.sfxVolume <= 1 ? rs.sfxVolume : 0.5,
     sfxMuted: boolOr(rs.sfxMuted, false),
+    musicVolume: num(rs.musicVolume) && rs.musicVolume >= 0 && rs.musicVolume <= 1 ? rs.musicVolume : 0.35,
   };
 
   let gate: ActiveGate | undefined; // pass-through after the structural check below
@@ -189,6 +212,7 @@ export function importSave(raw: string): ImportResult {
     },
     dayKey: parsed.dayKey,
     runs,
+    chronicle,
     settings,
     ...(boolOr(parsed.reviveToken, false) ? { reviveToken: true } : {}),
     ...(boolOr(parsed.tourSeen, false) ? { tourSeen: true } : {}),

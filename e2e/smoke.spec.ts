@@ -12,7 +12,7 @@ async function dismissTour(page: Page): Promise<void> {
 async function descend(page: Page): Promise<void> {
   await page.goto("/#/gate");
   await page.getByRole("button", { name: "Enter the Gate" }).first().click();
-  await page.getByRole("button", { name: "Descend", exact: true }).click();
+  await page.getByRole("button", { name: "Descend unbound" }).click();
   await expect(page).toHaveURL(/#\/dungeon/);
 }
 

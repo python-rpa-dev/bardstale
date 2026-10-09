@@ -8,11 +8,15 @@ import { DIR_VECS, MAP_W, bfsPath, cellId, idToXY, openDegree } from "../core/ma
 import { randInt } from "../core/rng";
 import { gateById } from "../data/gates";
 import { itemById } from "../data/items";
+import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
 import type { GameState } from "../state/save";
 import {
   activeBountyFamily,
+  answerRiddle,
   campRest,
+  campScout,
+  campTrophy,
   descendFloor,
   describeRare,
   endExpedition,
@@ -23,15 +27,34 @@ import {
   reveal,
   rollEncounter,
   stepRng,
+  trySeal,
+  type SealOutcome,
+  LIGHT_PER_FLOOR, encounterChance, isLit,
 } from "../state/expedition";
+import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
 import { renderMinimap } from "../render/minimap";
 
-const CHEST_CONSUMABLES = ["potion-hp", "potion-sp"];
+const CHEST_CONSUMABLES = ["potion-hp", "potion-sp", "torch"];
 
 /** "cave-rat" → "Cave Rat" (monsters have no display-name field). */
 function titleCase(id: string): string {
   return id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+}
+
+/** Module-scoped on purpose (like guild.ts selection): ctx.refresh() remounts this screen mid-auto-walk (boon picks), and the ticker must survive — each fresh mount takes it over with its own draw/log closures. */
+let autoTimer: number | null = null;
+let entryLoggedFor: string | null = null; // one "You step into" per run; mid-run remounts (boon-pick refresh) must not repeat it
+let lowHpHintKey = ""; // gateId:runNumber — one retreat hint per run, not per refresh or remount
+
+/** Once per run, point a failing party toward shrines and the temple. */
+function hintRetreatOnce(s: GameState): void {
+  const ag = s.activeGate;
+  if (!ag) return;
+  const key = `${ag.gateId}:${ag.runNumber}`;
+  if (key === lowHpHintKey) return;
+  lowHpHintKey = key;
+  toast("The party is failing — ? shrines glow on the minimap once explored, and the temple heals all. Leave while you can.");
 }
 
 export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
@@ -46,7 +69,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   // A live fight owns the screen (covers reloads mid-battle and fresh ambushes).
-  if (ctx.state().activeCombat) {
+  // pendingMonsters without activeCombat = reloaded between the roll and combat mount;
+  // renderCombat's beginCombat fallback picks the fight up — never strand the player mid-floor.
+  if (ctx.state().activeCombat || ctx.state().activeGate?.pendingMonsters?.length) {
     ctx.navigate("#/combat");
     return;
   }
@@ -58,7 +83,6 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   const logEl = el("div", { class: "dlog", "aria-live": "polite" });
   const partyHost = el("div", { class: "party-grid" });
 
-  let autoTimer: number | null = null;
   let lastLookCell = -1; // double-Look opens chests / reveals secrets
 
   loadGateTextures(ctx.state().activeGate!.gateId).then((t) => {
@@ -71,29 +95,47 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function log(msg: string): void {
     const stuck = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 16; // at the tail (tolerance must stay under one line so a real scroll-up always escapes)
     logEl.append(el("p", { text: msg }));
-    while (logEl.children.length > 24) logEl.removeChild(logEl.firstChild!);
+    while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild!); // holds a full floor of events; the region scrolls internally
     if (stuck) logEl.scrollTop = logEl.scrollHeight; // follow new lines unless they scrolled up to read history
   }
 
+  let torchChip: HTMLElement | null = null; // side-column light readout, refreshed in drawView
+  let bountyChip: HTMLElement | null = null; // accepted-bounty progress, refreshed with the view
   function drawView(): void {
     const ag = ctx.state().activeGate;
     if (!ag || !viewCanvas.isConnected) return;
-    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex);
+    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) });
     renderMinimap(miniCanvas, { map: ag.map, visited: ag.visited, pos: ag.pos, dir: ag.dir, chests: ag.chests });
+    if (torchChip) {
+      const lit = isLit(ag);
+      torchChip.textContent = lit ? `Torchlight holds for ${ag.lightTurns ?? LIGHT_PER_FLOOR} more steps` : "In the dark — things move between the flickers";
+      torchChip.classList.toggle("dark", !lit);
+    }
+    if (bountyChip) {
+      const st = ctx.state();
+      const offer = st.bounties.offers.find((o) => bountyId(o) === st.bounties.active) ?? null;
+      bountyChip.textContent = offer ? `Bounty: ${offer.count} × ${offer.family} — slain ${Math.min(offer.kills, offer.count)}/${offer.count}` : "";
+      bountyChip.classList.toggle("muted", !offer);
+    }
   }
 
   function refreshParty(): void {
     const s = ctx.state();
+    let lowestRatio = Infinity; // drives the critical pulse + the once-per-run retreat hint
     partyHost.replaceChildren(
       ...s.party.map((p) => {
         const max = pcMax(p);
-        return el("div", { class: `pc-card${p.hp <= 0 ? " downed" : ""}` },
+        const ratio = p.hp / Math.max(1, max.hp);
+        if (ratio < lowestRatio) lowestRatio = ratio;
+        const critical = p.hp > 0 && ratio < 0.25; // downed heroes read as "downed", not "critical"
+        return el("div", { class: `pc-card${p.hp <= 0 ? " downed" : ""}${critical ? " critical" : ""}` },
           el("div", { class: "pc-id" }, el("b", { text: p.name }), document.createTextNode(` ${titleCase(p.classId)} · Lv ${p.level}`)),
           bar(p.hp, max.hp, "var(--hp)", "✚", `${p.name} HP`),
           bar(p.sp, max.sp, "var(--sp)", "✦", `${p.name} SP`),
         );
       }),
     );
+    if (lowestRatio < 0.25) hintRetreatOnce(s);
   }
 
   function shake(): void {
@@ -148,10 +190,19 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         out.bump = true;
         return;
       }
+      // Gate lord bars the last floor's stair: hold position and fight BEFORE stepping on —
+      // standing on the stair with the boss pending would strand finish (it retriggers only by stepping on).
+      if (entityAt(ag, cellId(nx, ny)) === "stairs" && ag.floor + 1 >= def.floors && def.boss && !ag.flags["boss"] && !(ag.pendingMonsters?.length)) {
+        ag.pendingMonsters = [def.boss];
+        delete ag.pendingElites;
+        out.boss = titleCase(def.boss);
+        return; // pos unchanged — the stair stays ahead of us
+      }
       ag.pos = { x: nx, y: ny };
       lastLookCell = -1; // a new vantage changes what "look again" means
       const cell = cellId(nx, ny);
       reveal(ag);
+      if (ag.lightTurns !== undefined && ag.lightTurns > 0) ag.lightTurns -= 1; // one step, one breath of flame
 
       // Traps spring when stepped on, once per cell.
       if (entityAt(ag, cell) === "trap" && !ag.flags[`trap${cell}`]) {
@@ -178,7 +229,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
-      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < 0.18) {
+      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag))) {
         const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
         if (elite !== null) ag.pendingElites = [elite];
@@ -192,16 +243,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       }
 
       if (kind === "stairs") {
-        if (ag.floor + 1 >= def.floors) {
-          // gate lord bars the last floor: fight it before the stairs may finish the run
-          if (def.boss && !ag.flags["boss"] && !(ag.pendingMonsters?.length)) {
-            ag.pendingMonsters = [def.boss];
-            delete ag.pendingElites;
-            out.boss = titleCase(def.boss);
-          } else {
-            out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
-          }
-        } else {
+        if (ag.floor + 1 >= def.floors) out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
+        else {
           descendFloor(d);
           out.descended = true;
         }
@@ -225,6 +268,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function look(interact = false): void {
     const msgs: string[] = [];
     const sfxKinds: ("heal" | "chest" | "coin" | "secret")[] = [];
+    let pendingRiddle = false;
+    let pendingSeal = false;
     ctx.commit((d) => {
       const ag = agOf(d);
       const [dx, dy] = DIR_VECS[ag.dir];
@@ -253,6 +298,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           lastLookCell = faceCell;
           msgs.push("The stonework here sounds hollow. (Look again — or press E — to feel along the seams.)");
         }
+        return;
+      }
+
+      // Rune-seal door: a carved wall face; the lock is read, not forced.
+      if (entityAt(ag, faceCell) === "sealed" && !facingOpen) {
+        if (ag.flags[`sealed-f${ag.floor}`]) msgs.push("The rune-door hangs open, its vaults rifled.");
+        else pendingSeal = true;
         return;
       }
 
@@ -306,6 +358,12 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         return;
       }
 
+      if (kind === "riddle") {
+        if (ag.flags[`riddle-f${ag.floor}`]) msgs.push("The riddle stone sleeps, its carved mouth sealed shut.");
+        else pendingRiddle = true;
+        return;
+      }
+
       if (kind === "stairs") {
         msgs.push("Stairs bore down into darker air. Step onto them to descend.");
         return;
@@ -317,6 +375,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
     for (const m of msgs) log(m);
     for (const k of sfxKinds) ctx.sfx[k]();
+    if (pendingRiddle) openRiddle();
+    if (pendingSeal) openSealed();
   }
 
   /** Swap the Auto-Walk button between its two states; textContent stays "Auto-Walk"/"Halt" for any reader. */
@@ -335,29 +395,24 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     setAutoLabel(false);
   }
 
-  /** BFS to the stairs at 8 steps/sec; halts on encounter, trap or an unopened chest ahead. Descends and keeps walking across floors. */
-  function toggleAuto(): void {
-    const wasRunning = autoTimer !== null;
-    stopAuto(); // a Halt click cancels and does not restart
-    if (wasRunning) return;
-    const ag = ctx.state().activeGate;
-    if (!ag) return;
-
-    log("You set off toward the stair.");
+  /** Arm the 8-steps/sec ticker; halts on encounter, trap or an unopened chest ahead. Descends and keeps walking across floors. */
+  function armAuto(): void {
     setAutoLabel(true);
     autoTimer = window.setInterval(() => {
-      if (!viewCanvas.isConnected || !ctx.state().activeGate || ctx.state().activeGate!.pendingMonsters) {
-        stopAuto();
+      if (!ctx.state().activeGate || ctx.state().activeGate!.pendingMonsters) {
+        stopAuto(); // run over or combat took the wheel; drawView guards on isConnected itself
         return;
       }
       const cur = ctx.state().activeGate!;
       let stairsNow = -1;
       for (const [id, kind] of cur.map.entities) if (kind === "stairs") stairsNow = id;
-      const next = bfsPath(gridFromSave(cur.map), cellId(cur.pos.x, cur.pos.y), stairsNow)?.[0];
-      if (next === undefined) {
-        stopAuto(); // standing on the stair — tryMove already handled it
+      const path = bfsPath(gridFromSave(cur.map), cellId(cur.pos.x, cur.pos.y), stairsNow);
+      if (path === null) {
+        stopAuto(); // no route at all — tell the player instead of silently reverting the button
+        log("The stair lies beyond walls — no way from here.");
         return;
       }
+      const next = path[0];
       const nxy = idToXY(next);
       ctx.commit((d) => {
         d.activeGate!.dir = dirFor(Math.sign(nxy.x - cur.pos.x), Math.sign(nxy.y - cur.pos.y));
@@ -388,11 +443,22 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         return;
       }
       if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
-      if (out.finished || out.trapMsg || out.avoided || out.encounter) {
+      // A dodged trap is a non-event for walking — keep rolling; only real damage (or a finish) halts.
+      if (out.finished || out.trapMsg || out.encounter) {
         stopAuto();
         if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
       }
     }, 125); // 8 steps per second
+  }
+
+  function toggleAuto(): void {
+    const wasRunning = autoTimer !== null;
+    stopAuto(); // a Halt click cancels and does not restart
+    if (wasRunning) return;
+    if (!ctx.state().activeGate) return;
+
+    log("You set off toward the stair.");
+    armAuto();
   }
 
   function dirFor(dx: number, dy: number): 0 | 1 | 2 | 3 {
@@ -435,6 +501,111 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     );
   }
 
+  /** Riddle stone modal: one answer, one chance — gold or the stone's guardian. */
+  function openRiddle(): void {
+    stopAuto();
+    const ag = ctx.state().activeGate!;
+    const view = riddleFor(ag.seed, ag.floor);
+    const close = modal(
+      "A Riddle Stone",
+      el("div", {},
+        el("p", { class: "riddle-prompt", text: view.riddle.prompt }),
+        el("div", { class: "modal-actions" },
+          ...view.answers.map((text, i) =>
+            button(text, {
+              onClick: () => {
+                close();
+                let res!: ReturnType<typeof answerRiddle>;
+                ctx.commit((d) => {
+                  res = answerRiddle(d, i);
+                });
+                if (res.correct) {
+                  ctx.sfx.coin();
+                  toast(`The stone drinks the word and coughs up ${res.gold} gold.`);
+                } else if (res.ambush) {
+                  ctx.sfx.encounter();
+                  shake();
+                  toast("The stone shrieks — something uncoils in the dark!");
+                  ctx.navigate("#/combat");
+                } else {
+                  toast("The stone lies dormant; its riddle was spent.");
+                }
+              },
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** Rune-seal door modal: read the clues, set three runes in order. Wrong triples bite. */
+  function openSealed(): void {
+    stopAuto();
+    const ag = ctx.state().activeGate!;
+    const puzzle = sealPuzzle(ag.seed, ag.floor);
+    const slots: (string | null)[] = [null, null, null];
+    const statusEl = el("p", { class: "muted", text: "Three runes in the right order. Read the carvings." });
+    const slotRow = el("div", { class: "modal-actions" });
+    function sync(): void {
+      slotRow.replaceChildren(
+        ...slots.map((r, i) =>
+          button(r ? `${runeById(r).glyph} ${runeById(r).name}` : `— slot ${i + 1} —`, {
+            onClick: () => {
+              slots[i] = null;
+              sync();
+            },
+          }),
+        ),
+      );
+      tryBtn.disabled = slots.some((s) => s === null);
+    }
+    const tryBtn = button("Try the Seal", { hint: "A wrong triple costs blood.", onClick: () => {} });
+    tryBtn.disabled = true;
+    tryBtn.onclick = () => {
+      let res!: SealOutcome;
+      ctx.commit((d) => {
+        res = trySeal(d, slots.filter((s): s is string => s !== null));
+      });
+      if (res.solved) {
+        close();
+        ctx.sfx.secret();
+        toast(`The seal unravels — ${res.gold} gold and ${itemById(res.item!).name} claimed!`);
+        refreshParty();
+        drawView();
+      } else if (res.victim) {
+        statusEl.textContent = `${res.victim} recoils — ${res.damage} damage. The runes flare, unimpressed.`;
+        ctx.sfx.trap();
+        shake();
+        refreshParty();
+      } else {
+        statusEl.textContent = "The door has already yielded its secrets.";
+      }
+    };
+    const close = modal(
+      "A Rune-Sealed Door",
+      el("div", {},
+        ...puzzle.clues.map((c) => el("p", { class: "seal-clue", text: c })),
+        statusEl,
+        slotRow,
+        el("div", { class: "modal-actions" }, ...RUNES.map((r) =>
+          button(`${r.glyph} ${r.name}`, {
+            onClick: () => {
+              const at = slots.indexOf(r.id);
+              if (at >= 0) slots[at] = null;
+              else {
+                const empty = slots.indexOf(null);
+                if (empty >= 0) slots[empty] = r.id;
+              }
+              sync();
+            },
+          }),
+        )),
+        el("div", { class: "modal-actions" }, tryBtn),
+      ),
+    );
+    sync();
+  }
+
   /** Out-of-combat consumables. Potions auto-target whoever needs them most; the dead stay dead. */
   function openItems(): void {
     stopAuto();
@@ -458,7 +629,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                 ? "Elixirs sharpen blades mid-fight"
                 : def.use?.kind === "party-heal"
                   ? `Heals every living party member ${def.use.amount}`
-                  : `Restores ${def.use?.amount} — auto-targets whoever needs it most`,
+                  : def.use?.kind === "light"
+                    ? "Chases back the dark; foes grow bolder where torches die"
+                    : `Restores ${def.use?.amount} — auto-targets whoever needs it most`,
               onClick: () => {
                 ctx.commit((d) => {
                   d.inventory[id] -= 1;
@@ -481,10 +654,17 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                       if (p.hp > 0) p.hp = Math.min(pcMax(p).hp, p.hp + def.use!.amount);
                     }
                     toast("Warm light passes through the party.");
+                  } else if (def.use?.kind === "light") {
+                    const ag = d.activeGate;
+                    if (ag) {
+                      ag.lightTurns = (ag.lightTurns ?? LIGHT_PER_FLOOR) + def.use.amount;
+                      toast("Your torch catches. The dark falls back a step.");
+                    }
                   }
                 });
                 ctx.sfx.heal();
                 refreshParty();
+                drawView(); // repaint view + torch chip immediately (item use commits without a move)
                 close();
               },
             }),
@@ -522,9 +702,18 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
   }
 
-  /** Campfire rest: once per floor, +25% max HP/SP to the living — maybe with company. */
+  /** Ambush shared by rest/trophy: log, sting, and drop into combat. True if a fight started. */
+  function meetCompany(ambush: NonNullable<ReturnType<typeof campRest>["ambush"]> | null): boolean {
+    if (!ambush) return false;
+    const names = ambush.map((m) => titleCase(m.id));
+    log(`Something caught the scent. ${names.join(", ")} emerge from the dark.`);
+    ctx.sfx.encounter();
+    drawView();
+    ctx.navigate("#/combat");
+    return true;
+  }
+
   function doRest(): void {
-    stopAuto();
     let result: ReturnType<typeof campRest> | null = null;
     ctx.commit((d) => {
       result = campRest(d);
@@ -537,16 +726,59 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       return;
     }
     log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP).");
-    if (res.ambush) {
-      const names = res.ambush.map((m) => titleCase(m.id));
-      toast(`Smoke draws eyes — ${names.join(", ")} come calling!`);
-      log(`Something smelled the fire. ${names.join(", ")} emerge from the dark.`);
-      ctx.sfx.encounter();
-      drawView();
-      ctx.navigate("#/combat");
-    } else {
-      toast("The campfire holds. +25% HP and SP.");
+    if (!meetCompany(res.ambush)) toast("The campfire holds. +25% HP and SP.");
+  }
+
+  function doScout(): void {
+    let result: ReturnType<typeof campScout> | null = null;
+    ctx.commit((d) => {
+      result = campScout(d);
+    });
+    const res = result!;
+    drawView();
+    if (!res.revealed) {
+      toast("A runner already walked this floor. The map is as good as it gets.");
+      return;
     }
+    log(`You send a runner ahead — ${res.cellsRevealed} cells of the floor unfold on the map.`);
+    toast("Scouts return. The floor plan lies open before you.");
+  }
+
+  function doTrophy(): void {
+    let result: ReturnType<typeof campTrophy> | null = null;
+    ctx.commit((d) => {
+      result = campTrophy(d);
+    });
+    const res = result!;
+    refreshParty();
+    drawView();
+    if (res.gold === 0) {
+      toast("This floor's fire is already salted. Greed won't double the cut.");
+      return;
+    }
+    log(`You butcher a kill and salt the coals — +${res.gold}g for the purse.`);
+    if (!meetCompany(res.ambush)) toast(`Trophy taken: +${res.gold}g, no company.`);
+  }
+
+  /** Make camp: one screen, three once-per-floor tricks — heal, know, or get paid. */
+  function openCamp(): void {
+    stopAuto();
+    const actions = el("div", { class: "modal-actions" });
+    const close = modal(
+      "Make Camp",
+      el(
+        "div",
+        {},
+        el("p", { text: "The fire takes the edge off the dark. Each trick works once per floor — pick your price for safety." }),
+        actions,
+      ),
+    );
+    actions.append(
+      button("Rest", { hint: "+25% max HP/SP to the living; smoke may draw company (35%)", onClick: () => { close(); doRest(); } }),
+      button("Scout", { hint: "Reveal this floor's layout on the map — no healing, no risk", onClick: () => { close(); doScout(); } }),
+      button("Trophy", { hint: "Butcher a kill for 12g per floor deep; blood scent draws company (60%)", onClick: () => { close(); doTrophy(); } }),
+      button("Never mind", { onClick: () => close() }),
+    );
   }
 
   function doLook(interact = false): void {
@@ -656,7 +888,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   // ---------- layout ----------
-  const autoBtn = button("Auto-Walk", { cls: "auto-btn", icon: "fast-forward", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, traps, chests", onClick: () => toggleAuto() });
+  const autoBtn = button("Auto-Walk", { cls: "auto-btn", icon: "fast-forward", hint: "Walks to the stairs and descends automatically, floor after floor; halts on foes, damaging traps, chests", onClick: () => toggleAuto() });
   autoBtn.setAttribute("aria-pressed", "false");
   const cmdBar = el("div", { class: "cmd-bar" },
     button("Forward", { icon: "forward", hint: "W / ↑ — step ahead (traps spring, encounters roll)", onClick: () => doMove(false) }),
@@ -667,7 +899,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     autoBtn,
     button("Item", { icon: "flask", hint: "Use a consumable outside combat", onClick: () => openItems() }),
     button("Spell", { icon: "spark", hint: "No foes in sight — save your spells for battle", onClick: () => toast("Save your spells for battle.") }),
-    button("Rest", { icon: "camp", hint: "R — bank a campfire: +25% HP/SP, once per floor; the smoke may draw company", onClick: () => doRest() }),
+    button("Camp", { icon: "camp", hint: "R — make camp: rest, scout the floor, or take a trophy (once per floor each)", onClick: () => openCamp() }),
     button("Leave", { cls: "danger", icon: "door", hint: "Withdraw the party; loot already taken is kept", onClick: () => leave() }),
   );
 
@@ -692,8 +924,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     el("div", { class: "side-col" },
       el("div", { class: "panel mini-card" },
         el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
+        (torchChip = el("p", { class: "torch-chip muted" })),
+        (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,
-        el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine — explored cells only" }),
+        el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine · ◈ riddle — explored cells only; ▣ marks a rune-sealed wall" }),
       ),
       partyHost,
       logEl,
@@ -780,12 +1014,20 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     } else if (k === "e") {
       doLook(true); // Use: open chest / reveal secret directly
     } else if (k === "r") {
-      doRest();
+      openCamp();
     }
   };
   addEventListener("keydown", onKey);
 
-  log(`You step into ${def.name}. Run #${ag.runNumber}, floor ${ag.floor + 1}.`);
+  const entryKey = `${def.id}:${ag.runNumber}`;
+  if (entryLoggedFor !== entryKey) {
+    log(`You step into ${def.name}. Run #${ag.runNumber}, floor ${ag.floor + 1}.`);
+    entryLoggedFor = entryKey;
+  }
   refreshParty();
   drawView();
+  if (autoTimer !== null) {
+    clearInterval(autoTimer); // remount mid-walk: take over the ticker with this mount's closures...
+    armAuto(); // ...and setAutoLabel(true) restores "Halt" on the fresh button
+  }
 }

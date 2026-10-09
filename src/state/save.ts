@@ -1,4 +1,5 @@
 import { classById, type ClassId } from "../data/classes";
+import { boonById } from "../data/boons";
 import { bountyId, offersForDay, shuffledPool, type BountyDef } from "../data/bounties";
 import { dailySeed, dayKey, hashStr, mulberry32 } from "../core/rng";
 import type { CombatState } from "../core/combat";
@@ -18,21 +19,32 @@ export interface Pc {
   points: number; // unallocated stat points (from level 2)
   alloc: { atk: number; def: number; dex: number; mnd: number };
   gear: { weapon?: string; armor?: string; trinket?: string }; // item ids
-  statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound)
+  statuses: StatusMark[]; // lingering conditions carried out of combat (poison/wound/blind/burn)
+  boons?: string[]; // permanent level-up perk ids (see data/boons)
+  boonQueue?: number; // level-ups whose boon pick is still owed
 }
 
 /** A lingering condition on a PC; rounds tick only during combat. */
 export interface StatusMark {
-  kind: "poison" | "wound";
+  kind: "poison" | "wound" | "blind" | "burn";
   roundsLeft: number;
 }
 
-/** Effective maxima from class formula + growth (gear handled separately). */
+/** Display name for a status kind ("blind" → "Blind"). */
+export const statusLabel = (kind: StatusMark["kind"]): string => kind[0].toUpperCase() + kind.slice(1);
+
+/** Effective maxima from class formula + growth + boons (gear handled separately). */
 export function pcMax(pc: Pc): { hp: number; sp: number } {
   const def = classById(pc.classId);
+  let bonusHp = 0;
+  let bonusSp = 0;
+  for (const id of pc.boons ?? []) {
+    bonusHp += boonById(id).bonus.maxHp ?? 0;
+    bonusSp += boonById(id).bonus.maxSp ?? 0;
+  }
   return {
-    hp: def.start.hp + (def.growth.hp ?? 0) * (pc.level - 1),
-    sp: def.start.sp + (def.growth.sp ?? 0) * (pc.level - 1),
+    hp: def.start.hp + (def.growth.hp ?? 0) * (pc.level - 1) + bonusHp,
+    sp: def.start.sp + (def.growth.sp ?? 0) * (pc.level - 1) + bonusSp,
   };
 }
 
@@ -60,7 +72,7 @@ export interface FloorMapSave {
   w: number;
   h: number;
   cells: string; // row-major "0"/"1", 1 = wall
-  entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret")
+  entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret"|"riddle"|"sealed")
 }
 
 /** One-off expedition event rolled at run start (8% chance). */
@@ -84,6 +96,22 @@ export interface ActiveGate {
   rareSpawn?: RareKind; // one-off event present for this whole run (see screens/dungeon event card)
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
   pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
+  lightTurns?: number; // steps of torchlight left on this floor; absent (legacy) reads as lit
+}
+// ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
+
+export interface Chronicle {
+  killsByFoe: Record<string, number>; // bestiary id → lifetime kills
+  battlesWon: number;
+  battlesFled: number;
+  partyWipes: number;
+  deepestFloor: number; // deepest floor+1 ever reached on any run
+  bestHit: number; // biggest single PC hit ever dealt (synced from CombatState.bestHit)
+  crits: number; // lifetime critical hits landed by the party
+}
+
+export function emptyChronicle(): Chronicle {
+  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0 };
 }
 
 // ---------- Root state ----------
@@ -100,6 +128,8 @@ export interface Settings {
    sfxVolume: number;
    /** Silence all SFX without losing the chosen volume. */
    sfxMuted: boolean;
+  /** BGM volume 0..1; the mute toggle silences SFX and music together. */
+  musicVolume: number;
 }
 
 /** itemId → count. Equipment and consumables both stack by id. */
@@ -116,6 +146,7 @@ export interface GameState {
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
+  chronicle?: Chronicle; // lifetime accumulator; migrate backfills older saves
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
   settings: Settings;
@@ -146,6 +177,8 @@ export function makePc(classId: ClassId, ordinal: number): Pc {
     alloc: { atk: 0, def: 0, dex: 0, mnd: 0 },
     gear: {},
     statuses: [],
+    boons: [],
+    boonQueue: 0,
   };
 }
 
@@ -164,7 +197,8 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
-    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, sfxMuted: false },
+    chronicle: emptyChronicle(),
+    settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, musicVolume: 0.35, sfxMuted: false },
 };
 }
 
@@ -206,10 +240,16 @@ function migrate(save: GameState & { version: number }): GameState | null {
   switch (save.version) {
     case 1: {
       const s = save as unknown as GameState;
-       for (const pc of s.party) pc.statuses ??= []; // v1 saves predate statuses
+      for (const pc of s.party) {
+        pc.statuses ??= []; // v1 saves predate statuses
+        pc.boons ??= []; // v1 saves predate boons
+        pc.boonQueue ??= 0; // ditto — no picks owed
+      }
        s.settings.sfxMuted ??= false; // v1 saves predate the mute control
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
+      s.chronicle ??= emptyChronicle(); // v1 saves predate the chronicle
+      s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

@@ -116,7 +116,20 @@ export function openSettings(ctx: RouteCtx): void {
       // Audible feedback at the new level once the drag settles.
       () => ctx.sfx.click(),
     ),
-    checkRow("Mute", "silence all sound effects", st.sfxMuted, (v) =>
+    rangeRow(
+      "Music Volume",
+      0,
+      1,
+      0.05,
+      st.sfxMuted ? 0 : st.musicVolume,
+      (v) => `${Math.round(v * 100)}%`,
+      (v) =>
+        ctx.commit((s) => {
+          s.settings.musicVolume = v;
+          if (v > 0) s.settings.sfxMuted = false;
+        }),
+    ),
+    checkRow("Mute", "silence all sound and music", st.sfxMuted, (v) =>
       ctx.commit((s) => {
         s.settings.sfxMuted = v;
       }),

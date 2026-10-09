@@ -10,6 +10,7 @@ import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
 import { applyXpToPc } from "./party";
 import { endExpedition } from "./expedition";
+import { emptyChronicle } from "./save";
 import type { GameState } from "./save";
 
 /** Kick off the fight for the encounter waiting in activeGate.pendingMonsters. */
@@ -79,15 +80,20 @@ export function claimVictory(d: GameState): VictorySummary | null {
 
   // codex stamps → family medals when a page set completes
   const newMedals: Family[] = [];
+  const chron = (d.chronicle ??= emptyChronicle()); // lifetime tally
   for (const f of cs.foes) {
     const def = monsterById(f.mid);
     if (!d.codex.includes(def.id)) d.codex.push(def.id);
+    chron.killsByFoe[def.id] = (chron.killsByFoe[def.id] ?? 0) + 1;
     const members = BESTIARY.filter((x) => x.family === def.family);
     if (!d.medals.includes(def.family) && members.every((m) => d.codex.includes(m.id))) {
       d.medals.push(def.family);
       newMedals.push(def.family);
     }
   }
+  chron.battlesWon++;
+  chron.bestHit = Math.max(chron.bestHit ?? 0, cs.bestHit ?? 0); // fight ledger → lifetime record
+  chron.crits += cs.crits ?? 0;
 
   // elite kills guarantee an uncommon equipment drop (deterministic per fight/slot)
   const eliteLoot: string[] = [];
@@ -138,6 +144,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
 
 /** Wipe: everyone crawls home at 1 HP and unbanked loot items are forfeited (gold stays banked). */
 export function applyDefeat(d: GameState): void {
+  (d.chronicle ??= emptyChronicle()).partyWipes++; // the Vale remembers this too
   const ag = d.activeGate;
   if (ag) {
     for (const [id, n] of Object.entries(ag.loot.items)) {
@@ -152,6 +159,7 @@ export function applyDefeat(d: GameState): void {
 
 /** Successful flee: the fight dissolves, party stays in the dungeon where it stands. */
 export function resolveFlee(d: GameState): void {
+  (d.chronicle ??= emptyChronicle()).battlesFled++;
   if (d.activeGate) {
     delete d.activeGate.pendingMonsters;
     delete d.activeGate.pendingElites; // stale elite indices must not leak into the next fight

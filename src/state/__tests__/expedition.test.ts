@@ -4,7 +4,8 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { makePc, newGame, pcMax } from "../save";
-import { campRest, hermitGift, merchantWares, RARE_CHANCE, rollRare } from "../expedition";
+import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
@@ -217,6 +218,51 @@ describe("campfire rest", () => {
   });
 });
 
+describe("campfire scout", () => {
+  it("reveals every non-wall cell of the floor exactly once", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    ag.visited = []; // pretend fresh eyes
+    const r = campScout(s);
+    expect(r.revealed).toBe(true);
+    const nonWall: number[] = [];
+    for (let id = 0; id < ag.map.cells.length; id++) if (ag.map.cells[id] !== "1") nonWall.push(id);
+    expect(new Set(ag.visited)).toEqual(new Set(nonWall)); // walls stay hidden, everything else open
+    const r2 = campScout(s);
+    expect(r2).toEqual({ revealed: false, cellsRevealed: 0 });
+    expect(ag.flags["scouted-f0"]).toBe(true);
+  });
+});
+
+describe("campfire trophy", () => {
+  it("pays 12g per floor depth into the run loot, once per floor", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const before = ag.loot.gold;
+    const r = campTrophy(s);
+    expect(r.gold).toBe(12 * (ag.floor + 1));
+    expect(ag.loot.gold).toBe(before + r.gold);
+    expect(ag.flags["trophy-f0"]).toBe(true);
+    expect(campTrophy(s)).toEqual({ gold: 0, ambush: null }); // second cut pays nothing
+    expect(ag.loot.gold).toBe(before + r.gold);
+  });
+
+  it("ambush is seed-deterministic and both outcomes occur (blood draws more than smoke)", () => {
+    let amb = 0;
+    let safe = 0;
+    for (let seed = 1; seed <= 80 && !(amb > 0 && safe > 0); seed++) {
+      const r = campTrophy(runState(seed));
+      if (r.ambush) amb++;
+      else safe++;
+    }
+    expect(amb).toBeGreaterThan(0);
+    expect(safe).toBeGreaterThan(0);
+    const a = runState(3);
+    const b = runState(3);
+    expect(campTrophy(a)).toEqual(campTrophy(b));
+  });
+});
+
 describe("gate lords", () => {
   it("flags the single gate lord with boss + maxHp; packs never get the flag", () => {
     const boss = startCombat(party(), ["bark-thrall"], { seed: 5, boss: true });
@@ -295,3 +341,120 @@ describe("elite kills", () => {
   });
 });
 
+
+describe("riddle stones and rune-seal doors", () => {
+  it("a correct answer pays 18g per depth into run loot, once per floor", () => {
+    const s = runState(7);
+    const view = riddleFor(7, 0);
+    const res = answerRiddle(s, view.correctAt);
+    expect(res.correct).toBe(true);
+    expect(res.gold).toBe(18);
+    expect(s.activeGate!.loot.gold).toBe(18);
+    expect(s.activeGate!.flags["riddle-f0"]).toBe(true);
+    const again = answerRiddle(s, view.correctAt); // stone dormant — no double-dipping
+    expect(again).toEqual({ correct: false, gold: 0, ambush: null });
+    expect(s.activeGate!.loot.gold).toBe(18);
+  });
+
+  it("a wrong answer wakes the guardian and burns the one chance", () => {
+    const s = runState(7);
+    const view = riddleFor(7, 0);
+    const wrong = [0, 1, 2].find((i) => i !== view.correctAt)!;
+    const res = answerRiddle(s, wrong);
+    expect(res.correct).toBe(false);
+    expect(res.ambush).not.toBeNull();
+    expect(s.activeGate!.pendingMonsters).toEqual(res.ambush!.map((m) => m.id));
+    const second = answerRiddle(s, view.correctAt); // spent even on failure
+    expect(second.gold).toBe(0);
+    expect(second.ambush).toBeNull();
+  });
+
+  it("the right triple opens the seal for deep gold and one guaranteed stash drop", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 2;
+    const { solution } = sealPuzzle(9, 2);
+    const before = s.party.map((p) => p.hp);
+    const res = trySeal(s, solution);
+    expect(res.solved).toBe(true);
+    expect(res.gold).toBe(75); // 25 × (floor+1)
+    expect(s.activeGate!.loot.gold).toBe(75);
+    const drop = itemById(res.item!);
+    expect(drop.rarity).not.toBe("common");
+    expect(drop.slot).not.toBe("consumable");
+    expect(s.inventory[drop.id]).toBe(1);
+    expect(s.activeGate!.loot.items[drop.id]).toBe(1);
+    expect(s.party.map((p) => p.hp)).toEqual(before); // nobody hurt
+    const after = trySeal(s, solution);
+    expect(after.solved).toBe(false);
+    expect(after.victim).toBeUndefined(); // an opened door never bites twice
+  });
+
+  it("a wrong triple costs 6+2×depth HP from one hero and stays retryable", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 1;
+    const { solution } = sealPuzzle(9, 1);
+    const bad = allSeals().find((p) => p.join() !== solution.join())!;
+    const before = s.party.map((p) => p.hp);
+    const res = trySeal(s, bad);
+    expect(res.solved).toBe(false);
+    expect(res.damage).toBe(8); // 6 + 2×1
+    const vi = s.party.findIndex((p) => p.name === res.victim);
+    expect(vi).toBeGreaterThanOrEqual(0);
+    s.party.forEach((p, i) => expect(p.hp).toBe(before[i] - (i === vi ? 8 : 0)));
+    const ok = trySeal(s, solution); // no flag on failure — the door still yields
+    expect(ok.solved).toBe(true);
+  });
+
+  it("the bolt floors a hero but never bites below zero", () => {
+    const s = runState(9);
+    for (const p of s.party) p.hp = 3;
+    const { solution } = sealPuzzle(9, 0);
+    const bad = allSeals().find((p) => p.join() !== solution.join())!;
+    const res = trySeal(s, bad); // damage 6 > hp 3
+    expect(res.damage).toBe(6);
+    for (const p of s.party) expect(p.hp).toBeGreaterThanOrEqual(0);
+    expect(s.party.some((p) => p.hp === 0)).toBe(true);
+  });
+
+  it("solving carves the door open — the wall face becomes walkable floor", () => {
+    const s = runState(9);
+    s.activeGate!.floor = 1;
+    const ag = s.activeGate!;
+    const cell = 5; // plant a wall face to serve as the door (fixture map is all floor)
+    ag.map.cells = ag.map.cells.slice(0, cell) + "1" + ag.map.cells.slice(cell + 1);
+    ag.map.entities.push([cell, "sealed"]);
+    const { solution } = sealPuzzle(9, 1);
+    expect(gridFromSave(ag.map)[cell]).toBe(1); // solid before
+    expect(trySeal(s, solution).solved).toBe(true);
+    expect(gridFromSave(ag.map)[cell]).toBe(0); // open after
+    expect(ag.map.entities.some(([, k]) => k === "sealed")).toBe(false);
+  });
+});
+
+describe("torchlight", () => {
+  it("starts lit at LIGHT_PER_FLOOR; darkness only when the flame dies", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const ag = s.activeGate!;
+    expect(ag.lightTurns).toBe(LIGHT_PER_FLOOR);
+    expect(isLit(ag)).toBe(true);
+    ag.lightTurns = 0;
+    expect(isLit(ag)).toBe(false);
+    delete (ag as { lightTurns?: number }).lightTurns; // legacy saves read as lit — never punish old codes
+    expect(isLit(ag)).toBe(true);
+  });
+
+  it("a new floor relights the torch even after a dark crawl", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const ag = s.activeGate!;
+    ag.lightTurns = 0;
+    descendFloor(s);
+    expect(ag.lightTurns).toBe(LIGHT_PER_FLOOR);
+  });
+
+  it("the dark emboldens foes: 0.18 lit vs 0.26 unlit", () => {
+    expect(encounterChance(true)).toBe(0.18);
+    expect(encounterChance(false)).toBe(0.26);
+  });
+});

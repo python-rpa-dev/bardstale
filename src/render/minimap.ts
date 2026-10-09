@@ -28,7 +28,25 @@ export function renderMinimap(canvas: HTMLCanvasElement, input: MinimapInput): v
 
   const stairsCells: number[] = [];
   const shrineCells: number[] = [];
+  const riddleCells: number[] = [];
+  const sealedCells: number[] = [];
   for (const [id, kind] of map.entities) {
+    if (kind === "riddle") {
+      if (visited.has(id)) riddleCells.push(id); // floor cell — normal reveal applies
+      continue;
+    }
+    if (kind === "sealed") {
+      // Wall face: never in `visited`, so surface the door once any neighbour is explored.
+      const x = id % w;
+      const y = Math.floor(id / w);
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+        if (visited.has((y + dy) * w + (x + dx))) {
+          sealedCells.push(id);
+          break;
+        }
+      }
+      continue;
+    }
     if (!visited.has(id)) continue;
     if (kind === "stairs") stairsCells.push(id);
     if (kind === "shrine") shrineCells.push(id);
@@ -59,6 +77,28 @@ export function renderMinimap(canvas: HTMLCanvasElement, input: MinimapInput): v
     ctx.fillStyle = "#4fb3a5";
     ctx.fillRect(x + 1, y + 2, CELL - 2, CELL - 4);
     ctx.fillRect(x + 2, y + 1, CELL - 4, CELL - 2);
+  }
+
+  // Violet riddle diamonds.
+  for (const id of riddleCells) {
+    const x = (id % w) * CELL;
+    const y = Math.floor(id / w) * CELL;
+    ctx.fillStyle = "#9a6fd0";
+    ctx.beginPath();
+    ctx.moveTo(x + CELL / 2, y + 1);
+    ctx.lineTo(x + CELL - 1, y + CELL / 2);
+    ctx.lineTo(x + CELL / 2, y + CELL - 1);
+    ctx.lineTo(x + 1, y + CELL / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Crimson rune-seal outlines on the wall face itself.
+  for (const id of sealedCells) {
+    const x = (id % w) * CELL;
+    const y = Math.floor(id / w) * CELL;
+    ctx.strokeStyle = "#c04a5a";
+    ctx.strokeRect(x + 1, y + 1, CELL - 2, CELL - 2);
   }
 
   // Chests: "?" while unopened (only once the cell is revealed), dimmed box after looting.

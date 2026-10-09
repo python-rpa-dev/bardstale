@@ -161,7 +161,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
     for (const it of usable) {
       list.append(
         button(`${it.name} ×${inv[it.id]}`, {
-          hint: it.use ? `${it.use.kind.replace(/-/g, " ")} ${it.use.amount}` : "",
+          disabled: it.use?.kind === "light", // torches are for walking, not fighting
+          hint: it.use ? (it.use.kind === "light" ? "Light the dark from the dungeon, never mid-fight" : `${it.use.kind.replace(/-/g, " ")} ${it.use.amount}`) : "",
           onClick: () => {
             close();
             let evs: CombatEvent[] = [];
@@ -308,6 +309,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
         {},
         el("p", { text: "Darkness takes you. The temple bells will wake you at first light — everyone at 1 HP." }),
         el("p", { class: "warn", text: "Loot not yet claimed is forfeited — gold already in hand is safe." }),
+        // the fight's closing lines right here, so a Quick Resolve loss is diagnosable without dismissing the modal into a covered log
+        el("div", { class: "fight-lines" }, ...cs!.log.slice(-6).map((line) => el("p", { text: line }))),
         button("Stumble Home", {
           hint: "Return to town broken but breathing.",
           onClick: () => {

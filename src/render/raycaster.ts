@@ -65,9 +65,11 @@ export function renderView(
   pos: { x: number; y: number },
   dir: 0 | 1 | 2 | 3,
   tex: ViewTextures,
+  opts?: { dark?: boolean }, // torch-out: short sight, heavy gloom
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  const dark = opts?.dark === true;
   // Size once: re-assigning width/height reallocates the backing store and resets all context
   // state every frame. The two full-width tint fills below repaint every pixel, so frames need
   // no explicit clear between them.
@@ -134,6 +136,7 @@ export function renderView(
 
     const perp = side === 0 ? sideX - dDistX : sideY - dDistY;
     const dist = Math.max(0.05, perp);
+    if (dark && dist > 3) continue; // beyond the last flicker of torchlight
     const lineH = VIEW_H / dist;
     const top = halfH - lineH / 2;
 
@@ -149,10 +152,14 @@ export function renderView(
     }
 
     // Distance fog on the wall slice only.
-    const fog = Math.min(0.78, dist * 0.13);
+    const fog = Math.min(dark ? 0.95 : 0.78, dist * (dark ? 0.34 : 0.13));
     if (fog > 0.02) {
       ctx.fillStyle = `rgba(6,4,3,${fog.toFixed(3)})`;
       ctx.fillRect(x, top, 1, lineH);
     }
+  }
+  if (dark) {
+    ctx.fillStyle = "rgba(4,3,2,0.62)"; // the gloom closes over floor and ceiling alike
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 }

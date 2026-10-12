@@ -445,7 +445,7 @@ export function activeBountyFamily(s: GameState): Family | null {
 /** Chance that a wandering event joins a run. */
 export const RARE_CHANCE = 0.08;
 
-const RARE_KINDS: RareKind[] = ["merchant", "hermit", "villager"];
+const RARE_KINDS: RareKind[] = ["merchant", "hermit", "villager", "altar"];
 
 /** Deterministic rare-spawn roll for a run seed — null on most runs. */
 export function rollRare(runSeed: number): RareKind | null {
@@ -463,6 +463,47 @@ export function describeRare(kind: RareKind): string {
       return "A hermit's blessing left a fresh page in the codex.";
     case "villager":
       return "You freed a trapped villager — the temple will remember.";
+    case "altar":
+      return "A black altar took its price below.";
+  }
+}
+
+export type BargainId = "blood" | "oath" | "flame";
+
+export interface Bargain {
+  id: BargainId;
+  label: string;
+  hint: string;
+}
+
+/** The black altar's three standing offers — every seeker takes exactly one. */
+export function altarBargains(): Bargain[] {
+  return [
+    { id: "blood", label: "Blood Price", hint: "Each living hero sheds 4 HP; the bowl pays 30 g per floor of depth" },
+    { id: "oath", label: "Deep Bargain", hint: "Every foe this run runs +1 level — but each kill pays half again as much gold" },
+    { id: "flame", label: "Ash for Flesh", hint: "Snuff the torch to nothing; the cold dark heals every living hero whole" },
+  ];
+}
+
+/** Take one bargain. The altar is spent either way — one price per run. Returns the toast line. */
+export function applyBargain(d: GameState, id: BargainId): string {
+  const ag = d.activeGate!;
+  ag.flags["rare-done"] = true;
+  switch (id) {
+    case "blood": {
+      for (const p of d.party) if (p.hp > 0) p.hp = Math.max(1, p.hp - 4); // the bowl takes its due but never a life
+      const gold = 30 * (ag.floor + 1);
+      earn(d, gold);
+      return `The bowl drinks deep. ${gold} g rises from the ash in a slow red rain.`;
+    }
+    case "oath":
+      ag.oathDepth = true;
+      return "You speak the oath. Something far below answers — and starts counting your coins twice.";
+    case "flame": {
+      ag.lightTurns = 0; // the dark closes in at once...
+      for (const p of d.party) if (p.hp > 0) p.hp = pcMax(p).hp; // ...and the cold knits flesh while it watches
+      return "The torch dies with a hiss. Cold dark rushes in — and the wounds close anyway.";
+    }
   }
 }
 

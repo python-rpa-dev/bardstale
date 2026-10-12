@@ -3,10 +3,10 @@ import { foeAct, foeDef, normalizeActiveTurn, quickResolve, startCombat, tallyVi
 import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
-import { HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { activateShrine, answerRiddle, campRest, campScout, campTrophy, descendFloor, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { FALLEN_SIZE, HALL_SIZE, makePc, newGame, pcMax } from "../save";
+import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, descendFloor, describeRare, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
-import { claimVictory } from "../combat";
+import { applyDefeat, claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
 
@@ -41,19 +41,22 @@ describe("rare spawns", () => {
     for (const seed of [1, 42, 9999]) expect(rollRare(seed)).toBe(rollRare(seed));
   });
 
-  it("fires on ~8% of runs and only with known kinds", () => {
-    const kinds = new Set(["merchant", "hermit", "villager"]);
+  it("fires on ~8% of runs and only with known kinds — all four kinds occur", () => {
+    const kinds = new Set(["merchant", "hermit", "villager", "altar"]);
+    const seen = new Set<string>();
     let hits = 0;
     for (let seed = 0; seed < 1000; seed++) {
       const r = rollRare(seed);
       if (r === null) continue;
       expect(kinds.has(r)).toBe(true);
+      seen.add(r);
       hits++;
     }
     // deterministic stream: assert the observed rate brackets the nominal 8%
     expect(hits).toBeGreaterThanOrEqual(40);
     expect(hits).toBeLessThanOrEqual(130);
     expect(RARE_CHANCE).toBe(0.08);
+    for (const k of kinds) expect(seen.has(k), `kind ${k} must occur within 1000 seeds`).toBe(true);
   });
 
   it("merchant stock is stable, three uncommon/rare goods at −25%", () => {
@@ -665,5 +668,105 @@ describe("flooded floors - the Sunken Cloister gimmick", () => {
     startExpedition(h, "hollow-roots");
     descendFloor(h);
     expect(h.activeGate!.map.flood).toBeUndefined(); // bone dry outside the cloister
+  });
+});
+
+describe("the black altar - bargain runs", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const run = (gateId = "hollow-roots") => {
+    const s = newGame(clock);
+    startExpedition(s, gateId);
+    return s;
+  };
+
+  it("offers three distinct standing bargains", () => {
+    const bs = altarBargains();
+    expect(bs.map((b) => b.id)).toEqual(["blood", "oath", "flame"]);
+    for (const b of bs) expect(b.label.length).toBeGreaterThan(0);
+  });
+
+  it("Blood Price sheds 4 HP per living hero and pays 30 g per floor through the purse chokepoint", () => {
+    const s = run();
+    const ag = s.activeGate!;
+    ag.floor = 2; // depth 3 → 90 g
+    s.party[1].hp = 2; // a hero at death's door keeps one point
+    s.party[2].hp = 0; // the downed pay nothing and lose nothing
+    const goldBefore = s.gold;
+    applyBargain(s, "blood");
+    expect(s.party[0].hp).toBe(pcMax(s.party[0]).hp - 4);
+    expect(s.party[1].hp).toBe(1); // never finishes them off
+    expect(s.party[2].hp).toBe(0);
+    expect(s.gold).toBe(goldBefore + 90);
+    expect(s.chronicle!.goldEarned).toBe(90); // the purse chokepoint saw every coin
+    expect(ag.flags["rare-done"]).toBe(true);
+  });
+
+  it("Deep Bargain puts +1 level on every foe and half again the gold on every kill", () => {
+    const s = run();
+    applyBargain(s, "oath");
+    expect(s.activeGate!.oathDepth).toBe(true);
+    const mid = BESTIARY[0].id;
+    const plain = startCombat(party(), [mid], { seed: 7 });
+    const sworn = startCombat(party(), [mid], { seed: 7, oath: true });
+    expect(foeDef(sworn.foes[0]).lvl).toBe(foeDef(plain.foes[0]).lvl + 1);
+    expect(tallyVictory(sworn).gold).toBe(Math.floor(tallyVictory(plain).gold * 1.5)); // same seed, same rolls — only the bargain differs
+  });
+
+  it("Ash for Flesh snuffs the torch and knits every living wound whole", () => {
+    const s = run();
+    const ag = s.activeGate!;
+    ag.lightTurns = 12;
+    s.party[0].hp = 3;
+    s.party[2].hp = 0; // the dead stay dead — that is the temple's business
+    applyBargain(s, "flame");
+    expect(ag.lightTurns).toBe(0);
+    expect(s.party[0].hp).toBe(pcMax(s.party[0]).hp);
+    expect(s.party[2].hp).toBe(0);
+  });
+
+  it("the altar speaks once per run and the toast knows its kind", () => {
+    const s = run();
+    applyBargain(s, "oath");
+    expect(s.activeGate!.flags["rare-done"]).toBe(true); // any bargain spends the altar
+    expect(describeRare("altar")).toContain("altar");
+  });
+});
+
+describe("the memorial shelf - fallen expeditions", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+
+  it("a wipe stamps who fell, how deep, and what stood over them", () => {
+    const s = newGame(clock);
+    startExpedition(s, "gallows-fen");
+    const ag = s.activeGate!;
+    ag.floor = 1;
+    ag.pendingMonsters = [BESTIARY[0].id, BESTIARY[1].id, BESTIARY[0].id]; // a pack with duplicates
+    applyDefeat(s);
+    expect(s.fallen).toHaveLength(1);
+    const f = s.fallen![0];
+    expect(f.gateId).toBe("gallows-fen");
+    expect(f.depth).toBe(2);
+    expect(f.dayKey).toBe("2026-10-05");
+    expect(f.crew.map((c) => c.name)).toEqual(s.party.map((p) => p.name)); // crew recorded as they went in
+    const a = monsterById(BESTIARY[0].id).id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    expect(f.cause).toContain(a); // title-cased display names, deduped
+    expect(f.cause.split(",").length).toBe(2); // duplicates collapsed to one killer name
+    for (const p of s.party) expect(p.hp).toBe(1); // the crawl home at 1 HP still stands
+    expect(s.activeGate).toBeUndefined();
+  });
+
+  it("the shelf keeps eight losses newest-first and forgets retreats entirely", () => {
+    const s = newGame(clock);
+    for (let i = 0; i < FALLEN_SIZE + 2; i++) {
+      startExpedition(s, "hollow-roots");
+      s.activeGate!.floor = i; // depth distinguishes the order
+      applyDefeat(s);
+    }
+    expect(s.fallen).toHaveLength(FALLEN_SIZE);
+    expect(s.fallen![0].depth).toBe(FALLEN_SIZE + 2); // newest first
+    const before = s.fallen!.length;
+    startExpedition(s, "hollow-roots");
+    endExpedition(s); // a clean retreat is not a loss — the memorial stays silent
+    expect(s.fallen).toHaveLength(before);
   });
 });

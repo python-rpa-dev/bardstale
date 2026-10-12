@@ -60,6 +60,7 @@ export interface CombatState {
   critFoe: number; // enemy crit chance ("cursed" raises 0.06 → 0.12)
   spellCostMod: number; // "storm": −2 SP per cast (applied via spCostFor)
   riches: boolean; // +50% gold on victory rolls
+  oath: boolean; // the altar's Deep Bargain: every foe runs +1 level, kill gold ×1.5 this run
   pocketLuck: boolean; // living rogue: +3 gold per kill
   healDiscount: boolean; // undead medal: heal costs −2 SP
   fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
@@ -188,6 +189,7 @@ export interface StartOpts {
   spellCostMod?: number; // "storm": 2
   riches?: boolean;
   hollows?: boolean; // "hollows": undead +1 level, vermin −1 (see foeDef)
+  oath?: boolean; // altar "Deep Bargain": all foes +1 lvl (stacks with hollows/elites), victory gold ×1.5
   healDiscount?: boolean; // undead medal
   guardedStart?: boolean; // giant medal: every PC starts with a free half-hit
   fleeGuaranteed?: boolean; // humanoid medal
@@ -208,6 +210,7 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
     critFoe: opts.critFoe ?? 0.06,
     spellCostMod: opts.spellCostMod ?? 0,
     riches: !!opts.riches,
+    oath: !!opts.oath,
     pocketLuck: pcs.some((p) => p.classId === "rogue"),
     healDiscount: !!opts.healDiscount,
     blessDef: 0,
@@ -219,6 +222,7 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
       let shift = opts.hollows ? (fam === "undead" ? 1 : fam === "vermin" ? -1 : 0) : 0;
       const elite = opts.elites?.includes(i) ?? false;
       if (elite) shift += 1; // elites stack a level on top of hollows
+      if (opts.oath) shift += 1; // the Deep Bargain thickens every pack, lords included
       const hp = Math.max(1, Math.round(monsterById(mid).hp * (1 + 0.12 * shift)));
       const boss = !!opts.boss && foeIds.length === 1;
       return { mid, hp, lastBreathRound: 0, lvlShift: shift || undefined, elite: elite || undefined, boss: boss || undefined, maxHp: boss ? hp : undefined };
@@ -568,6 +572,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
     if (rogueAlive) g += 3; // pocket-luck rides under the omen so riches' advertised +50% holds on all kill gold
     if (cs.riches) g = Math.floor(g * 1.5);
+    if (cs.oath) g = Math.floor(g * 1.5); // the altar pays its half of the bargain
     gold += f.elite ? g * 2 : g; // elites pay double
   }
   gold += cs.stolenGold ?? 0; // pickpocketed coins ride outside the kill rolls and the riches omen

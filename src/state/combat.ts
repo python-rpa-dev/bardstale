@@ -11,7 +11,7 @@ import type { Family } from "../data/bestiary";
 import { perkMult } from "../data/trophies";
 import { applyXpToPc, earn } from "./party";
 import { endExpedition, isDarkFloor } from "./expedition";
-import { emptyChronicle } from "./save";
+import { emptyChronicle, FALLEN_SIZE } from "./save";
 import type { GameState } from "./save";
 
 /** Kick off the fight for the encounter waiting in activeGate.pendingMonsters. */
@@ -30,6 +30,7 @@ export function beginCombat(d: GameState): void {
     spellCostMod: m === "storm" ? 2 : 0, // storm: −2 SP per cast (floor 1)
     riches: m === "riches",
     hollows: m === "hollows", // undead +1 level, vermin −1 (foeDef scaling)
+    oath: ag.oathDepth, // altar Deep Bargain: foes +1 level, kill gold ×1.5 — all run long
     healDiscount: d.medals.includes("undead"), // undead medal: heal −2 SP
     guardedStart: d.medals.includes("giant"), // giant medal: start Guarded
     fleeGuaranteed: d.medals.includes("humanoid"), // humanoid medal: always escape intact
@@ -163,6 +164,16 @@ export function applyDefeat(d: GameState): void {
       d.inventory[id] = Math.max(0, (d.inventory[id] ?? 0) - n); // items picked up this run are lost
     }
     ag.loot.items = {};
+    // display names follow the same title-case convention as the combat log (see core/combat)
+    const killers = [...new Set((ag.pendingMonsters ?? []).map((id) => id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())))];
+    (d.fallen ??= []).unshift({
+      dayKey: d.dayKey,
+      gateId: ag.gateId,
+      depth: ag.floor + 1,
+      crew: d.party.map((p) => ({ name: p.name, level: p.level })),
+      cause: killers.length ? `overwhelmed by ${killers.join(", ")}` : "lost in the dark",
+    });
+    if (d.fallen.length > FALLEN_SIZE) d.fallen.length = FALLEN_SIZE; // the memorial forgets its oldest name
   }
   for (const p of d.party) p.hp = 1;
   delete d.activeCombat;

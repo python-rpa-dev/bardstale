@@ -1,8 +1,8 @@
 import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
 import { BOONS } from "../data/boons";
-import type { ActiveGate, Chronicle, GameState, Inventory, Pc, RunRecord, Settings, StatusMark } from "./save";
-import { HALL_SIZE } from "./save";
+import type { ActiveGate, Chronicle, FallenRun, GameState, Inventory, Pc, RunRecord, Settings, StatusMark } from "./save";
+import { FALLEN_SIZE, HALL_SIZE } from "./save";
 /**
  * Save-code import. Export is just `serialize(state)` — the state carries its
  * own `version`, so a code is plain JSON. Import re-validates everything the
@@ -204,6 +204,26 @@ export function importSave(raw: string): ImportResult {
     }
   }
 
+  // The memorial shelf is memory too — clamp or drop names, never reject the whole save.
+  const fallen: FallenRun[] = [];
+  if (Array.isArray(parsed.fallen)) {
+    for (const fh of parsed.fallen) {
+      if (!isObj(fh) || !str(fh.gateId)) continue; // a loss without its gate is no loss
+      fallen.push({
+        dayKey: str(fh.dayKey) ? fh.dayKey : "",
+        gateId: fh.gateId,
+        depth: nonNeg(fh.depth),
+        crew: Array.isArray(fh.crew)
+          ? fh.crew
+              .filter((c): c is { name: string; level?: number } => isObj(c) && str(c.name))
+              .map((c) => ({ name: c.name.slice(0, 40), level: nonNeg(c.level) }))
+          : [],
+        cause: str(fh.cause) ? String(fh.cause).slice(0, 120) : "lost in the dark",
+      });
+      if (fallen.length >= FALLEN_SIZE) break; // an export cannot bloat the memorial past its canonical size
+    }
+  }
+
   const rs = isObj(parsed.settings) ? parsed.settings : {};
   const settings: Settings = {
     quickBattle: boolOr(rs.quickBattle, false),
@@ -244,6 +264,7 @@ export function importSave(raw: string): ImportResult {
     runs,
     chronicle,
     hall,
+    fallen,
     settings,
     ...(boolOr(parsed.reviveToken, false) ? { reviveToken: true } : {}),
     ...(boolOr(parsed.tourSeen, false) ? { tourSeen: true } : {}),

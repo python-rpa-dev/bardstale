@@ -77,7 +77,7 @@ export interface FloorMapSave {
 }
 
 /** One-off expedition event rolled at run start (8% chance). */
-export type RareKind = "merchant" | "hermit" | "villager";
+export type RareKind = "merchant" | "hermit" | "villager" | "altar";
 
 export interface ActiveGate {
   gateId: string;
@@ -102,6 +102,7 @@ export interface ActiveGate {
   killsThisRun?: number; // monsters felled this run — feeds the Hall of Runs record
   medalsThisRun?: number; // family medals completed this run — the Hall's trophy line
   daily?: boolean; // today's shared Daily Challenge maze — scores land on the leaderboard
+  oathDepth?: boolean; // the black altar's Deep Bargain: every foe this run runs +1 level, kills pay ×1.5
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 
@@ -135,6 +136,15 @@ export interface RunRecord {
   crew: { name: string; level: number }[]; // party as it walked out
 }
 
+/** One wiped expedition — who fell, how deep, and what was waiting for them. */
+export interface FallenRun {
+  dayKey: string; // in-world date at the wipe
+  gateId: string;
+  depth: number; // floor the party went down on (1-based)
+  crew: { name: string; level: number }[]; // as they went in
+  cause: string; // "overwhelmed by <foes>" — the pack standing over them
+}
+
 /** One daily-challenge attempt: score = depth·100 + kills·10 + gold. */
 export interface DailyBest {
   dayKey: string; // ISO date of the challenge this was played on
@@ -149,6 +159,8 @@ export interface DailyBest {
 
 /** The shelf holds this many memories; older runs are forgotten. */
 export const HALL_SIZE = 8;
+/** The memorial keeps this many wipes; older losses are forgotten. */
+export const FALLEN_SIZE = 8;
 
 // ---------- Root state ----------
 
@@ -187,6 +199,7 @@ export interface GameState {
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
   hall?: RunRecord[]; // Guild shelf — the last surfaced runs, newest first; migrate backfills older saves
+  fallen?: FallenRun[]; // memorial shelf — wiped runs, newest first; migrate backfills older saves
   dailyBests?: DailyBest[]; // daily-challenge leaderboard — best ten attempts, highest score first
   settings: Settings;
   activeGate?: ActiveGate;
@@ -238,6 +251,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     runs: {},
     chronicle: emptyChronicle(),
     hall: [], // the Guild shelf starts empty
+    fallen: [], // and so does the memorial
     settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, musicVolume: 0.35, sfxMuted: false },
 };
 }
@@ -292,6 +306,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
       s.chronicle.goldEarned ??= 0; // chronicles predate the career-gold stat
       s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
       s.hall ??= []; // v1 saves predate the Hall of Runs
+      s.fallen ??= []; // v1 saves predate the memorial shelf
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

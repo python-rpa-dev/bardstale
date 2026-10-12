@@ -242,6 +242,31 @@ function trophyShelf(s: GameState): HTMLElement {
   return wrap;
 }
 
+/** The memorial shelf: wiped expeditions — who fell, how deep, and what was waiting for them. */
+function fallenShelf(s: GameState): HTMLElement {
+  const wrap = el("div", { class: "hall" });
+  wrap.append(el("h2", { text: "Fallen Expeditions" }));
+  const runs = s.fallen ?? [];
+  if (!runs.length) {
+    wrap.append(el("p", { class: "muted", text: "The Vale keeps no names here. Nobody stays down — yet." }));
+    return wrap;
+  }
+  wrap.append(
+    el("p", { class: "muted", text: `The last ${runs.length} expeditions the dark sent back in pieces — newest first.` }),
+    ...runs.map((r) => {
+      const gateName = GATES.find((g) => g.id === r.gateId)?.name ?? r.gateId;
+      return el(
+        "div",
+        { class: "hall-row muted" },
+        el("b", { text: `${gateName} — ${r.depth}F` }),
+        el("span", { text: ` ${r.dayKey} · ${r.cause}` }),
+        el("div", { text: r.crew.map((c) => `${c.name} lv${c.level}`).join(", ") }),
+      );
+    }),
+  );
+  return wrap;
+}
+
 export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
   if (selectedId && !s.party.some((p) => p.id === selectedId)) selectedId = null;
@@ -274,4 +299,5 @@ export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
   );
   host.append(hallShelf(s));
   host.append(trophyShelf(s));
+  host.append(fallenShelf(s));
 }

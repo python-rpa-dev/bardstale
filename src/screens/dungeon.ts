@@ -15,7 +15,9 @@ import { earn } from "../state/party";
 import {
   activateShrine,
   activeBountyFamily,
+  altarBargains,
   answerRiddle,
+  applyBargain,
   campRest,
   campScout,
   campTrophy,
@@ -907,6 +909,25 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             fitShell(); // banner removal shrinks `top` - re-measure the shell or it stays short until a manual resize
           },
         }),
+      );
+    }
+    if (ag.rareSpawn === "altar") {
+      return el("div", { class: "panel rare-card" },
+        el("p", { text: "A black altar squats in the dark, its bowl full of old ash. It has all night — and so, it says, do you." }),
+        ...altarBargains().map((b) => button(b.label, {
+          hint: b.hint,
+          onClick: () => {
+            stopAuto();
+            let msg = "";
+            ctx.commit((d) => {
+              msg = applyBargain(d, b.id);
+            });
+            ctx.sfx.levelup();
+            toast(msg);
+            drawRare();
+            fitShell(); // banner removal shrinks `top` - re-measure the shell or it stays short until a manual resize
+          },
+        })),
       );
     }
     return el("div", { class: "panel rare-card" },

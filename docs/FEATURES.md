@@ -16,6 +16,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 - Five gates — Hollow Roots, Sunken Cloister, Gallows Fen, Wyrm Vault, Ember Spire — with level bands, wall palettes, and ambient modifiers ("hollows" shifts foe levels).
 - Gate lords: one per gate (bark-thrall, cloister-lich, fen-matriarch, vault-wyrm, ashfiend) — one-time enrage at 30% HP; the three non-breath lords rear back every third round and unleash a telegraphed special the next turn (Root Grasp, Death Rime, Brood Cry) that Guard halves, while vault-wyrm and ashfiend keep their cadenced fire-breath. Elites: +level, double gold, guaranteed uncommon drop.
+- Flooded floors: the Sunken Cloister drowns ~12% of each floor's cells from the second down — wading logs a slurp, doubles the odds of being found, and Auto-Walk takes dry routes whenever one exists (blue sheen on the minimap; the legend names the water only for gimmick gates).
 - Torchlight survival: 30 steps of flame per floor; darkness emboldens foes (18% → 26% ambushes). Tiers: Torch / Tallow (60 steps, smoke −10% ambushes while lit) / Witchlight (45 steps, reveals hidden cells within 2); the kind persists across floors.
 - Black floors: every third floor from the third down is pitch-black — even a lit torch reaches only 1.5 cells, unlit traps bite twice as hard, but chest drops climb one rarity rung and elite kills there drop rare gear instead of uncommon.
 - Floor content: chests, secret walls, traps, healing shrines (each also yields one moonpetal sprig), riddle stones, rune-sealed vaults; rare-spawn merchant / hermit / villager (8%).
@@ -45,8 +46,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 ## Presentation
 
-- First-person raycaster with per-gate wall palettes and tiled POV textures; minimap glyphs for stairs, chests, shrines, riddles, and seals (explored cells only).
-- Hand-authored SVG art across 35+ manifest slots: foes, bosses, items, torches, icons.
+- First-person raycaster with per-gate wall palettes and tiled POV textures; minimap glyphs for stairs, chests, shrines, riddles, and seals plus a blue sheen over explored flooded cells (explored cells only).
 - Icon command bar with tooltips, battle-mode icon rail, dungeon log capped at 60 lines; procedural BGM plus game-moment SFX with volume and mute — including a dark-layer drone that breathes in as torchlight dims below the warning threshold and fades out when relit or leaving the dungeon.
 
 ## Accessibility & mobile

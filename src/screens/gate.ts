@@ -92,7 +92,7 @@ export function renderGate(host: HTMLElement, ctx: RouteCtx): void {
       offer && BESTIARY.some((m) => m.family === offer.family && m.lvl >= g.levels[0] && m.lvl <= g.levels[1]) ? offer : null;
     return el("div", { class: "panel gate-card" },
       el("h3", { text: g.name }),
-      el("p", { class: "muted", text: `Monsters level ${g.levels[0]}–${g.levels[1]} · ${g.floors} floors${g.gimmick === "flood" ? " · flooded halls below — the water slows you and draws foes" : ""}` }),
+      el("p", { class: "muted", text: `Monsters level ${g.levels[0]}–${g.levels[1]} · ${g.floors} floors${g.gimmick === "flood" ? " · flooded halls below — the water slows you and draws foes" : g.gimmick === "collapse" ? " · collapsing floors — the stairs will not wait" : ""}` }),
       el("p", {},
         el("span", {
           class: mod.id === "none" ? "chip dim" : "chip",

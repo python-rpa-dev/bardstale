@@ -6,8 +6,9 @@ export interface GateDef {
   floors: number;
   /** Bestiary id of the final-floor guardian; must be beaten before the run completes. */
   boss?: string;
-  /** Floor gimmick: "flood" = brackish water pools on deeper floors, slowing every step. */
-  gimmick?: "flood";
+  /** Floor gimmick: "flood" = brackish water pools on deeper floors, slowing every step.
+   *  "collapse" = the stair crumbles and grinds open elsewhere every COLLAPSE_PERIOD steps. */
+  gimmick?: "flood" | "collapse";
 }
 
 export const GATES: GateDef[] = [
@@ -15,7 +16,7 @@ export const GATES: GateDef[] = [
   { id: "sunken-cloister", name: "Sunken Cloister", levels: [3, 7], floors: 4, boss: "cloister-lich", gimmick: "flood" },
   { id: "gallows-fen", name: "Gallows Fen", levels: [4, 8], floors: 4, boss: "fen-matriarch" },
   { id: "wyrm-vault", name: "Wyrm Vault", levels: [6, 12], floors: 5, boss: "vault-wyrm" },
-  { id: "ember-spire", name: "Ember Spire", levels: [10, 14], floors: 5, boss: "ashfiend" },
+  { id: "ember-spire", name: "Ember Spire", levels: [10, 14], floors: 5, boss: "ashfiend", gimmick: "collapse" },
 ];
 
 export function gateById(id: string): GateDef {

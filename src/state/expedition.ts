@@ -20,6 +20,14 @@ export function floorSeed(runSeed: number, floor: number): number {
 /** Steps of torchlight granted at run start and on every new floor. */
 export const LIGHT_PER_FLOOR = 30;
 
+/** Steps between collapses on the Ember Spire: the stair will not wait longer than this. */
+export const COLLAPSE_PERIOD = 25;
+
+/** Collapse-gimmick gates run a countdown on every floor; other gates never set the field. */
+function collapsePeriodFor(def: GateDef): number {
+  return def.gimmick === "collapse" ? COLLAPSE_PERIOD : 0;
+}
+
 /** A gate without the field (legacy saves) reads as lit — never punish old codes. */
 export function isLit(ag: ActiveGate): boolean {
   return ag.lightTurns === undefined || ag.lightTurns > 0;
@@ -98,6 +106,52 @@ export function isFlooded(ag: ActiveGate, cell: number): boolean {
   return ag.map.flood?.includes(cell) ?? false;
 }
 
+/**
+ * One step of the spire's countdown (collapse gates only). At zero the stair crumbles
+ * and grinds open on another reachable, feature-free cell. True = the floor just shifted.
+ */
+export function collapseTick(ag: ActiveGate): boolean {
+  if (ag.collapseTurns === undefined) return false;
+  ag.collapseTurns -= 1;
+  if (ag.collapseTurns > 0) return false;
+  ag.collapseTurns = COLLAPSE_PERIOD;
+  relocateStairs(ag);
+  return true;
+}
+
+/** Move the stair entity to a fresh cell, seeded by the run so reloads replay identically. */
+function relocateStairs(ag: ActiveGate): void {
+  const rng = mulberry32(hashStr(`${ag.seed}:collapse:${ag.floor}:${ag.steps}`));
+  const grid = gridFromSave(ag.map);
+  const taken = new Set(ag.map.entities.map(([id]) => id));
+  const start = ag.pos.y * MAP_W + ag.pos.x;
+  // BFS from the hero: the new stair must be walkable AND reachable, never a cruel island.
+  const dist = new Map<number, number>([[start, 0]]);
+  const q = [start];
+  const cands: number[] = [];
+  for (let head = 0; head < q.length; head++) {
+    const cur = q[head];
+    const d0 = dist.get(cur)!;
+    const cx = cur % MAP_W;
+    const cy = Math.floor(cur / MAP_W);
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
+      const nid = ny * MAP_W + nx;
+      if (grid[nid] === 1 || dist.has(nid)) continue;
+      dist.set(nid, d0 + 1);
+      if (!taken.has(nid) && d0 + 1 >= 5) cands.push(nid); // never rip the stair out from underfoot
+      q.push(nid);
+    }
+  }
+  if (!cands.length) return; // a floor too small to collapse — the spire grumbles and waits
+  cands.sort((a, b) => a - b); // BFS order leans on insertion; sorting keeps the pick seed-pure
+  const target = cands[Math.floor(rng() * cands.length)];
+  const si = ag.map.entities.findIndex(([, k]) => k === "stairs");
+  if (si >= 0) ag.map.entities[si] = [target, "stairs"];
+}
+
 /** Flood-gimmick gates drown their deeper floors; 0.9 means a pool forms on nearly every descent. */
 function floodChanceFor(def: GateDef): number {
   return def.gimmick === "flood" ? 0.9 : 0;
@@ -151,6 +205,8 @@ export function startExpedition(s: GameState, gateId: string, omen?: ModifierId,
     medalsThisRun: 0,
   };
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
+  const period = collapsePeriodFor(def);
+  if (period) ag.collapseTurns = period; // the spire starts counting the moment you step in
   const rare = rollRare(seed);
   if (rare) ag.rareSpawn = rare;
   s.activeGate = ag;
@@ -174,6 +230,8 @@ export function descendFloor(s: GameState): void {
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
   ag.steps = 0;
   ag.lightTurns = LIGHT_PER_FLOOR; // new floor, fresh flame
+  const period = collapsePeriodFor(gateById(ag.gateId));
+  if (period) ag.collapseTurns = period; // new floor, new countdown
   delete ag.pendingMonsters;
   reveal(ag);
 }

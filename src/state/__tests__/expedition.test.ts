@@ -4,7 +4,7 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { FALLEN_SIZE, HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, descendFloor, describeRare, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, COLLAPSE_PERIOD, collapseTick, descendFloor, describeRare, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
 import { applyDefeat, claimVictory } from "../combat";
 
@@ -768,5 +768,75 @@ describe("the memorial shelf - fallen expeditions", () => {
     startExpedition(s, "hollow-roots");
     endExpedition(s); // a clean retreat is not a loss — the memorial stays silent
     expect(s.fallen).toHaveLength(before);
+  });
+});
+
+describe("collapsing floors - the Ember Spire gimmick", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const spire = (seed = 7) => {
+    const s = newGame(clock);
+    startExpedition(s, "ember-spire", undefined, seed);
+    return s;
+  };
+  const stairCell = (s: GameState) => s.activeGate!.map.entities.find(([, k]) => k === "stairs")![0];
+
+  it("only the spire counts down; other gates never set the field", () => {
+    const s = spire();
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD);
+    const h = newGame(clock);
+    startExpedition(h, "hollow-roots");
+    expect(h.activeGate!.collapseTurns).toBeUndefined();
+    expect(collapseTick(h.activeGate!)).toBe(false); // a nudge does nothing on dry stone
+    expect(h.activeGate!.collapseTurns).toBeUndefined();
+  });
+
+  it("the stair holds for 24 steps, then caves in and grinds open elsewhere", () => {
+    const s = spire();
+    const ag = s.activeGate!;
+    const before = stairCell(s);
+    for (let i = 0; i < COLLAPSE_PERIOD - 1; i++) {
+      expect(collapseTick(ag)).toBe(false);
+      expect(stairCell(s)).toBe(before); // the stair waits right up to the last step
+    }
+    expect(collapseTick(ag)).toBe(true);
+    const after = stairCell(s);
+    expect(after).not.toBe(before);
+    expect(ag.collapseTurns).toBe(COLLAPSE_PERIOD); // the countdown starts again
+    // the new stair is walkable, feature-free, and reachable — never a cruel island
+    const grid = gridFromSave(ag.map);
+    expect(grid[after]).toBe(0);
+    expect(ag.map.entities.filter(([id]) => id === after)).toHaveLength(1);
+    const start = ag.pos.y * ag.map.w + ag.pos.x;
+    const seen = new Set<number>([start]);
+    const q = [start];
+    for (let head = 0; head < q.length; head++) {
+      const cx = q[head] % ag.map.w;
+      const cy = Math.floor(q[head] / ag.map.w);
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        const nid = ny * ag.map.w + nx;
+        if (nx < 0 || ny < 0 || nx >= ag.map.w || ny >= ag.map.h || grid[nid] === 1 || seen.has(nid)) continue;
+        seen.add(nid);
+        q.push(nid);
+      }
+    }
+    expect(seen.has(after)).toBe(true);
+  });
+
+  it("relocation replays identically for the same run seed", () => {
+    const a = spire(42);
+    const b = spire(42);
+    for (let i = 0; i < COLLAPSE_PERIOD; i++) collapseTick(a.activeGate!);
+    for (let i = 0; i < COLLAPSE_PERIOD; i++) collapseTick(b.activeGate!);
+    expect(stairCell(a)).toBe(stairCell(b));
+  });
+
+  it("descending resets the countdown", () => {
+    const s = spire();
+    for (let i = 0; i < 10; i++) collapseTick(s.activeGate!);
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD - 10);
+    descendFloor(s);
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD);
   });
 });

@@ -103,6 +103,7 @@ export interface ActiveGate {
   medalsThisRun?: number; // family medals completed this run — the Hall's trophy line
   daily?: boolean; // today's shared Daily Challenge maze — scores land on the leaderboard
   oathDepth?: boolean; // the black altar's Deep Bargain: every foe this run runs +1 level, kills pay ×1.5
+  collapseTurns?: number; // collapse-gimmick floors: steps until the stair relocates (see collapseTick)
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 

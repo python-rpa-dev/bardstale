@@ -21,6 +21,7 @@ import {
   campRest,
   campScout,
   campTrophy,
+  collapseTick,
   descendFloor,
   describeRare,
   endExpedition,
@@ -193,6 +194,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     boss?: string; // gate lord stirred on the final floor — display name
     revealed?: string[]; // witchlight uncovered hidden entities near the flame this move
     slowed?: string; // flooded cell — the water doubles the odds of being found
+    collapsed?: boolean; // the spire shook the stair down — a new one grind open somewhere ahead
   }
 
   /** One grid step in the facing direction (or straight back). Traps spring and encounters roll here. */
@@ -223,6 +225,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       const cell = cellId(nx, ny);
       reveal(ag);
       if (ag.lightTurns !== undefined && ag.lightTurns > 0) ag.lightTurns -= 1; // one step, one breath of flame
+      // The Ember Spire shakes itself down: on schedule the stair caves in and opens elsewhere.
+      if (collapseTick(ag)) out.collapsed = true;
 
       // Traps spring when stepped on, once per cell.
       if (entityAt(ag, cell) === "trap" && !ag.flags[`trap${cell}`]) {
@@ -294,6 +298,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     else if (out.boss) ctx.sfx.encounter();
     if (out.descended) ctx.sfx.descend();
     if (out.slowed) log(out.slowed);
+    if (out.collapsed) {
+      ctx.sfx.thud();
+      log("The spire groans. Behind you the old stairs cave in — somewhere ahead, new ones grind open.");
+    }
     if (out.revealed?.length) {
       const names = out.revealed.map((k) => (k === "secret" ? "a hidden alcove" : k === "trap" ? "a concealed trap" : "a rune-sealed door"));
       log(`The witchlight's cold glow uncovers ${names.join(", ")}.`);
@@ -995,7 +1003,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         (torchChip = el("p", { class: "torch-chip muted" })),
         (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,
-        el("p", { class: "muted legend", text: `■ stairs · ? chest · ✚ shrine · ◈ riddle${def.gimmick === "flood" ? " · ≈ flood (wading is slow)" : ""} — explored cells only; ▣ marks a rune-sealed wall` }),
+        el("p", { class: "muted legend", text: `■ stairs · ? chest · ✚ shrine · ◈ riddle${def.gimmick === "flood" ? " · ≈ flood (wading is slow)" : def.gimmick === "collapse" ? " · ⌛ the stair moves" : ""} — explored cells only; ▣ marks a rune-sealed wall` }),
       ),
       partyHost,
       logEl,

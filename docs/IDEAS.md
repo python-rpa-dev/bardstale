@@ -8,9 +8,9 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 - **Rogue tricks** — shipped; see the class SP rails line under Combat in FEATURES.
 - **Gate lord phases** — shipped; see the gate lords line in FEATURES (telegraphed rear-up specials for the three non-breath lords).
-- **Another floor gimmick** (M–L) — e.g. collapsing floors (stairs relocate after N turns). The flood
-  gimmick shipped as the pattern to copy (`gimmick` on GateDef + one mapgen placement rule + a cell set
-  on `FloorMapSave`; see Sunken Cloister, git `a2a711c`). Hooks: `data/gates.ts` + manifest wall-texture slots.
+- **Another floor gimmick** — shipped as the Ember Spire's collapsing floors; see the collapsing
+  floors line under Gates & floors in FEATURES (`gimmick` on GateDef + a countdown on `ActiveGate` +
+  a seeded BFS relocation in `collapseTick`; the flood gimmick remains the other pattern).
 
 ## Meta & replayability
 

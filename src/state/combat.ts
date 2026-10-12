@@ -10,7 +10,7 @@ import { ITEMS } from "../data/items";
 import type { Family } from "../data/bestiary";
 import { perkMult } from "../data/trophies";
 import { applyXpToPc, earn } from "./party";
-import { endExpedition, isDarkFloor } from "./expedition";
+import { endExpedition, isDarkFloor, relicMods } from "./expedition";
 import { emptyChronicle, FALLEN_SIZE } from "./save";
 import type { GameState } from "./save";
 
@@ -31,6 +31,7 @@ export function beginCombat(d: GameState): void {
     riches: m === "riches",
     hollows: m === "hollows", // undead +1 level, vermin −1 (foeDef scaling)
     oath: ag.oathDepth, // altar Deep Bargain: foes +1 level, kill gold ×1.5 — all run long
+    atkBonus: relicMods(ag).dmgBonus, // Butcher's Hook: every blow, both sides, lands heavier
     healDiscount: d.medals.includes("undead"), // undead medal: heal −2 SP
     guardedStart: d.medals.includes("giant"), // giant medal: start Guarded
     fleeGuaranteed: d.medals.includes("humanoid"), // humanoid medal: always escape intact
@@ -77,8 +78,9 @@ export function claimVictory(d: GameState): VictorySummary | null {
     if (res.levels > 0) levelsByPc[pcId] = res.levels;
   }
 
-  earn(d, v.gold); // combat gold is claimed immediately, like chest gold — safe from a wipe
-  if (d.activeGate) d.activeGate.loot.gold += v.gold;
+  const gold = Math.floor(v.gold * relicMods(d.activeGate).goldMult); // Grave Coin takes the dead's tithe
+  earn(d, gold); // combat gold is claimed immediately, like chest gold — safe from a wipe
+  if (d.activeGate) d.activeGate.loot.gold += gold;
 
   // codex stamps → family medals when a page set completes
   const newMedals: Family[] = [];

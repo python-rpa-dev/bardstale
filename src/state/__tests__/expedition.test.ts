@@ -4,8 +4,9 @@ import { BESTIARY, monsterById } from "../../data/bestiary";
 import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
 import { FALLEN_SIZE, HALL_SIZE, makePc, newGame, pcMax } from "../save";
-import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, COLLAPSE_PERIOD, collapseTick, descendFloor, describeRare, endExpedition, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, COLLAPSE_PERIOD, collapseTick, descendFloor, describeRare, endExpedition, forceSeal, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, pickRelic, pickRelicPair, relicMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
+import { RELICS, relicById } from "../../data/relics";
 import { applyDefeat, claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
@@ -838,5 +839,100 @@ describe("collapsing floors - the Ember Spire gimmick", () => {
     expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD - 10);
     descendFloor(s);
     expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD);
+  });
+});
+
+describe("relics - one run-defining trinket per run", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const run = (seed = 11) => {
+    const s = newGame(clock);
+    startExpedition(s, "hollow-roots", undefined, seed);
+    return s;
+  };
+  const solveSeal = (s: GameState) => {
+    const ag = s.activeGate!;
+    return trySeal(s, [...sealPuzzle(ag.seed, ag.floor).solution]);
+  };
+
+  it("the pedestal pair is seeded, distinct, and drawn from the pool", () => {
+    const [a1, b1] = pickRelicPair(42, 0);
+    const [a2, b2] = pickRelicPair(42, 0);
+    expect([a1, b1]).toEqual([a2, b2]); // same seed + floor, same offer
+    expect(a1).not.toBe(b1);
+    for (const id of [a1, b1]) expect(RELICS.some((r) => r.id === id)).toBe(true);
+    expect(pickRelicPair(42, 1).concat(pickRelicPair(99, 0)).length).toBe(4); // other floors still answer
+  });
+
+  it("relicMods defaults to identity and each relic bends exactly its own rules", () => {
+    const base = { lightMult: 1, ambushDelta: 0, goldMult: 1, chestGoldMult: 1, trapMult: 1, chestAmbush: false, autoSeal: false, dmgBonus: 0 };
+    expect(relicMods(undefined)).toEqual(base);
+    expect(relicMods({ relic: "nope" } as ActiveGate)).toEqual(base);
+    expect(relicMods({ relic: "emberheart" } as ActiveGate)).toEqual({ ...base, lightMult: 1.5, ambushDelta: 0.06 });
+    expect(relicMods({ relic: "owl-mask" } as ActiveGate)).toEqual({ ...base, lightMult: 0.75, ambushDelta: -0.08 });
+    expect(relicMods({ relic: "grave-coin" } as ActiveGate)).toEqual({ ...base, goldMult: 1.5, trapMult: 2 });
+    expect(relicMods({ relic: "skeleton-key" } as ActiveGate)).toEqual({ ...base, autoSeal: true });
+    expect(relicMods({ relic: "greed-molar" } as ActiveGate)).toEqual({ ...base, chestGoldMult: 2, chestAmbush: true });
+    expect(relicMods({ relic: "butcher-hook" } as ActiveGate)).toEqual({ ...base, dmgBonus: 2 });
+  });
+
+  it("the first vault offers two relics; after the claim, vaults stay silent", () => {
+    const s = run();
+    const res = solveSeal(s);
+    expect(res.solved).toBe(true);
+    expect(res.relicChoices).toHaveLength(2);
+    expect(new Set(res.relicChoices).size).toBe(2);
+    const msg = pickRelic(s, res.relicChoices![0]);
+    expect(s.activeGate!.relic).toBe(res.relicChoices![0]);
+    expect(msg).toContain(relicById(res.relicChoices![0]).name);
+    descendFloor(s);
+    expect(solveSeal(s).relicChoices).toBeUndefined(); // one relic per run, then never again
+  });
+
+  it("the Skeleton Key forces the lock but eats the bolt", () => {
+    const s = run();
+    s.activeGate!.relic = "skeleton-key";
+    const before = s.party.map((p) => p.hp);
+    const res = forceSeal(s);
+    expect(res.solved).toBe(true);
+    expect(res.gold).toBe(25); // floor 1 vault, no gold relic
+    expect(res.victim).toBeTruthy();
+    expect(res.damage).toBe(6); // 6 + 2×depth, same bite as a wrong guess
+    const totalAfter = s.party.reduce((n, p) => n + p.hp, 0);
+    expect(totalAfter).toBe(before.reduce((n, h) => n + h, 0) - 6);
+    expect(forceSeal(s).solved).toBe(false); // the vault only defends once
+  });
+
+  it("flame relics rescale the torch — on claim and on every new floor", () => {
+    const s = run();
+    expect(s.activeGate!.lightTurns).toBe(LIGHT_PER_FLOOR);
+    pickRelic(s, "emberheart");
+    expect(s.activeGate!.lightTurns).toBe(45); // 30 × 1.5 on the spot
+    descendFloor(s);
+    expect(s.activeGate!.lightTurns).toBe(45);
+    const o = run();
+    o.activeGate!.relic = "owl-mask";
+    descendFloor(o);
+    expect(o.activeGate!.lightTurns).toBe(Math.round(LIGHT_PER_FLOOR * 0.75)); // 23: owl eyes hate flame
+  });
+
+  it("the Grave Coin pays vaults half again", () => {
+    const s = run();
+    s.activeGate!.relic = "grave-coin";
+    const res = solveSeal(s);
+    expect(res.gold).toBe(Math.floor(25 * 1.5));
+    expect(s.activeGate!.loot.gold).toBe(Math.floor(25 * 1.5));
+  });
+
+  it("encounterChance bends with the relic delta and clamps", () => {
+    expect(encounterChance(true, false)).toBeCloseTo(0.18);
+    expect(encounterChance(true, false, 0.06)).toBeCloseTo(0.24);
+    expect(encounterChance(true, false, -0.08)).toBeCloseTo(0.1);
+    expect(encounterChance(false, false, -0.5)).toBe(0.02); // relics bend odds, never break them
+  });
+
+  it("the Butcher's Hook rides into every fight via beginCombat", () => {
+    const cs = startCombat(party(), ["cave-rat"], { seed: 3, atkBonus: relicMods({ relic: "butcher-hook" } as ActiveGate).dmgBonus });
+    expect(cs.atkBonus).toBe(2);
+    expect(startCombat(party(), ["cave-rat"], { seed: 3 }).atkBonus).toBe(0);
   });
 });

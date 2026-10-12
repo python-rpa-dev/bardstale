@@ -66,6 +66,7 @@ export interface CombatState {
   fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
   stolenGold?: number; // coins pickpocketed mid-fight — added to victory gold on top of the kill rolls
   blessDef: number; // party-wide DEF bonus for the combat (bless)
+  atkBonus: number; // Butcher's Hook: +damage on every blow, both sides
   tauntPc: number | null; // fighter who taunted: highest-ATK foe must target them
   bestHit?: number; // biggest single PC hit this fight (synced to Chronicle on victory)
   crits?: number; // critical hits landed by PCs this fight (same sync)
@@ -195,6 +196,7 @@ export interface StartOpts {
   fleeGuaranteed?: boolean; // humanoid medal
   elites?: number[]; // indices into foeIds that spawn as elites (+1 lvl via lvlShift)
   boss?: boolean; // single-foe gate-lord fight: sets boss/maxHp for enrage
+  atkBonus?: number; // Butcher's Hook relic: +damage on every blow, both sides
 }
 
 export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): CombatState {
@@ -214,6 +216,7 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
     pocketLuck: pcs.some((p) => p.classId === "rogue"),
     healDiscount: !!opts.healDiscount,
     blessDef: 0,
+    atkBonus: opts.atkBonus ?? 0,
     tauntPc: null,
     fleeGuaranteed: !!opts.fleeGuaranteed,
     pcs: pcs.map((p) => ({ ...p, statuses: [...p.statuses], guard: false, guardedFree: !!opts.guardedStart, atkBuff: 0 })),
@@ -281,7 +284,7 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
     evs.push({ kind: "miss", src: ["pc", pcIdx], dst: ["foe", foeIdx], text: "miss" });
     return evs;
   }
-  let dmg = Math.max(1, Math.round(a.atk * (0.85 + rng() * 0.3)) - Math.floor(fd.def / 2));
+  let dmg = Math.max(1, Math.round(a.atk * (0.85 + rng() * 0.3)) - Math.floor(fd.def / 2) + cs.atkBonus);
   if (isCrit) dmg *= 2;
   f.hp = Math.max(0, f.hp - dmg);
   recordDeed(cs, dmg, isCrit);
@@ -609,7 +612,7 @@ function unleashLordSpecial(cs: CombatState, foeIdx: number, fury: number, evs: 
   if (!victims.length) return finishTurn(cs, evs);
   const physDmg = (t: number): number => {
     const d = pcStats(cs, t);
-    return Math.max(1, Math.round(fd.atk * sp.mult * fury) - Math.floor((d.def + cs.blessDef) / 2));
+    return Math.max(1, Math.round(fd.atk * sp.mult * fury) - Math.floor((d.def + cs.blessDef) / 2) + cs.atkBonus);
   };
   if (sp.kind === "rime") {
     const t = victims[randInt(rng, 0, victims.length - 1)];
@@ -732,7 +735,7 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     evs.push({ kind: "miss", src: ["foe", foeIdx], dst: ["pc", t], text: "miss" });
     return finishTurn(cs, evs);
   }
-  let dmg = Math.max(1, Math.round(fd.atk * (1 + captainAura(cs, foeIdx)) * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2)); // captains rally the line
+  let dmg = Math.max(1, Math.round(fd.atk * (1 + captainAura(cs, foeIdx)) * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2) + cs.atkBonus); // captains rally the line
   const crit = rng() < cs.critFoe;
   if (crit) dmg *= 2;
   if (f.enraged) dmg = Math.round(dmg * 1.5);

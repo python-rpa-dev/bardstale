@@ -41,6 +41,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 ## Run structure & economy
 
 - Level-up boons: deterministic 7-boon offers that never repeat while fresh ones remain; camp actions Rest / Scout / Trophy once per floor with shared 35% ambush risk.
+- Relics: one run-defining trinket per run — the first rune-sealed vault you crack lays a pedestal of two seeded offers, take one. Six in the pool, each bending exactly one rule and charging one price: Emberheart Sigil (torchlight ×1.5 / ambush +6%), Owl Mask (ambush −8 / torchlight ×0.75), Grave Coin (all expedition gold ×1.5 / traps ×2), Skeleton Key (seals open at a touch / the vault's bolt still bites a random hero), Greed's Molar (chest gold ×2 / every chest springs a foe), Butcher's Hook (every blow ±2 damage, both sides). The claimed relic rides the dungeon side panel as a ⚑ chip; all math resolves through one `relicMods()` chokepoint.
 - One wallet (purse + bank merged; v1 saves migrate automatically); every gold inflow — victory, bounty, chest, camp windfall — flows through a single `earn()` chokepoint that feeds the chronicle.
 - Gate-lord trophies: each of the five lords drops its trophy on the first kill, displayed on the Guild's Trophy Shelf with a permanent town-wide perk — temple healing −25%, revives −40%, bounty payouts +30% (stacks with medals), Merchants' Row prices −20%, hearth brewing −30%.
 - Critical-HP pulse with a once-per-run hint toward shrines and temple; the defeat modal shows your heroes' closing fight lines.

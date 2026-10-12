@@ -1,3 +1,4 @@
+import { RELICS, relicById } from "../data/relics";
 import { riddleFor, sealPuzzle } from "../data/riddles";
 /** Expedition run logic shared by the gate and dungeon screens. Mutators take a draft GameState. */
 
@@ -43,9 +44,9 @@ export function isDarkFloor(floor: number): boolean {
 }
 
 /** Encounter odds on open corridor cells; the dark emboldens foes. Tallow smoke (while lit) dulls them ~10%. Pure for tests. */
-export function encounterChance(lit: boolean, smoke = false): number {
-  if (!lit) return 0.26;
-  return smoke ? 0.18 * 0.9 : 0.18;
+export function encounterChance(lit: boolean, smoke = false, relicDelta = 0): number {
+  const base = !lit ? 0.26 : smoke ? 0.18 * 0.9 : 0.18;
+  return Math.max(0.02, Math.min(0.5, base + relicDelta)); // relics bend odds, never break them
 }
 
 /** Perks of the run's current torch kind (tallow smokes, witchlight reveals). Pure for tests. */
@@ -229,7 +230,7 @@ export function descendFloor(s: GameState): void {
   ag.chests = [];
   for (const [id, kind] of ag.map.entities) if (kind === "chest") ag.chests.push({ cell: id, opened: false });
   ag.steps = 0;
-  ag.lightTurns = LIGHT_PER_FLOOR; // new floor, fresh flame
+  ag.lightTurns = Math.round(LIGHT_PER_FLOOR * relicMods(ag).lightMult); // fresh flame, new keeper's measure
   const period = collapsePeriodFor(gateById(ag.gateId));
   if (period) ag.collapseTurns = period; // new floor, new countdown
   delete ag.pendingMonsters;
@@ -436,7 +437,7 @@ export function answerRiddle(d: GameState, pickIndex: number): { correct: boolea
   ag.flags[`riddle-f${ag.floor}`] = true;
   const view = riddleFor(ag.seed, ag.floor);
   if (pickIndex === view.correctAt) {
-    const gold = 18 * (ag.floor + 1);
+    const gold = Math.floor(18 * (ag.floor + 1) * relicMods(ag).goldMult);
     earn(d, gold); // riddle gold lands in the purse on the spot
     ag.loot.gold += gold;
     return { correct: true, gold, ambush: null };
@@ -452,8 +453,30 @@ export interface SealOutcome {
   solved: boolean;
   gold?: number;
   item?: string; // stash drop id, added to inventory + loot when solved
-  victim?: string; // wrong guess: a random party member eats the bolt
+  victim?: string; // wrong guess (or a forced key-turn): a random party member eats the bolt
   damage?: number;
+  relicChoices?: string[]; // the vault's pedestal offers two relics — once per run, then never again
+}
+
+/** Open a solved or forced vault: carve the door, pay gold + stash, lay the pedestal once per run. */
+function openSeal(d: GameState, rng: Rng): SealOutcome {
+  const ag = d.activeGate!;
+  ag.flags[`sealed-f${ag.floor}`] = true;
+  // The door opens for good: carve the wall face into floor and drop the marker.
+  const door = ag.map.entities.find(([, k]) => k === "sealed");
+  if (door) {
+    ag.map.cells = ag.map.cells.slice(0, door[0]) + "0" + ag.map.cells.slice(door[0] + 1);
+    ag.map.entities = ag.map.entities.filter(([id]) => id !== door[0]);
+  }
+  const gold = Math.floor(25 * (ag.floor + 1) * relicMods(ag).goldMult);
+  earn(d, gold); // seal gold lands in the purse on the spot
+  ag.loot.gold += gold;
+  const stash = ITEMS.filter((it) => it.rarity !== "common" && it.slot !== "consumable");
+  const drop = stash[Math.floor(rng() * stash.length)];
+  d.inventory[drop.id] = (d.inventory[drop.id] ?? 0) + 1;
+  ag.loot.items[drop.id] = (ag.loot.items[drop.id] ?? 0) + 1;
+  const relicChoices = ag.relic ? undefined : pickRelicPair(ag.seed, ag.floor);
+  return relicChoices ? { solved: true, gold, item: drop.id, relicChoices } : { solved: true, gold, item: drop.id };
 }
 
 /**
@@ -465,29 +488,27 @@ export function trySeal(d: GameState, guess: string[]): SealOutcome {
   const ag = d.activeGate!;
   if (ag.flags[`sealed-f${ag.floor}`]) return { solved: false }; // already opened on this floor
   const { solution } = sealPuzzle(ag.seed, ag.floor);
-  if (guess.length === 3 && guess.every((r, i) => r === solution[i])) {
-    ag.flags[`sealed-f${ag.floor}`] = true;
-    // The door opens for good: carve the wall face into floor and drop the marker.
-    const door = ag.map.entities.find(([, k]) => k === "sealed");
-    if (door) {
-      ag.map.cells = ag.map.cells.slice(0, door[0]) + "0" + ag.map.cells.slice(door[0] + 1);
-      ag.map.entities = ag.map.entities.filter(([id]) => id !== door[0]);
-    }
-    const gold = 25 * (ag.floor + 1);
-    earn(d, gold); // seal gold lands in the purse on the spot
-    ag.loot.gold += gold;
-    const rng = stepRng(ag);
-    const stash = ITEMS.filter((it) => it.rarity !== "common" && it.slot !== "consumable");
-    const drop = stash[Math.floor(rng() * stash.length)];
-    d.inventory[drop.id] = (d.inventory[drop.id] ?? 0) + 1;
-    ag.loot.items[drop.id] = (ag.loot.items[drop.id] ?? 0) + 1;
-    return { solved: true, gold, item: drop.id };
-  }
+  if (guess.length === 3 && guess.every((r, i) => r === solution[i])) return openSeal(d, stepRng(ag));
   const rng = stepRng(ag);
   const victim = d.party[Math.floor(rng() * d.party.length)];
   const damage = 6 + ag.floor * 2;
   victim.hp = Math.max(0, victim.hp - damage);
   return { solved: false, victim: victim.name, damage };
+}
+
+/** Skeleton Key: the seal opens at a touch — but the vault still defends itself with the
+ *  same bolt a wrong guess would have eaten. Returns the open outcome (with the pedestal offer). */
+export function forceSeal(d: GameState): SealOutcome {
+  const ag = d.activeGate!;
+  if (ag.flags[`sealed-f${ag.floor}`]) return { solved: false };
+  const rng = stepRng(ag);
+  const victim = d.party[Math.floor(rng() * d.party.length)];
+  const damage = 6 + ag.floor * 2;
+  victim.hp = Math.max(0, victim.hp - damage);
+  const out = openSeal(d, rng);
+  out.victim = victim.name;
+  out.damage = damage;
+  return out;
 }
 
 /** The active bounty's family if any, for encounter weighting. */
@@ -563,6 +584,68 @@ export function applyBargain(d: GameState, id: BargainId): string {
       return "The torch dies with a hiss. Cold dark rushes in — and the wounds close anyway.";
     }
   }
+}
+
+// ---------- Relics: one run-defining trinket per run, claimed at the first vault ----------
+
+/** Every relic rule the crawl consumes, resolved once from the claimed id. */
+export interface RelicMods {
+  lightMult: number; // torchlight per floor scales by this
+  ambushDelta: number; // added to encounterChance
+  goldMult: number; // expedition gold (vault, riddle, kills, chests)
+  chestGoldMult: number; // chest gold only
+  trapMult: number; // trap damage
+  chestAmbush: boolean; // opening a chest always springs a foe
+  autoSeal: boolean; // rune seals open at a touch (Skeleton Key)
+  dmgBonus: number; // +damage on every blow, both sides
+}
+
+export function relicMods(ag: ActiveGate | undefined): RelicMods {
+  const m: RelicMods = { lightMult: 1, ambushDelta: 0, goldMult: 1, chestGoldMult: 1, trapMult: 1, chestAmbush: false, autoSeal: false, dmgBonus: 0 };
+  switch (ag?.relic) {
+    case "emberheart":
+      m.lightMult = 1.5;
+      m.ambushDelta = 0.06;
+      break;
+    case "owl-mask":
+      m.ambushDelta = -0.08;
+      m.lightMult = 0.75;
+      break;
+    case "grave-coin":
+      m.goldMult = 1.5;
+      m.trapMult = 2;
+      break;
+    case "skeleton-key":
+      m.autoSeal = true;
+      break;
+    case "greed-molar":
+      m.chestGoldMult = 2;
+      m.chestAmbush = true;
+      break;
+    case "butcher-hook":
+      m.dmgBonus = 2;
+      break;
+  }
+  return m;
+}
+
+/** Two distinct relics on the vault's pedestal, seeded so the same floor always offers the same pair. */
+export function pickRelicPair(seed: number, floor: number): [string, string] {
+  const rng = mulberry32(hashStr(`${seed}:relic:${floor}`));
+  const a = Math.floor(rng() * RELICS.length);
+  let b = Math.floor(rng() * RELICS.length);
+  if (b === a) b = (b + 1) % RELICS.length;
+  return [RELICS[a].id, RELICS[b].id];
+}
+
+/** Claim one of the vault's offers — the run carries exactly one relic. Returns the toast line. */
+export function pickRelic(d: GameState, id: string): string {
+  const ag = d.activeGate!;
+  ag.relic = id;
+  const m = relicMods(ag);
+  if (m.lightMult !== 1 && ag.lightTurns !== undefined) ag.lightTurns = Math.round(ag.lightTurns * m.lightMult); // the flame adjusts to its new keeper
+  const def = relicById(id);
+  return `${def.name} — ${def.boon}. But ${def.cost.toLowerCase()}.`;
 }
 
 export interface Ware {

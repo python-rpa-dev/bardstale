@@ -104,6 +104,7 @@ export interface ActiveGate {
   daily?: boolean; // today's shared Daily Challenge maze — scores land on the leaderboard
   oathDepth?: boolean; // the black altar's Deep Bargain: every foe this run runs +1 level, kills pay ×1.5
   collapseTurns?: number; // collapse-gimmick floors: steps until the stair relocates (see collapseTick)
+  relic?: string; // claimed relic id for this run (see data/relics) — one per run, first vault offers the choice
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 

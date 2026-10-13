@@ -2,6 +2,7 @@ import { classById, RECRUIT_COST, type ClassId } from "../data/classes";
 import { itemById } from "../data/items";
 import { xpForNext, LEVEL_CAP } from "../data/progression";
 import { boonById } from "../data/boons";
+import { TITHE_SHARE } from "./ledger";
 import { pcBase, pcMax, makePc, emptyChronicle, type GameState, type Pc } from "./save";
 
 export interface EffectiveStats {
@@ -116,12 +117,19 @@ export function pay(state: GameState, cost: number): boolean {
   state.gold -= cost;
   return true;
 }
-/** Income chokepoint: every coin earned lands in the purse AND the chronicle's career tally. */
+/** Income chokepoint: every coin earned lands in the chronicle's career tally; the purse gets what the Ferryman's tithe leaves. */
 export function earn(state: GameState, amount: number): void {
   const g = Math.floor(amount);
   if (g <= 0) return;
+  (state.chronicle ??= emptyChronicle()).goldEarned += g; // the chronicle counts what was earned, not what survived the Ferryman
+  const l = state.ledger;
+  if (l && l.debt > 0) {
+    const tithe = Math.min(l.debt, Math.floor(g * TITHE_SHARE));
+    l.debt -= tithe;
+    state.gold += g - tithe;
+    return;
+  }
   state.gold += g;
-  (state.chronicle ??= emptyChronicle()).goldEarned += g;
 }
 
 

@@ -24,6 +24,8 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 - **Herbalism & brewing** — shipped; see the tavern hearth kitchen in FEATURES.
 - **Merchant rivalry** — shipped; see the Merchants' Row line in FEATURES.
+- **Ferryman's Ledger** — shipped; see the loan-shark line under Town services in FEATURES
+  (`state/ledger.ts` borrow/interest/repay + the tithe inside the `earn()` chokepoint).
 
 ## Atmosphere & dark
 

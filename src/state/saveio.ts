@@ -157,6 +157,11 @@ export function importSave(raw: string): ImportResult {
       : undefined;
     quests = { offers: qOffers, completed: qDone, ...(qActive ? { active: qActive } : {}) };
   }
+  // The Ferryman's Ledger is optional history: tolerate absence, clamp to whole coin.
+  let ledger: GameState["ledger"];
+  if (isObj(parsed.ledger)) {
+    ledger = { debt: nonNegInt(parsed.ledger.debt), borrowed: nonNegInt(parsed.ledger.borrowed) };
+  }
 
   const inventory: GameState["inventory"] = {};
   if (isObj(parsed.inventory)) {
@@ -272,6 +277,7 @@ export function importSave(raw: string): ImportResult {
       ...(str(parsed.bounties.active) ? { active: parsed.bounties.active } : {}),
     },
     ...(quests ? { quests } : {}),
+    ...(ledger ? { ledger } : {}),
     dayKey: parsed.dayKey,
     runs,
     chronicle,

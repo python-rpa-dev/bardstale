@@ -291,6 +291,10 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
               toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
               ctx.sfx.coin();
             }
+            if (summary?.questNote) {
+              toast(summary.questNote);
+              ctx.sfx.coin();
+            }
             if (summary?.eliteLoot?.length) toast(`Elite loot: ${summary.eliteLoot.join(", ")}!`);
             for (const gid of summary?.trophies ?? []) {
               const t = TROPHIES.find((x) => x.gateId === gid);

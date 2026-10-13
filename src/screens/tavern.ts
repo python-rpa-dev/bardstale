@@ -5,6 +5,8 @@ import { itemById, RECIPES } from "../data/items";
 import { brewPotion, brewCoinFor } from "../state/tavern";
 import { BESTIARY, type Family } from "../data/bestiary";
 import { bountyId } from "../data/bounties";
+import { questById, stepLabel } from "../data/quests";
+import { acceptQuest, deliverQuest } from "../state/quests";
 import { GATES, gateById, gateIndex } from "../data/gates";
 import { modifierForGate } from "../data/modifiers";
 import { pcMax } from "../state/save";
@@ -75,6 +77,71 @@ export function renderTavern(host: HTMLElement, ctx: RouteCtx): void {
             }),
       ),
     );
+  }
+
+  host.append(el("h2", { text: "Quest Chains" }));
+  const qb = s.quests;
+  if (qb) {
+    const act = qb.active;
+    const actQ = act ? questById(act.id) : null;
+    const renderCard = (q: ReturnType<typeof questById>, accepted: boolean) => {
+      const step = act && actQ?.id === q.id ? q.steps[act.step] : undefined;
+      host.append(
+        el(
+          "div",
+          { class: `bounty-card${accepted ? " accepted" : ""}` },
+          el(
+            "span",
+            {},
+            el("b", { text: q.name }),
+            el("span", { class: "price", text: ` — reward ${q.gold} g, paid at the last link` }),
+            el("p", { class: "muted", text: q.flavor }),
+            ...q.steps.map((st, i) => {
+              const mark = accepted && act ? (act.step > i ? "✓" : act.step === i ? "▸" : "·") : "·";
+              return el("p", { class: accepted && act && act.step > i ? "muted" : "", text: `${mark} ${stepLabel(st)}` });
+            }),
+            step && step.kind === "slay" && act
+              ? bar(act.progress, step.count, "var(--gold)", "", `${act.progress}/${step.count} slain`)
+              : null,
+          ),
+          accepted
+            ? step && step.kind === "deliver"
+              ? button(`Deliver to ${step.npc}`, {
+                  hint: "Hand it over and close the chain — the reward is paid now.",
+                  onClick: () => {
+                    const out: { v: { name: string; gold: number } | null } = { v: null };
+                    ctx.commit((d) => {
+                      out.v = deliverQuest(d);
+                    });
+                    if (out.v) {
+                      toast(`Quest complete: ${out.v.name} — +${out.v.gold} g.`);
+                      ctx.sfx.levelup();
+                    }
+                    ctx.refresh();
+                  },
+                })
+              : el("span", { class: "muted", text: "In progress." })
+            : button(qb.active ? "Replace" : "Accept", {
+                hint: `A chain of ${q.steps.length} links, paid once at the end.${qb.active ? " Replaces the current chain." : ""}`,
+                onClick: () => {
+                  ctx.commit((d) => {
+                    acceptQuest(d, q.id);
+                  });
+                  toast(`Quest accepted: ${q.name}.`);
+                  ctx.refresh();
+                },
+              }),
+        ),
+      );
+    };
+    if (actQ) renderCard(actQ, true);
+    for (const id of qb.offers) {
+      if (qb.completed.includes(id) || qb.active?.id === id) continue;
+      renderCard(questById(id), false);
+    }
+    if (!actQ && qb.offers.every((id) => qb.completed.includes(id))) {
+      host.append(el("p", { class: "muted", text: "No chains posted today — the board is clean." }));
+    }
   }
 
   host.append(el("h2", { text: "Hearth Kitchen" }));

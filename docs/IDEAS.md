@@ -16,9 +16,9 @@ Effort: S ≈ hours, M ≈ a day, L ≈ multi-day.
 
 - **Daily Challenge mode** — shipped; see the Daily Challenge line under Run structure & economy in FEATURES.
 - **Trophy economy** — shipped; see the gate-lord trophies line under Run structure & economy in FEATURES.
-- **Quest chains** (L) — 2–3 step quests layered on the bounty board (recover X from gate A,
-  deliver to NPC Y). Extends `data/bounties.ts` offer shape with item/flag objectives; biggest
-  content win per line of code after gates.
+- **Quest chains** — shipped; see the quest chains line under Town services in FEATURES
+  (`data/quests.ts` chain pool + `state/quests.ts` link ticks hooked into `claimVictory`
+  and the dungeon chest branch).
 
 ## Town life
 

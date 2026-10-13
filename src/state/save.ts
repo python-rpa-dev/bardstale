@@ -1,6 +1,8 @@
 import { classById, type ClassId } from "../data/classes";
 import { boonById } from "../data/boons";
 import { bountyId, offersForDay, shuffledPool, type BountyDef } from "../data/bounties";
+import { questOffersForDay } from "../data/quests";
+import type { QuestBoard } from "./quests";
 import { dailySeed, dayKey, hashStr, mulberry32 } from "../core/rng";
 import type { CombatState } from "../core/combat";
 
@@ -195,6 +197,7 @@ export interface GameState {
   medals: string[]; // family ids with completed codex
   trophies?: string[]; // gate ids whose lord's trophy is raised — permanent town-wide perks
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
+  quests?: QuestBoard; // quest chains — one active, two posted daily; migrate backfills older saves
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
   chronicle?: Chronicle; // lifetime accumulator; migrate backfills older saves
@@ -249,6 +252,7 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     codex: [],
     medals: [],
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
+    quests: { offers: questOffersForDay(mulberry32(hashStr(`quests:${dayKey(now())}`)), []).map((q) => q.id), completed: [] },
     dayKey: dayKey(now()),
     runs: {},
     chronicle: emptyChronicle(),
@@ -280,6 +284,9 @@ export function rotateDaily(state: GameState, now: () => Date): boolean {
     fresh.push({ ...b, kills: 0, done: false });
   }
   state.bounties.offers = fresh;
+  const qBoard = (state.quests ??= { offers: [], completed: [] });
+  qBoard.offers = questOffersForDay(mulberry32(hashStr(`quests:${today}`)), qBoard.completed).map((q) => q.id);
+  if (qBoard.active && qBoard.completed.includes(qBoard.active.id)) qBoard.active = undefined;
   return true;
 }
 
@@ -309,6 +316,7 @@ function migrate(save: GameState & { version: number }): GameState | null {
       s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
       s.hall ??= []; // v1 saves predate the Hall of Runs
       s.fallen ??= []; // v1 saves predate the memorial shelf
+      s.quests ??= { offers: questOffersForDay(mulberry32(hashStr(`quests:${s.dayKey}`)), []).map((q) => q.id), completed: [] }; // v1 saves predate quest chains
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

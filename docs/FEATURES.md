@@ -36,6 +36,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 
 - Guild: party roster and leveling, plus two shelves — the Hall of Runs (the last 8 surfaced runs: depth, kills, medals, loot, crew, newest first) and the Fallen Expeditions memorial (the last 8 wipes: gate, depth F, day, what stood over them, the crew as they went in; retreats are never remembered). Temple of the Quiet Light: per-member heal, bulk "Heal All", revive tokens — death is a fee, not an ending.
 - The Broken Antler tavern: bounty board, ambient omen promise, and a hearth kitchen that brews shrine-grown moonpetal + coin into potions (cheaper than buying). Merchants' Row: Mira and Bram run rival carts — overlapping daily stock (~70% each, union complete), and each discounts the goods the other doesn't carry that day; the rare tier unlocks at 300 lifetime gold earned (career stat, not current purse).
+- Quest chains: the tavern posts two 2–3 link chains a day (seeded, never re-posted once completed) — slay a family, recover a story object from a chest in a named gate, deliver it back to Mira, Bram, or Bryn for one payout at the last link. One chain active at a time, links tick from victory claims and chest openings, and the board tracks each link with ✓/▸ marks and a slay bar.
 - Codex: first kills stamp pages; completing a foe family earns its medal — permanent perks. Chronicle: lifetime deeds ledger including biggest hit, crit count, and career gold.
 
 ## Run structure & economy

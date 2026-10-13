@@ -146,6 +146,17 @@ export function importSave(raw: string): ImportResult {
       done: boolOr(o.done, false),
     });
   }
+  // Quest board is optional history: tolerate absence, clamp the rest.
+  let quests: GameState["quests"];
+  if (isObj(parsed.quests)) {
+    const qOffers = Array.isArray(parsed.quests.offers) ? parsed.quests.offers.filter(str) : [];
+    const qDone = Array.isArray(parsed.quests.completed) ? parsed.quests.completed.filter(str) : [];
+    const qa = isObj(parsed.quests.active) ? parsed.quests.active : undefined;
+    const qActive = qa && str(qa.id) && int(qa.step) && qa.step >= 0 && int(qa.progress) && qa.progress >= 0
+      ? { id: qa.id, step: qa.step, progress: qa.progress }
+      : undefined;
+    quests = { offers: qOffers, completed: qDone, ...(qActive ? { active: qActive } : {}) };
+  }
 
   const inventory: GameState["inventory"] = {};
   if (isObj(parsed.inventory)) {
@@ -260,6 +271,7 @@ export function importSave(raw: string): ImportResult {
       completed: parsed.bounties.completed.filter(str),
       ...(str(parsed.bounties.active) ? { active: parsed.bounties.active } : {}),
     },
+    ...(quests ? { quests } : {}),
     dayKey: parsed.dayKey,
     runs,
     chronicle,

@@ -39,6 +39,7 @@ import {
   type SealOutcome,
   LIGHT_PER_FLOOR, encounterChance, dailyShare, isDarkFloor, isFlooded, isLit, lightMods, witchReveal,
 } from "../state/expedition";
+import { questChestTick } from "../state/quests";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
 import { relicById } from "../data/relics";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
@@ -403,6 +404,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             pendingChestFoe = true;
             msgs.push("Something was owed on that gold — it has come to collect.");
           }
+          const qNote = questChestTick(d, ag.gateId);
+          if (qNote) msgs.push(qNote);
           // sound handled via sfxKinds above
         } else {
           lastLookCell = targetCell;

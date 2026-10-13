@@ -11,6 +11,7 @@ import type { Family } from "../data/bestiary";
 import { perkMult } from "../data/trophies";
 import { applyXpToPc, earn } from "./party";
 import { endExpedition, isDarkFloor, relicMods } from "./expedition";
+import { questKillTick } from "./quests";
 import { emptyChronicle, FALLEN_SIZE } from "./save";
 import type { GameState } from "./save";
 
@@ -63,6 +64,7 @@ export interface VictorySummary {
   newMedals: Family[]; // families whose codex just completed
   bountyDone?: { family: Family; gold: number }; // active bounty finished by this fight's kills
   eliteLoot?: string[]; // item names granted by elite kills (guaranteed uncommons)
+  questNote?: string; // quest-chain link closed by this fight's kills
   trophies?: string[]; // gate ids whose lord's trophy was raised by this kill
 }
 
@@ -136,6 +138,13 @@ export function claimVictory(d: GameState): VictorySummary | null {
     }
   }
 
+  // quest-chain slay steps count the same kills, one link at a time
+  let questNote: string | undefined;
+  for (const f of cs.foes) {
+    const note = questKillTick(d, monsterById(f.mid).family);
+    if (note) questNote = note;
+  }
+
   // gate lord slain: the final floor is cleared, stairs finish the run next step
   const newTrophies: string[] = [];
   const gateDef = d.activeGate ? gateById(d.activeGate.gateId) : null;
@@ -154,7 +163,7 @@ export function claimVictory(d: GameState): VictorySummary | null {
     delete d.activeGate.pendingElites;
   }
   delete d.activeCombat;
-  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone, eliteLoot: eliteLoot.length ? eliteLoot : undefined, trophies: newTrophies.length ? newTrophies : undefined };
+  return { gold: v.gold, tooWeak: v.tooWeak, levelsByPc, newMedals, bountyDone, questNote, eliteLoot: eliteLoot.length ? eliteLoot : undefined, trophies: newTrophies.length ? newTrophies : undefined };
 }
 
 /** Wipe: everyone crawls home at 1 HP and unbanked loot items are forfeited (gold stays banked). */

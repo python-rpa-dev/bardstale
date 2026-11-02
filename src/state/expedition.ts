@@ -9,7 +9,7 @@ import { dailySeed, expeditionSeed, hashStr, mulberry32, randInt, type Rng } fro
 import { GATES, gateById, gateIndex, type GateDef } from "../data/gates";
 import { dayNumber, MODIFIERS, modifierForGate, type ModifierId } from "../data/modifiers";
 import { BESTIARY, type Family, type MonsterDef } from "../data/bestiary";
-import { emptyChronicle, HALL_SIZE, pcMax } from "./save";
+import { emptyChronicle, HALL_SIZE, pcMax, restWoundDecay } from "./save";
 import type { ActiveGate, DailyBest, FloorMapSave, GameState, RareKind, RunRecord } from "./save";
 import { earn } from "./party";
 
@@ -369,24 +369,27 @@ export function rollEncounter(ag: ActiveGate, bountyFamily: Family | null): { mo
 /**
  * Campfire rest: once per floor the living recover 25% max HP/SP — but firelight draws eyes,
  * so ~35% of rests end in an ambush (pendingMonsters set for the caller to resolve).
+ * A night by the fire also knits one Wound stack per afflicted hero (focus endures).
  */
-export function campRest(d: GameState): { healed: boolean; ambush: MonsterDef[] | null } {
+export function campRest(d: GameState): { healed: boolean; ambush: MonsterDef[] | null; woundsKnit: number } {
   const ag = d.activeGate!;
-  if (ag.flags[`rested-f${ag.floor}`]) return { healed: false, ambush: null };
+  if (ag.flags[`rested-f${ag.floor}`]) return { healed: false, ambush: null, woundsKnit: 0 };
   ag.flags[`rested-f${ag.floor}`] = true;
+  let woundsKnit = 0;
   for (const p of d.party) {
     if (p.hp <= 0) continue;
     const max = pcMax(p);
     p.hp = Math.min(max.hp, p.hp + Math.ceil(max.hp * 0.25));
     p.sp = Math.min(max.sp, p.sp + Math.ceil(max.sp * 0.25));
+    woundsKnit += restWoundDecay(p.statuses);
   }
   if (stepRng(ag)() < 0.35) {
     const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
     ag.pendingMonsters = mobs.map((m) => m.id);
     if (elite !== null) ag.pendingElites = [elite];
-    return { healed: true, ambush: mobs };
+    return { healed: true, ambush: mobs, woundsKnit };
   }
-  return { healed: true, ambush: null };
+  return { healed: true, ambush: null, woundsKnit };
 }
 
 /**

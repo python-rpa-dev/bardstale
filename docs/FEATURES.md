@@ -27,7 +27,7 @@ Living document of shipped features (history in git log). Open ideas live in [ID
 ## Combat
 
 - Turn-based verbs — attack / spell / item / flee — plus a Quick Resolve simulation; medals are claimed with victory.
-- Blind & burn statuses recorded through one central damage ledger; riches/pocket-luck gold math verified by an omen balance sweep.
+- Statuses ride one central damage ledger: blind & burn; wound bleeds 1/stack (max 5) at the end of the afflicted's turn — claw/slash rakes stack it, rest/camp knits one, heal light seals it; focus sharpens +5% crit per landed blow (max +20%) and shatters on any miss or drawn blood; omen-mark — the fen seer reads a hero's fate, its telegraph (the gate-lord rear-up reveal) precedes the foe's next move and that blow lands +25% deeper. Riches/pocket-luck gold math verified by an omen balance sweep.
 - Foe behaviors: skittish vermin rout below 25% HP (half XP, no gold), undead guardians bar escape (Flee disables itself), captains rally living allies with a damage aura — each tactic taught on its codex card.
 - Class SP rails for all four classes — mage blasts, cleric heals, fighter strikes, and now rogue knives: Backstab (DEX×1.5+4 through half DEF, +15% crit), Steal Purse (pocket 3+2×foeLvl gold, kept even if the foe escapes), Crippling Cut (the target deals −30% damage for the rest of the fight) — unlocked at levels 1/4/8.
 - Seeded Monte-Carlo balance probe locks the difficulty shape: win rates, HP-attrition gradient across gates, XP tax, stalemate-freedom.

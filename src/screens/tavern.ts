@@ -9,7 +9,7 @@ import { questById, stepLabel } from "../data/quests";
 import { acceptQuest, deliverQuest } from "../state/quests";
 import { GATES, gateById, gateIndex } from "../data/gates";
 import { modifierForGate } from "../data/modifiers";
-import { pcMax } from "../state/save";
+import { pcMax, restWoundDecay } from "../state/save";
 
 /** Epoch-day number matching modifiers.dayNumber for a stored dayKey. */
 function dayNumFromKey(dayKey: string): number {
@@ -29,15 +29,17 @@ export function renderTavern(host: HTMLElement, ctx: RouteCtx): void {
     button("Rest — free", {
       hint: "Restore every adventurer's HP and SP to full. No charge.",
       onClick: () => {
+        let knit = 0;
         ctx.commit((st) => {
           for (const p of st.party) {
             const max = pcMax(p);
             p.hp = max.hp;
             p.sp = max.sp;
+            knit += restWoundDecay(p.statuses);
           }
         });
         ctx.sfx.heal();
-        toast("The party rests by the fire. HP and SP fully restored.");
+        toast(knit ? "The party rests by the fire. HP and SP fully restored; an old bleed scabs over." : "The party rests by the fire. HP and SP fully restored.");
         ctx.refresh();
       },
     }),

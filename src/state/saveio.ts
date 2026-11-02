@@ -70,7 +70,7 @@ function parsePc(raw: Record<string, unknown>): Pc | null {
   if (Array.isArray(raw.statuses)) {
     for (const mark of raw.statuses) {
       if (!isObj(mark)) continue;
-      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" ? mark.kind : null;
+      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" || mark.kind === "focus" ? mark.kind : null;
       if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
     }
   }

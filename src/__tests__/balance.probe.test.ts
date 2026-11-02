@@ -44,6 +44,9 @@ const CLOISTER = [["skeleton"], ["orc-raider", "skeleton"], ["wraith", "spider"]
 const VAULT = [["wraith", "troll"], ["troll"], ["wyrm-whelp"], ["wraith", "wraith", "orc-raider"]];
 const FEN = [["fen-leech"], ["drowned-monk", "fen-leech"], ["mire-brute", "drowned-monk"], ["bog-troll"]];
 const SPIRE = [["cinder-spider", "ash-wight"], ["ash-guardian"], ["wyrm-whelp"], ["ash-wight", "cinder-spider"]];
+// Status-heavy tables: mire-brute rakes Wound, fen-seer pulls Omen-marks, and every
+// landed blow of the intended-level party stacks Focus — the C1 statuses on full display.
+const SAGE = [["fen-seer", "fen-leech"], ["fen-seer", "mire-brute"], ["drowned-monk", "fen-seer"], ["bog-troll", "fen-seer"]];
 
 interface ProbeResult {
   winRate: number;
@@ -82,12 +85,14 @@ const F6 = probe(6, FEN); // intended mid-band for gallows-fen
 const S12 = probe(12, SPIRE); // intended mid-band for ember-spire
 const F2 = probe(2, FEN); // under-leveled into fen (-2 below band floor)
 const S8 = probe(8, SPIRE); // under-leveled into spire (-2 below band floor)
+const O6 = probe(6, SAGE); // intended mid-band with wound-claws and omen-seers active
+const O4 = probe(4, SAGE); // under-leveled into the status table (-2 below band floor)
 
 describe("balance probe (seeded Monte-Carlo over the combat core)", () => {
   it("probe ran: log the measured curve", () => {
     const fmt = (r: ProbeResult) =>
       `win ${(r.winRate * 100).toFixed(0)}% hpCost/win ${(r.hpCostPerWin * 100).toFixed(1)}% maxRound ${r.maxRound} gold/win ${r.avgGoldPerWin.toFixed(1)}`;
-    console.log(`H@1 ${fmt(H1)}\nC@4 ${fmt(C4)}\nF@6 ${fmt(F6)}\nV@9 ${fmt(V9)}\nS@12 ${fmt(S12)}\nF@2 ${fmt(F2)}\nS@8 ${fmt(S8)}\nC@1 ${fmt(C1)}\nV@4 ${fmt(V4)}`);
+    console.log(`H@1 ${fmt(H1)}\nC@4 ${fmt(C4)}\nF@6 ${fmt(F6)}\nV@9 ${fmt(V9)}\nS@12 ${fmt(S12)}\nF@2 ${fmt(F2)}\nS@8 ${fmt(S8)}\nO@6 ${fmt(O6)}\nO@4 ${fmt(O4)}\nC@1 ${fmt(C1)}\nV@4 ${fmt(V4)}`);
   });
 
   it("gates are comfortable at their intended level (casual contract)", () => {
@@ -126,7 +131,7 @@ describe("balance probe (seeded Monte-Carlo over the combat core)", () => {
   });
 
   it("no degenerate stalemates: every fight ends well inside the guard cap", () => {
-    for (const r of [H1, C4, V9, C1, V4]) expect(r.maxRound).toBeLessThan(60);
+    for (const r of [H1, C4, V9, C1, V4, O6, O4]) expect(r.maxRound).toBeLessThan(60);
   });
 
   it("gold scales with gate danger", () => {
@@ -186,6 +191,31 @@ describe("balance probe (seeded Monte-Carlo over the combat core)", () => {
       }
     }
     expect(wiped / 40).toBeGreaterThanOrEqual(0.5); // attrition punishes, even though single fights mostly win
+  });
+});
+
+/* ---------- status scenarios: Wound claws + Focus + Omen-seers on the shape ---------- */
+
+describe("balance probe with C1 statuses active (wound/focus/omen table)", () => {
+  const fmt = (r: ProbeResult) =>
+    `win ${(r.winRate * 100).toFixed(0)}% hpCost/win ${(r.hpCostPerWin * 100).toFixed(1)}% maxRound ${r.maxRound} gold/win ${r.avgGoldPerWin.toFixed(1)}`;
+  it("status table ran: log it", () => console.log(`O@6 ${fmt(O6)}\nO@4 ${fmt(O4)}`));
+
+  it("the omened fen table is still comfortable at its intended level", () => {
+    expect(O6.winRate).toBeGreaterThanOrEqual(0.9);
+    expect(O6.hpCostPerWin).toBeLessThan(0.2);
+  });
+
+  it("the omened table keeps the monotonic gradient: same table costs more the weaker you are", () => {
+    // cross-gate absolute cost is table-design territory (seers are squishy support bodies);
+    // what must lock is the within-table shape: lvl-4 vs the sages costs ~2x lvl-6 attrition
+    expect(O4.hpCostPerWin).toBeGreaterThan(O6.hpCostPerWin * 1.5);
+  });
+
+  it("under-leveled into seers and claws, attrition still bites: >=20% HP per win", () => {
+    // the seer's soft body dilutes the -2 band vs mire-brute-alone tables (measured 23% vs fen@2's 30%+);
+    // the claw bleeds and the marks fly regardless — the floor must stay real
+    expect(O4.hpCostPerWin).toBeGreaterThanOrEqual(0.2);
   });
 });
 

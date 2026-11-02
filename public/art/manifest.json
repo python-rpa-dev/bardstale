@@ -42,6 +42,7 @@
     "monster.fen-leech": { "file": "art/monsters/fen-leech.svg", "w": 96, "h": 96 },
     "monster.drowned-monk": { "file": "art/monsters/drowned-monk.svg", "w": 96, "h": 96 },
     "monster.mire-brute": { "file": "art/monsters/mire-brute.svg", "w": 96, "h": 96 },
+    "monster.fen-seer": { "file": "art/monsters/fen-seer.svg", "w": 96, "h": 96 },
     "monster.bog-troll": { "file": "art/monsters/bog-troll.svg", "w": 96, "h": 96 },
     "monster.cinder-spider": { "file": "art/monsters/cinder-spider.svg", "w": 96, "h": 96 },
     "monster.ash-guardian": { "file": "art/monsters/ash-guardian.svg", "w": 96, "h": 96 },

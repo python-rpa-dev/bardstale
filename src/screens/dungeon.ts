@@ -847,7 +847,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       toast("You already banked a fire on this floor. Embers make poor company.");
       return;
     }
-    log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP).");
+    log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP)." + (res.woundsKnit ? " An old bleed scabs over and closes." : ""));
     if (!meetCompany(res.ambush)) toast("The campfire holds. +25% HP and SP.");
   }
 

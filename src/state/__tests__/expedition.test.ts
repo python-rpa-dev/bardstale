@@ -186,7 +186,7 @@ describe("campfire rest", () => {
     const hpBefore = s.party.map((p) => p.hp);
     const stepsBefore = s.activeGate!.steps;
     const r2 = campRest(s);
-    expect(r2).toEqual({ healed: false, ambush: null });
+    expect(r2).toEqual({ healed: false, ambush: null, woundsKnit: 0 });
     expect(s.party.map((p) => p.hp)).toEqual(hpBefore);
     expect(s.activeGate!.steps).toBe(stepsBefore); // blocked call must not burn the event rng
   });

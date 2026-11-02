@@ -223,6 +223,7 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   background: color-mix(in srgb, var(--uncommon) 30%, var(--panel));
 }
 .chip-wound { background: color-mix(in srgb, var(--hp) 30%, var(--panel)); }
+.chip-focus { background: color-mix(in srgb, var(--gold) 24%, var(--panel)); }
 .chip-blind { background: color-mix(in srgb, var(--rare) 30%, var(--panel)); }
 .chip-burn { background: color-mix(in srgb, #e0762f 35%, var(--panel)); }
 .status-chips { display: flex; gap: 0.25rem; min-height: 1.2em; }
@@ -470,6 +471,8 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 }
 .status-chip.poison { background: color-mix(in srgb, #58c26b 25%, var(--panel)); }
 .status-chip.wound { background: color-mix(in srgb, var(--danger) 25%, var(--panel)); }
+.status-chip.focus { background: color-mix(in srgb, var(--gold) 20%, var(--panel)); }
+.status-chip.omen { background: color-mix(in srgb, var(--rare) 30%, var(--panel)); }
 .status-chip.blind { background: color-mix(in srgb, var(--rare) 28%, var(--panel)); }
 .status-chip.burn { background: color-mix(in srgb, #e0762f 32%, var(--panel)); }
 .status-chip.guard { background: color-mix(in srgb, var(--gold) 22%, var(--panel)); }

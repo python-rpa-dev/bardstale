@@ -2,7 +2,7 @@ import { el, button, bar, toast } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { classById } from "../data/classes";
-import { pcMax, statusLabel } from "../state/save";
+import { clearAilments, pcMax, statusLabel } from "../state/save";
 import { TEMPLE, pay } from "../state/party";
 import { perkMult } from "../data/trophies";
 
@@ -127,14 +127,14 @@ export function renderTemple(host: HTMLElement, ctx: RouteCtx): void {
                   },
                 }),
             button(`Cure Status — ${TEMPLE.cureCost} g`, {
-              hint: `Cure every ailment — poison, wound, blind, burn — for ${TEMPLE.cureCost} gold.`,
-              disabled: pc.statuses.length === 0 || affordable < TEMPLE.cureCost,
+              hint: `Cure every ailment — poison, wound, blind, burn — for ${TEMPLE.cureCost} gold. Focus, the fighter's own poise, endures.`,
+              disabled: !pc.statuses.some((s) => s.kind !== "focus") || affordable < TEMPLE.cureCost,
               onClick: () => {
                 let cured = false;
                 ctx.commit((st) => {
                   const p = st.party.find((x) => x.id === pc.id);
-                  if (p && pay(st, TEMPLE.cureCost)) {
-                    p.statuses = [];
+                  if (p && p.statuses.some((s) => s.kind !== "focus") && pay(st, TEMPLE.cureCost)) {
+                    p.statuses = clearAilments(p.statuses);
                     cured = true;
                   }
                 });

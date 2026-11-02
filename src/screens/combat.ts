@@ -79,6 +79,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       slotImg(`monster.${f.mid}`, 96),
       el("b", { text: `${f.elite ? "Elite " : ""}${titleCase(f.mid)}` }),
       el("span", { class: "muted", text: `Lvl ${def.lvl}` }),
+      f.omenMarked && !dead ? el("span", { class: "status-chip omen", text: "omen-marked" }) : null,
        bar(f.hp, def.hp, dead ? "var(--danger)" : "var(--hp)", "☠", `${titleCase(f.mid)} HP`)
     );
     return card;

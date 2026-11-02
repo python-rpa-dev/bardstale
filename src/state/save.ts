@@ -27,11 +27,59 @@ export interface Pc {
   boonQueue?: number; // level-ups whose boon pick is still owed
 }
 
-/** A lingering condition on a PC; rounds tick only during combat. */
+/** A lingering condition on a PC; rounds tick only during combat.
+ *  Wound and focus are stack marks — their `roundsLeft` field carries the
+ *  stack count and never ticks per round: wound decays one stack per rest
+ *  and focus resets when a blow draws blood (see core/combat.ts). */
 export interface StatusMark {
-  kind: "poison" | "wound" | "blind" | "burn";
+  kind: "poison" | "wound" | "blind" | "burn" | "focus";
   roundsLeft: number;
 }
+
+/** Wound: each stack bleeds 1 damage at the end of the afflicted's turn; infliction clamps here. */
+export const WOUND_MAX = 5;
+
+/** Focus: +5% crit per consecutive landed weapon attack, up to 4 stacks (+20%). */
+export const FOCUS_MAX = 4;
+export const FOCUS_CRIT_STEP = 0.05;
+
+const STACK_MAX: Record<"wound" | "focus", number> = { wound: WOUND_MAX, focus: FOCUS_MAX };
+
+/** Stacks carried for a stack-mark kind (0 when absent; hostile-save clamp built in). */
+export const stackOf = (marks: readonly StatusMark[], kind: "wound" | "focus"): number => {
+  const raw = marks.find((s) => s.kind === kind)?.roundsLeft ?? 0;
+  return Math.max(0, Math.min(STACK_MAX[kind], raw));
+};
+
+/** Add stacks up to the kind's max; returns the new total. */
+export function addStacks(marks: StatusMark[], kind: "wound" | "focus", n: number): number {
+  const total = Math.min(STACK_MAX[kind], stackOf(marks, kind) + n);
+  const mark = marks.find((s) => s.kind === kind);
+  if (mark) mark.roundsLeft = total;
+  else if (total > 0) marks.push({ kind, roundsLeft: total });
+  return total;
+}
+
+/** Drop a stack-mark to zero and remove it; returns the stacks lost. */
+export function clearStacks(marks: StatusMark[], kind: "wound" | "focus"): number {
+  const had = stackOf(marks, kind);
+  const at = marks.findIndex((s) => s.kind === kind);
+  if (at >= 0) marks.splice(at, 1);
+  return had;
+}
+
+/** Resting knits one wound stack (focus is earned, not slept off); returns stacks lost. */
+export function restWoundDecay(marks: StatusMark[]): number {
+  const at = marks.findIndex((s) => s.kind === "wound");
+  if (at < 0) return 0;
+  const left = stackOf(marks, "wound") - 1;
+  if (left > 0) marks[at].roundsLeft = left;
+  else marks.splice(at, 1);
+  return 1;
+}
+
+/** Focus is a boon, not an ailment — purifies, cures, and shrugs leave it standing. */
+export const clearAilments = (marks: StatusMark[]): StatusMark[] => marks.filter((s) => s.kind === "focus");
 
 /** Display name for a status kind ("blind" → "Blind"). */
 export const statusLabel = (kind: StatusMark["kind"]): string => kind[0].toUpperCase() + kind.slice(1);

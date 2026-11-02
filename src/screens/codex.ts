@@ -20,7 +20,7 @@ function specialText(s: Special | undefined): string {
     case "wound":
       return `Rending claws: +${s.stacks} Wound stack per hit (max 5) — each stack bleeds 1 damage at the end of the afflicted's turn; one stack knits per rest, healing magic seals the wound`;
     case "mark":
-      return `Omen-mark: a stricken hero's living ally is read by fate — its next action is announced before it resolves, and blows against it land +25% deeper until it acts`;
+      return `Omen-mark: the seer reads a living ally's fate — its next action is announced before it resolves, and blows against it land +25% deeper until it acts`;
   }
 }
 

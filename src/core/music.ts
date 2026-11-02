@@ -68,11 +68,26 @@ export interface Music {
   /** Switch (or stop) music for a route. Idempotent per track. */
   playFor(route: string): void;
   stop(): void;
+  /** Fade the dungeon dark-layer drone in/out (0..1). Track-gated: only audible on "dungeon". */
+  setDark(intensity: number): void;
+  /** Effective audible intensity of the dark layer — smoke-test seam, like current(). */
+  dark(): number;
+  stop(): void;
   /** Currently audible-or-pending track — smoke-test seam, not for gameplay. */
   current(): TrackName | null;
 }
 
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+
+/** Light turns at or below which the dark-layer drone starts breathing in. */
+export const DARK_WARN = 10;
+
+/** Pure ramp for the dark layer: silent above DARK_WARN, full when the flame dies (<=0).
+ *  A gate without the field (legacy saves) reads as lit — same rule as isLit. */
+export function darkIntensity(turns: number | undefined): number {
+  if (turns === undefined || turns >= DARK_WARN) return 0;
+  return clamp01((DARK_WARN - Math.max(0, turns)) / DARK_WARN);
+}
 
 export function createMusic(initialVolume: number): Music {
   let volume = clamp01(initialVolume);
@@ -85,6 +100,9 @@ export function createMusic(initialVolume: number): Music {
   let bassIdx = 0;
   let nextLeadT = 0;
   let nextBassT = 0;
+  let darkTarget = 0; // desired dark-layer intensity, kept across track switches
+  let droneGain: GainNode | null = null; // live sub-drone whose gain ramps with the flame
+  const DRONE_GAIN = 0.1; // continuous tone — quieter peak than a scheduled note
 
   function ensureContext(): boolean {
     if (ctx) return true;
@@ -94,6 +112,22 @@ export function createMusic(initialVolume: number): Music {
     master = ctx.createGain();
     master.gain.value = 1;
     master.connect(ctx.destination);
+    // Dark-layer drone: E0 fundamental + detuned octave partial, beating slowly like breath.
+    droneGain = ctx.createGain();
+    droneGain.gain.value = 0.0001;
+    droneGain.connect(master);
+    const sub = ctx.createOscillator();
+    sub.type = "sine";
+    sub.frequency.value = midiHz(28); // E0 ≈ 41 Hz — felt more than heard
+    const shimmer = ctx.createOscillator();
+    shimmer.type = "sine";
+    shimmer.frequency.value = midiHz(40) * 1.007; // octave up, cents-detuned for the breathing beat
+    const shimmerGain = ctx.createGain();
+    shimmerGain.gain.value = 0.35;
+    sub.connect(droneGain);
+    shimmer.connect(shimmerGain).connect(droneGain);
+    sub.start();
+    shimmer.start();
     const wake = (): void => {
       if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
     };
@@ -102,6 +136,14 @@ export function createMusic(initialVolume: number): Music {
     document.addEventListener("keydown", wake);
     wake();
     return true;
+  }
+
+  // The dark layer breathes in as the flame dies and out when relit; track-gated so it
+  // never leaks into town or battle BGM. setTargetAtTime gives the exponential fade.
+  function applyDark(): void {
+    if (!ctx || !droneGain) return; // headless: dark() still reports intent
+    const audible = track === "dungeon" ? darkTarget : 0;
+    droneGain.gain.setTargetAtTime(Math.max(0.0001, audible * DRONE_GAIN * volume), ctx.currentTime, 0.7);
   }
 
   function tone(freq: number, t: number, durSec: number, gain: number): void {
@@ -170,6 +212,7 @@ export function createMusic(initialVolume: number): Music {
   return {
     setVolume(v) {
       volume = clamp01(v);
+      applyDark(); // mute must reach the drone too
     },
     playFor(route) {
       const next = trackForRoute(route);
@@ -177,6 +220,7 @@ export function createMusic(initialVolume: number): Music {
       stopTimer();
       track = next;
       def = next ? TRACKS[next] : null;
+      applyDark(); // track gate: leaving "dungeon" fades the drone out, returning re-applies it
       if (!def) return;
       if (!ensureContext()) return; // headless: current() still reports intent
       const c = ctx!;
@@ -190,6 +234,14 @@ export function createMusic(initialVolume: number): Music {
       stopTimer();
       track = null;
       def = null;
+      applyDark();
+    },
+    setDark(intensity) {
+      darkTarget = clamp01(intensity);
+      applyDark();
+    },
+    dark() {
+      return track === "dungeon" ? darkTarget * volume : 0;
     },
     current() {
       return track;

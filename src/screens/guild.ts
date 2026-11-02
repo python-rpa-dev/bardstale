@@ -2,11 +2,13 @@ import { el, button, bar } from "../ui/dom";
 import type { RouteCtx } from "../ui/router";
 import { slotImg } from "../render/art";
 import { CLASSES, RECRUIT_COST, classById } from "../data/classes";
-import { itemById } from "../data/items";
+import { ITEMS, itemById } from "../data/items";
 import { useText } from "./shop";
 import { xpForNext, LEVEL_CAP } from "../data/progression";
-import type { Pc } from "../state/save";
+import type { GameState, Pc } from "../state/save";
 import { pcMax, statusLabel } from "../state/save";
+import { GATES } from "../data/gates";
+import { TROPHIES } from "../data/trophies";
 import {
   effectiveStats,
   equipFromInventory,
@@ -189,6 +191,82 @@ function detailSheet(pc: Pc, ctx: RouteCtx): HTMLElement {
   );
 }
 
+/** The Guild shelf: memories of surfaced runs, newest first. Unknown ids from imported saves render as-is. */
+function hallShelf(s: GameState): HTMLElement {
+  const wrap = el("div", { class: "hall" });
+  wrap.append(el("h2", { text: "Hall of Runs" }));
+  const runs = s.hall ?? [];
+  if (!runs.length) {
+    wrap.append(el("p", { class: "muted", text: "No run remembered yet. Surface from a gate and the Guild will write it down." }));
+    return wrap;
+  }
+  wrap.append(
+    el("p", { class: "muted", text: `The last ${runs.length} expeditions that walked back out — newest first.` }),
+    ...runs.map((r) => {
+      const gateName = GATES.find((g) => g.id === r.gateId)?.name ?? r.gateId;
+      const loot = Object.entries(r.items)
+        .map(([id, n]) => `${ITEMS.find((i) => i.id === id)?.name ?? id} ×${n}`)
+        .join(", ");
+      return el(
+        "div",
+        { class: "hall-row" },
+        el("b", { text: `${gateName} №${r.runNumber}` }),
+        el("span", { class: "muted", text: ` ${r.dayKey} · ${r.depth}F · ${r.kills} kills · ${r.gold} g${r.medals ? ` · ${r.medals} medal${r.medals === 1 ? "" : "s"}` : ""}` }),
+        el("div", {
+          class: "muted",
+          text: `${r.crew.map((c) => `${c.name} lv${c.level}`).join(", ")}${loot ? ` — loot: ${loot}` : ""}`,
+        }),
+      );
+    }),
+  );
+  return wrap;
+}
+
+function trophyShelf(s: GameState): HTMLElement {
+  const wrap = el("div", { class: "hall" });
+  const owned = s.trophies ?? [];
+  wrap.append(el("h2", { text: "Trophy Shelf" }));
+  wrap.append(el("p", { class: "muted", text: `${owned.length} of ${TROPHIES.length} gate-lord trophies raised — each a standing boon to Hollow Vale.` }));
+  for (const t of TROPHIES) {
+    const got = owned.includes(t.gateId);
+    const gateName = GATES.find((g) => g.id === t.gateId)?.name ?? t.gateId;
+    wrap.append(
+      el(
+        "div",
+        { class: `hall-row${got ? "" : " muted"}` },
+        el("b", { text: got ? t.name : `${gateName} — lord unslain` }),
+        el("span", { class: "muted", text: got ? ` ${t.blurb}` : ` Fell the ${t.lord.replace(/-/g, " ")} to claim this shelf.` }),
+      ),
+    );
+  }
+  return wrap;
+}
+
+/** The memorial shelf: wiped expeditions — who fell, how deep, and what was waiting for them. */
+function fallenShelf(s: GameState): HTMLElement {
+  const wrap = el("div", { class: "hall" });
+  wrap.append(el("h2", { text: "Fallen Expeditions" }));
+  const runs = s.fallen ?? [];
+  if (!runs.length) {
+    wrap.append(el("p", { class: "muted", text: "The Vale keeps no names here. Nobody stays down — yet." }));
+    return wrap;
+  }
+  wrap.append(
+    el("p", { class: "muted", text: `The last ${runs.length} expeditions the dark sent back in pieces — newest first.` }),
+    ...runs.map((r) => {
+      const gateName = GATES.find((g) => g.id === r.gateId)?.name ?? r.gateId;
+      return el(
+        "div",
+        { class: "hall-row muted" },
+        el("b", { text: `${gateName} — ${r.depth}F` }),
+        el("span", { text: ` ${r.dayKey} · ${r.cause}` }),
+        el("div", { text: r.crew.map((c) => `${c.name} lv${c.level}`).join(", ") }),
+      );
+    }),
+  );
+  return wrap;
+}
+
 export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
   const s = ctx.state();
   if (selectedId && !s.party.some((p) => p.id === selectedId)) selectedId = null;
@@ -219,4 +297,7 @@ export function renderGuild(host: HTMLElement, ctx: RouteCtx): void {
     el("div", {}, recruit),
     button("← Town", { hint: "Back to the town square", onClick: () => ctx.navigate("#/town") }),
   );
+  host.append(hallShelf(s));
+  host.append(trophyShelf(s));
+  host.append(fallenShelf(s));
 }

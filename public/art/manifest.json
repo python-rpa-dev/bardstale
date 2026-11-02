@@ -42,6 +42,7 @@
     "monster.fen-leech": { "file": "art/monsters/fen-leech.svg", "w": 96, "h": 96 },
     "monster.drowned-monk": { "file": "art/monsters/drowned-monk.svg", "w": 96, "h": 96 },
     "monster.mire-brute": { "file": "art/monsters/mire-brute.svg", "w": 96, "h": 96 },
+    "monster.fen-seer": { "file": "art/monsters/fen-seer.svg", "w": 96, "h": 96 },
     "monster.bog-troll": { "file": "art/monsters/bog-troll.svg", "w": 96, "h": 96 },
     "monster.cinder-spider": { "file": "art/monsters/cinder-spider.svg", "w": 96, "h": 96 },
     "monster.ash-guardian": { "file": "art/monsters/ash-guardian.svg", "w": 96, "h": 96 },
@@ -55,6 +56,9 @@
     "item.wyrmscale-mail": { "file": "art/items/wyrmscale-mail.svg", "w": 32, "h": 32 },
     "item.ember-sigil": { "file": "art/items/ember-sigil.svg", "w": 32, "h": 32 },
     "item.potion-greater-hp": { "file": "art/items/potion-greater-hp.svg", "w": 32, "h": 32 },
+    "item.torch": { "file": "art/items/torch.svg", "w": 32, "h": 32 },
+    "item.tallow-torch": { "file": "art/items/tallow-torch.svg", "w": 32, "h": 32 },
+    "item.witchlight": { "file": "art/items/witchlight.svg", "w": 32, "h": 32 },
     "wall.fen": { "file": "art/walls/fen.svg", "w": 64, "h": 64 },
     "wall.ember": { "file": "art/walls/ember.svg", "w": 64, "h": 64 }
   }

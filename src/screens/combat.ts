@@ -8,6 +8,7 @@ import { ITEMS } from "../data/items";
 import { pcMax } from "../state/save";
 import { spellsKnownAt } from "../data/spells";
 import { medalForFamily } from "../data/medals";
+import { TROPHIES } from "../data/trophies";
 import {
   foeAct,
   foeDef,
@@ -23,6 +24,7 @@ import {
   type CombatState,
 } from "../core/combat";
 import { applyDefeat, beginCombat, claimVictory, resolveFlee, syncPartyFromCombat } from "../state/combat";
+import { monsterById } from "../data/bestiary";
 
 /** Mount token: pending foe-turn timeouts die when the screen re-renders. */
 let mountEpoch = 0;
@@ -77,6 +79,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       slotImg(`monster.${f.mid}`, 96),
       el("b", { text: `${f.elite ? "Elite " : ""}${titleCase(f.mid)}` }),
       el("span", { class: "muted", text: `Lvl ${def.lvl}` }),
+      f.omenMarked && !dead ? el("span", { class: "status-chip omen", text: "omen-marked" }) : null,
        bar(f.hp, def.hp, dead ? "var(--danger)" : "var(--hp)", "☠", `${titleCase(f.mid)} HP`)
     );
     return card;
@@ -155,7 +158,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
 
   function openItems(): void {
     const inv = ctx.state().inventory;
-    const usable = ITEMS.filter((it) => it.slot === "consumable" && (inv[it.id] ?? 0) > 0);
+    const usable = ITEMS.filter((it) => it.slot === "consumable" && !it.material && (inv[it.id] ?? 0) > 0); // herbs wait for the hearth, not a fight
     const list = el("div", { class: "item-list" });
     if (!usable.length) list.append(el("p", { class: "muted", text: "Nothing usable in the pack." }));
     for (const it of usable) {
@@ -289,7 +292,18 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
               toast(`Bounty complete! +${summary.bountyDone.gold} g.`);
               ctx.sfx.coin();
             }
+            if (summary?.questNote) {
+              toast(summary.questNote);
+              ctx.sfx.coin();
+            }
             if (summary?.eliteLoot?.length) toast(`Elite loot: ${summary.eliteLoot.join(", ")}!`);
+            for (const gid of summary?.trophies ?? []) {
+              const t = TROPHIES.find((x) => x.gateId === gid);
+              if (t) {
+                toast(`${t.name} raised! ${t.blurb}`);
+                ctx.sfx.fanfare();
+              }
+            }
             for (const fam of summary?.newMedals ?? []) {
               const med = medalForFamily(fam);
               modal(`${med.name} Earned!`, el("p", {}, `Codex complete for the ${fam}. Perk: `, el("b", { text: med.perkText })));
@@ -363,6 +377,8 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
   addEventListener("resize", onResize);
   fitCombat();
 
+  // guard-lock (see core/combat tryFlee): while a guardian stands, fleeing is futile — say so up front
+  const guarded = cs.foes.some((f) => f.hp > 0 && !f.fled && monsterById(f.mid).behavior?.kind === "guard");
   if (cs.phase === "input") {
     const speedBtn = button("combat speed, click to toggle pacing", { icon: "bolt", hint: "Foe-turn pacing.", onClick: () => { speed = speed === 1 ? 2 : 1; ctx.refresh(); } });
     speedBtn.insertBefore(el("span", { class: "mult", text: `${speed}×` }), speedBtn.lastChild); // visible multiplier between glyph and sr-only label
@@ -373,7 +389,7 @@ export function renderCombat(host: HTMLElement, ctx: RouteCtx): void {
       button("Cast", { icon: "spark", hint: "Spend SP on a known spell.", disabled: !pcTurn || spellsKnownAt(cs.pcs[activePcIdx].classId, cs.pcs[activePcIdx].level).length === 0, onClick: openSpells }),
       button("Use", { icon: "flask", hint: "Drink or read a consumable.", disabled: !pcTurn, onClick: openItems }),
       button("Guard", { icon: "shield", hint: "Halve damage until your next turn.", disabled: !pcTurn, onClick: guard }),
-      button("Flee", { icon: "door", hint: "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn, onClick: flee }),
+      button("Flee", { icon: "door", hint: guarded ? "The dead bar the way — no escape while a guardian stands." : "Escape chance scales with party DEX over foe DEX.", disabled: !pcTurn || guarded, onClick: flee }),
       speedBtn,
       button("Quick Resolve", { icon: "hourglass", hint: "Auto-run the rest of this fight on the same dice.", onClick: quick })
     );

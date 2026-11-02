@@ -7,8 +7,7 @@ import { spellById } from "../data/spells";
 import { xpMult } from "../data/progression";
 import { randInt, type Rng } from "./rng";
 import { critChanceBonus, effectiveStats } from "../state/party";
-import type { Pc, StatusMark } from "../state/save";
-import { pcMax } from "../state/save";
+import { addStacks, clearAilments, clearStacks, FOCUS_CRIT_STEP, pcMax, stackOf, type Pc, type StatusMark } from "../state/save";
 
 // ---------- Persisted combat state ----------
 
@@ -21,6 +20,10 @@ export interface CombatFoe {
   boss?: boolean; // gate lord: enrages below 30% max HP (see enraged)
   maxHp?: number; // starting HP for bosses — the enrage threshold reference
   enraged?: boolean; // one-time trigger at ≤30% HP: +50% damage dealt
+  telegraph?: boolean; // gate lord phase cycle: reared back — its next action unleashes a signature special
+  fled?: boolean; // behavior "flee": routed below its HP threshold — half XP, no gold
+  crippled?: boolean; // a rogue's crippling cut: this foe deals −30% damage for the rest of the fight
+  omenMarked?: boolean; // a fen seer's reading: its next action is telegraphed in the log, and blows against it land +25% deeper until it acts
 }
 
 /** Effective def view for a foe with the "hollows" ±1 level shift: hp/atk scale ±12% per level. */
@@ -57,10 +60,13 @@ export interface CombatState {
   critFoe: number; // enemy crit chance ("cursed" raises 0.06 → 0.12)
   spellCostMod: number; // "storm": −2 SP per cast (applied via spCostFor)
   riches: boolean; // +50% gold on victory rolls
+  oath: boolean; // the altar's Deep Bargain: every foe runs +1 level, kill gold ×1.5 this run
   pocketLuck: boolean; // living rogue: +3 gold per kill
   healDiscount: boolean; // undead medal: heal costs −2 SP
   fleeGuaranteed: boolean; // humanoid medal: escape always succeeds (won-fight gold is already claimed)
+  stolenGold?: number; // coins pickpocketed mid-fight — added to victory gold on top of the kill rolls
   blessDef: number; // party-wide DEF bonus for the combat (bless)
+  atkBonus: number; // Butcher's Hook: +damage on every blow, both sides
   tauntPc: number | null; // fighter who taunted: highest-ATK foe must target them
   bestHit?: number; // biggest single PC hit this fight (synced to Chronicle on victory)
   crits?: number; // critical hits landed by PCs this fight (same sync)
@@ -131,6 +137,17 @@ export function attackHitChance(aDex: number, dDex: number, aLvl: number, dLvl: 
 /** Burn ticks at end of round: flat damage through guard, can kill. */
 export const BURN_DMG = 3;
 
+/** Wound: each stack bleeds this much damage at the end of the afflicted's own turn
+ *  (stacks live on the StatusMark, capped at WOUND_MAX; decays one per rest). */
+export const WOUND_DMG_PER_STACK = 1;
+
+/** Focus: crit built by consecutive landed weapon attacks (+5%/stack, cap +20%);
+ *  a blow that draws blood shatters it. Added to the crit threshold in pcAttack. */
+export const focusCritBonus = (marks: readonly StatusMark[]): number => FOCUS_CRIT_STEP * stackOf(marks, "focus");
+
+/** Omen-mark: a marked foe takes +25% damage from PC blows until its next action resolves. */
+export const OMEN_DMG_MULT = 1.25;
+
 /** Flee chance per plan M6: 0.5 + 3%·(partyAvgDex − foeAvgDex), floor 0.1. */
 export function fleeChance(partyAvgDex: number, foeAvgDex: number): number {
   return clamp(0.5 + 0.03 * (partyAvgDex - foeAvgDex), 0.1, 1);
@@ -152,7 +169,7 @@ export function pcStats(cs: CombatState, idx: number): { atk: number; def: numbe
 }
 
 const pcAlive = (p: CombatPc): boolean => p.hp > 0;
-const foeAlive = (f: CombatFoe): boolean => f.hp > 0;
+const foeAlive = (f: CombatFoe): boolean => f.hp > 0 && !f.fled;
 
 function alivePcIdxs(cs: CombatState): number[] {
   return cs.pcs.map((p, i) => (pcAlive(p) ? i : -1)).filter((i) => i >= 0);
@@ -175,6 +192,12 @@ function recordDeed(cs: CombatState, dmg: number, isCrit: boolean): void {
   if (isCrit) cs.crits = (cs.crits ?? 0) + 1;
 }
 
+/** A blow that draws blood shatters focus — flow does not survive being struck.
+ *  Bleed and burn sting but are not blows; only incoming attacks reset focus. */
+function shatterFocus(cs: CombatState, p: CombatPc): void {
+  if (clearStacks(p.statuses, "focus") > 0) pushLog(cs, `${p.name}'s focus shatters.`);
+}
+
 // ---------- setup ----------
 
 export interface StartOpts {
@@ -184,11 +207,13 @@ export interface StartOpts {
   spellCostMod?: number; // "storm": 2
   riches?: boolean;
   hollows?: boolean; // "hollows": undead +1 level, vermin −1 (see foeDef)
+  oath?: boolean; // altar "Deep Bargain": all foes +1 lvl (stacks with hollows/elites), victory gold ×1.5
   healDiscount?: boolean; // undead medal
   guardedStart?: boolean; // giant medal: every PC starts with a free half-hit
   fleeGuaranteed?: boolean; // humanoid medal
   elites?: number[]; // indices into foeIds that spawn as elites (+1 lvl via lvlShift)
   boss?: boolean; // single-foe gate-lord fight: sets boss/maxHp for enrage
+  atkBonus?: number; // Butcher's Hook relic: +damage on every blow, both sides
 }
 
 export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): CombatState {
@@ -204,9 +229,11 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
     critFoe: opts.critFoe ?? 0.06,
     spellCostMod: opts.spellCostMod ?? 0,
     riches: !!opts.riches,
+    oath: !!opts.oath,
     pocketLuck: pcs.some((p) => p.classId === "rogue"),
     healDiscount: !!opts.healDiscount,
     blessDef: 0,
+    atkBonus: opts.atkBonus ?? 0,
     tauntPc: null,
     fleeGuaranteed: !!opts.fleeGuaranteed,
     pcs: pcs.map((p) => ({ ...p, statuses: [...p.statuses], guard: false, guardedFree: !!opts.guardedStart, atkBuff: 0 })),
@@ -215,6 +242,7 @@ export function startCombat(pcs: Pc[], foeIds: string[], opts: StartOpts): Comba
       let shift = opts.hollows ? (fam === "undead" ? 1 : fam === "vermin" ? -1 : 0) : 0;
       const elite = opts.elites?.includes(i) ?? false;
       if (elite) shift += 1; // elites stack a level on top of hollows
+      if (opts.oath) shift += 1; // the Deep Bargain thickens every pack, lords included
       const hp = Math.max(1, Math.round(monsterById(mid).hp * (1 + 0.12 * shift)));
       const boss = !!opts.boss && foeIds.length === 1;
       return { mid, hp, lastBreathRound: 0, lvlShift: shift || undefined, elite: elite || undefined, boss: boss || undefined, maxHp: boss ? hp : undefined };
@@ -249,6 +277,7 @@ function hurtPc(cs: CombatState, idx: number, dmg: number): number {
   }
   d = Math.max(1, d); // guard never fully negates a hit that landed
   p.hp = Math.max(0, p.hp - d);
+  shatterFocus(cs, p);
   return d;
 }
 
@@ -266,15 +295,17 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
   // Rogue first-strike: during round 1 before any foe has acted, rogue attacks auto-crit.
   const firstStrike = p.classId === "rogue" && cs.round === 1 && !cs.foesActed;
   const critRoll = rng();
-  const isCrit = firstStrike || critRoll < 0.06 + critChanceBonus(p);
+  const isCrit = firstStrike || critRoll < 0.06 + critChanceBonus(p) + focusCritBonus(p.statuses);
   if (rng() >= attackHitChance(a.dex, fd.dex, p.level, fd.lvl, p.statuses)) {
     cs.calls = rng.calls();
     pushLog(cs, `${p.name} swings at the ${titleCase(f.mid)} — misses.`);
+    shatterFocus(cs, p); // a wild swing breaks the rhythm too
     evs.push({ kind: "miss", src: ["pc", pcIdx], dst: ["foe", foeIdx], text: "miss" });
     return evs;
   }
-  let dmg = Math.max(1, Math.round(a.atk * (0.85 + rng() * 0.3)) - Math.floor(fd.def / 2));
+  let dmg = Math.max(1, Math.round(a.atk * (0.85 + rng() * 0.3)) - Math.floor(fd.def / 2) + cs.atkBonus);
   if (isCrit) dmg *= 2;
+  if (f.omenMarked) dmg = Math.round(dmg * OMEN_DMG_MULT); // fate's edge: drive deep into the mark
   f.hp = Math.max(0, f.hp - dmg);
   recordDeed(cs, dmg, isCrit);
   cs.calls = rng.calls();
@@ -283,6 +314,12 @@ export function pcAttack(cs: CombatState, pcIdx: number, foeIdx: number): Combat
   if (!foeAlive(f)) {
     pushLog(cs, `The ${titleCase(f.mid)} falls!`);
     evs.push({ kind: "death", dst: ["foe", foeIdx], text: "" });
+  }
+  const focusBefore = stackOf(p.statuses, "focus");
+  const focus = addStacks(p.statuses, "focus", 1); // consecutive landed attacks sharpen the edge
+  if (focus > focusBefore && focus > 1) {
+    pushLog(cs, `${p.name}'s edge sharpens — focus ${focus} (+${focus * 5}% crit).`);
+    evs.push({ kind: "status", src: ["pc", pcIdx], text: `focus ${focus}` });
   }
   return finishTurn(cs, evs);
 }
@@ -305,13 +342,17 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
     cs.pcs[t].hp = Math.min(pcMax(cs.pcs[t]).hp, cs.pcs[t].hp + amt);
     pushLog(cs, `${p.name} heals ${cs.pcs[t].name} for ${cs.pcs[t].hp - before}.`);
     evs.push({ kind: "heal", src: ["pc", pcIdx], dst: ["pc", t], amount: cs.pcs[t].hp - before, text: `+${cs.pcs[t].hp - before}` });
+    if (clearStacks(cs.pcs[t].statuses, "wound") > 0) {
+      pushLog(cs, `${cs.pcs[t].name}'s wound knits shut in the healing light.`);
+      evs.push({ kind: "status", dst: ["pc", t], text: "cleanse-w" });
+    }
   } else if (spellId === "bless") {
     cs.blessDef += 3;
     pushLog(cs, `${p.name} blesses the party — DEF +3 for this fight.`);
     evs.push({ kind: "status", src: ["pc", pcIdx], text: "DEF+3" });
   } else if (spellId === "purify") {
     const t = targetIdx >= 0 && pcAlive(cs.pcs[targetIdx]) ? targetIdx : alivePcIdxs(cs)[0];
-    cs.pcs[t].statuses = [];
+    cs.pcs[t].statuses = clearAilments(cs.pcs[t].statuses); // focus is poise, not an ailment
     pushLog(cs, `${p.name} purifies ${cs.pcs[t].name}.`);
     evs.push({ kind: "status", src: ["pc", pcIdx], dst: ["pc", t], text: "cleanse" });
   } else if (spellId === "taunt") {
@@ -325,6 +366,7 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
       cs.pcs[t].hp = Math.min(pcMax(cs.pcs[t]).hp, cs.pcs[t].hp + amt);
       pushLog(cs, `${p.name} mends ${cs.pcs[t].name} for ${cs.pcs[t].hp - before}.`);
       evs.push({ kind: "heal", src: ["pc", pcIdx], dst: ["pc", t], amount: cs.pcs[t].hp - before, text: `+${cs.pcs[t].hp - before}` });
+      if (clearStacks(cs.pcs[t].statuses, "wound") > 0) pushLog(cs, `${cs.pcs[t].name}'s wound knits shut in the healing light.`);
     }
   } else {
     // damage spells always hit; reduced by target MR (min 1)
@@ -341,20 +383,32 @@ export function pcCast(cs: CombatState, pcIdx: number, spellId: string, targetId
       else if (spellId === "power-strike") base = Math.round(pcStats(cs, pcIdx).atk * 1.8);
       else if (spellId === "cleave") base = Math.round(pcStats(cs, pcIdx).atk * 1.2);
       else if (spellId === "frost-nova") base = Math.round(mnd * 1.2);
+      else if (spellId === "backstab") { base = Math.round(pcStats(cs, pcIdx).dex * 1.5) + 4; critChance += 0.15; }
+      else if (spellId === "steal-gold") base = Math.round(pcStats(cs, pcIdx).dex * 0.5);
+      else if (spellId === "crippling-cut") base = Math.round(pcStats(cs, pcIdx).dex * 1.2);
       else throw new Error(`unhandled damage spell ${spellId}`);
       let dmg = Math.max(1, base - fd.mr);
-      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter; cleave is physical — full half-DEF
+      // power-strike ignores half DEF: normal formula subtracts floor(DEF/2), this subtracts a quarter; cleave and the rogue's knives are physical — full half-DEF
       if (spellId === "power-strike") dmg = Math.max(1, base - Math.floor(fd.def / 4));
-      else if (spellId === "cleave") dmg = Math.max(1, base - Math.floor(fd.def / 2));
+      else if (spellId === "cleave" || spellId === "backstab" || spellId === "steal-gold" || spellId === "crippling-cut") dmg = Math.max(1, base - Math.floor(fd.def / 2));
       const crit = rng() < critChance;
       if (crit) dmg *= 2;
+      if (f.omenMarked) dmg = Math.round(dmg * OMEN_DMG_MULT); // every blow against the mark lands deeper
       f.hp = Math.max(0, f.hp - dmg);
       recordDeed(cs, dmg, crit);
-      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" ? "slashes" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
+      pushLog(cs, crit ? `${def.name} CRITS the ${titleCase(f.mid)} for ${dmg}!` : `${def.name} ${spellId === "cleave" || spellId === "crippling-cut" ? "slashes" : spellId === "backstab" ? "stabs" : spellId === "steal-gold" ? "jinks" : "sears"} the ${titleCase(f.mid)} for ${dmg}.`);
       evs.push({ kind: crit ? "crit" : "spell", src: ["pc", pcIdx], dst: ["foe", t], amount: dmg, text: String(dmg) });
       if (!foeAlive(f)) {
         pushLog(cs, `The ${titleCase(f.mid)} falls!`);
         evs.push({ kind: "death", dst: ["foe", t], text: "" });
+      }
+      if (spellId === "steal-gold") { // a pickpocketed purse is yours whether its owner lives, dies or runs
+        const g = 3 + Math.max(0, fd.lvl) * 2;
+        cs.stolenGold = (cs.stolenGold ?? 0) + g;
+        pushLog(cs, `${p.name} lifts ${g} gold from the ${titleCase(f.mid)}'s purse.`);
+      } else if (spellId === "crippling-cut" && foeAlive(f)) {
+        f.crippled = true;
+        pushLog(cs, `The ${titleCase(f.mid)} hangs a leg — its blows lose 30% of their force.`);
       }
     }
   }
@@ -431,6 +485,25 @@ export function finishTurn(cs: CombatState, evs: CombatEvent[]): CombatEvent[] {
   checkEnd(cs);
   if (cs.phase !== "input") return evs;
   const order = effectiveOrder(cs);
+  // Wound bleeds at the end of the afflicted's own turn: whoever just acted,
+  // if a living PC with stacks, pays 1 damage per stack before initiative moves on.
+  const [actorSide, actorIdx] = order[cs.turnPtr];
+  if (actorSide === "pc") {
+    const p = cs.pcs[actorIdx];
+    const stacks = pcAlive(p) ? stackOf(p.statuses, "wound") : 0;
+    if (stacks > 0) {
+      const bleed = stacks * WOUND_DMG_PER_STACK;
+      p.hp = Math.max(0, p.hp - bleed);
+      pushLog(cs, `The wound bleeds ${p.name} for ${bleed}.`);
+      evs.push({ kind: "hit", dst: ["pc", actorIdx], amount: bleed, text: String(bleed) });
+      if (!pcAlive(p)) {
+        pushLog(cs, `${p.name} bleeds out!`);
+        evs.push({ kind: "death", dst: ["pc", actorIdx], text: "" });
+      }
+      checkEnd(cs); // a bleed-out must end the fight before the scan for living combatants
+      if (cs.phase !== "input") return evs;
+    }
+  }
   let ptr = cs.turnPtr + 1;
   for (;;) {
     if (ptr >= order.length) {
@@ -484,10 +557,11 @@ function endOfRound(cs: CombatState, evs: CombatEvent[]): void {
     cs.calls = rng.calls();
     return;
   }
-  // status ticks
+  // status ticks — wound/focus are stack marks: their counts move only via combat
+  // verbs and rest, never by per-round decay
   for (const p of cs.pcs) {
     if (!pcAlive(p)) continue;
-    for (const s of p.statuses) s.roundsLeft--;
+    for (const s of p.statuses) if (s.kind !== "wound" && s.kind !== "focus") s.roundsLeft--;
     const before = p.statuses.length;
     p.statuses = p.statuses.filter((s) => s.roundsLeft > 0);
     if (p.statuses.length !== before) pushLog(cs, `${p.name} shrugs off a lingering ailment.`);
@@ -540,7 +614,7 @@ export function tallyVictory(cs: CombatState): VictoryTally {
       const fd = foeDef(f);
       const mult = xpMult(fd.lvl, avg);
       if (mult < 0.5) tooWeak = true;
-      xp += fd.xp * mult * (f.elite ? 1.5 : 1);
+      xp += fd.xp * mult * (f.elite ? 1.5 : 1) * (f.fled ? 0.5 : 1); // routed foes pay half XP
     }
     xpByPc[p.id] = Math.round(xp);
   }
@@ -549,15 +623,89 @@ export function tallyVictory(cs: CombatState): VictoryTally {
   const rogueAlive = cs.pocketLuck && cs.pcs.some((p) => p.classId === "rogue" && pcAlive(p));
   for (const f of cs.foes) {
     const fd = foeDef(f);
+    if (f.fled) continue; // a routed foe escapes with its purse — no gold roll at all
     let g = randInt(rng, fd.gold[0], fd.gold[1]);
     if (rogueAlive) g += 3; // pocket-luck rides under the omen so riches' advertised +50% holds on all kill gold
     if (cs.riches) g = Math.floor(g * 1.5);
+    if (cs.oath) g = Math.floor(g * 1.5); // the altar pays its half of the bargain
     gold += f.elite ? g * 2 : g; // elites pay double
   }
+  gold += cs.stolenGold ?? 0; // pickpocketed coins ride outside the kill rolls and the riches omen
   return { xpByPc, gold, tooWeak };
 }
 
+/** Rally aura for this foe's damage from living allied captains (self excluded). */
+export function captainAura(cs: CombatState, selfIdx: number): number {
+  let best = 0;
+  cs.foes.forEach((f, i) => {
+    if (i === selfIdx || !foeAlive(f)) return;
+    const b = monsterById(f.mid).behavior;
+    if (b?.kind === "captain") best = Math.max(best, b.auraPct);
+  });
+  return best;
+}
+
 // ---------- foe turn ----------
+
+/** Signature specials the gate lords unleash the round after rearing back. */
+const LORD_SPECIALS: Record<string, { name: string; kind: "grasp" | "rime" | "brood"; mult: number }> = {
+  "bark-thrall": { name: "Root Grasp", kind: "grasp", mult: 0.8 },
+  "cloister-lich": { name: "Death Rime", kind: "rime", mult: 1.4 },
+  "fen-matriarch": { name: "Brood Cry", kind: "brood", mult: 0.35 },
+};
+
+/** Unleash the telegraphed special; every blow routes through hurtPc so Guard halves it. */
+function unleashLordSpecial(cs: CombatState, foeIdx: number, fury: number, evs: CombatEvent[], rng: CountedRng): CombatEvent[] {
+  const f = cs.foes[foeIdx];
+  const fd = foeDef(f);
+  const sp = LORD_SPECIALS[f.mid]!;
+  const name = titleCase(f.mid);
+  const victims = alivePcIdxs(cs);
+  if (!victims.length) return finishTurn(cs, evs);
+  const physDmg = (t: number): number => {
+    const d = pcStats(cs, t);
+    return Math.max(1, Math.round(fd.atk * sp.mult * fury) - Math.floor((d.def + cs.blessDef) / 2) + cs.atkBonus);
+  };
+  if (sp.kind === "rime") {
+    const t = victims[randInt(rng, 0, victims.length - 1)];
+    cs.calls = rng.calls();
+    const p = cs.pcs[t];
+    const applied = hurtPc(cs, t, physDmg(t));
+    const drained = Math.floor(applied / 2);
+    f.hp = Math.min(f.maxHp ?? f.hp + drained, f.hp + drained);
+    pushLog(cs, `Death Rime lances from the ${name} into ${p.name} for ${applied}; the lich drinks deep (+${drained}).`);
+    evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+    if (!pcAlive(p)) {
+      pushLog(cs, `${p.name} falls!`);
+      evs.push({ kind: "death", dst: ["pc", t], text: "" });
+    }
+  } else {
+    // the AoE specials land on every living hero — no dodge roll; only Guard and armor blunt them
+    for (const t of victims) {
+      const p = cs.pcs[t];
+      if (sp.kind === "brood") {
+        const applied = hurtPc(cs, t, physDmg(t));
+        pushLog(cs, `The ${name}'s Brood Cry sprays stinging venom over ${p.name} for ${applied}!`);
+        evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+        const rounds = fd.special?.kind === "poison" ? fd.special.rounds : 3;
+        const mark = p.statuses.find((s) => s.kind === "poison");
+        if (mark) mark.roundsLeft = rounds;
+        else p.statuses.push({ kind: "poison", roundsLeft: rounds } as StatusMark);
+        pushLog(cs, `${p.name} is poisoned! (−1 DEX, ${rounds} rounds)`);
+        evs.push({ kind: "status", dst: ["pc", t], text: "poison" });
+      } else {
+        const applied = hurtPc(cs, t, physDmg(t));
+        pushLog(cs, `Roots erupt — the ${name}'s Root Grasp seizes ${p.name} for ${applied}!`);
+        evs.push({ kind: "hit", src: ["foe", foeIdx], dst: ["pc", t], amount: applied, text: String(applied) });
+      }
+      if (!pcAlive(p)) {
+        pushLog(cs, `${p.name} falls!`);
+        evs.push({ kind: "death", dst: ["pc", t], text: "" });
+      }
+    }
+  }
+  return finishTurn(cs, evs);
+}
 
 export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const evs: CombatEvent[] = [];
@@ -565,13 +713,40 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
   const rng = countedStream(cs.seed, cs.calls);
   const f = cs.foes[foeIdx];
   if (!f || !foeAlive(f)) return finishTurn(cs, evs);
+  // Omen-mark: the reveal was spoken when the seer read this foe's fate; the action
+  // telegraphed by that reveal now resolves, and fate's edge dulls with it.
+  if (f.omenMarked) {
+    f.omenMarked = false;
+    pushLog(cs, `The omen over the ${titleCase(f.mid)} fulfils — fate's edge dulls.`);
+  }
   const fd = foeDef(f);
+  // a cornered vermin routs below its HP threshold and escapes the fight entirely
+  const beh = monsterById(f.mid).behavior;
+  if (beh?.kind === "flee" && f.hp <= Math.ceil(beh.hpPct * fd.hp)) {
+    f.fled = true;
+    pushLog(cs, `The ${titleCase(f.mid)} breaks and flees into the dark!`);
+    evs.push({ kind: "status", src: ["foe", foeIdx], text: "fled" });
+    return finishTurn(cs, evs); // no rng draw — routing is deterministic
+  }
   // gate-lord enrage: one-time at ≤30% max HP, +50% damage from then on (breath included)
   if (f.boss && !f.enraged && f.maxHp && f.hp <= Math.ceil(0.3 * f.maxHp)) {
     f.enraged = true;
     pushLog(cs, `The ${titleCase(f.mid)} swells with fury — its eyes burn!`);
   }
   const fury = f.enraged ? 1.5 : 1;
+
+  // Gate-lord phase cycle: every third round the lord rears back instead of striking, and its
+  // next action unleashes a signature special — telegraphed so Guard (and only Guard) can answer.
+  // The two breath-lords (vault-wyrm, ashfiend) are exempt — their cadenced fire already *is* a signature.
+  if (f.boss && f.telegraph) {
+    f.telegraph = false;
+    if (LORD_SPECIALS[f.mid]) return unleashLordSpecial(cs, foeIdx, fury, evs, rng);
+  } else if (f.boss && fd.special?.kind !== "breath" && cs.round % 3 === 0) {
+    f.telegraph = true;
+    pushLog(cs, `The ${titleCase(f.mid)} draws itself up, hoarding something terrible — Guard!`);
+    evs.push({ kind: "status", src: ["foe", foeIdx], text: "telegraph" });
+    return finishTurn(cs, evs); // no rng draw — the rear-up is deterministic
+  }
 
   // wyrm breath: every `everyRounds` rounds instead of a bite
   const br = fd.special?.kind === "breath" ? fd.special : null;
@@ -618,10 +793,11 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     evs.push({ kind: "miss", src: ["foe", foeIdx], dst: ["pc", t], text: "miss" });
     return finishTurn(cs, evs);
   }
-  let dmg = Math.max(1, Math.round(fd.atk * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2));
+  let dmg = Math.max(1, Math.round(fd.atk * (1 + captainAura(cs, foeIdx)) * (0.85 + rng() * 0.3)) - Math.floor((d.def + cs.blessDef) / 2) + cs.atkBonus); // captains rally the line
   const crit = rng() < cs.critFoe;
   if (crit) dmg *= 2;
   if (f.enraged) dmg = Math.round(dmg * 1.5);
+  if (f.crippled) dmg = Math.round(dmg * 0.7); // a crippling cut keeps biting
   const applied = hurtPc(cs, t, dmg);
   cs.calls = rng.calls();
   pushLog(cs, crit ? `The ${titleCase(f.mid)} CRITS ${p.name} for ${applied}!` : `The ${titleCase(f.mid)} hits ${p.name} for ${applied}.`);
@@ -642,6 +818,30 @@ export function foeAct(cs: CombatState, foeIdx: number): CombatEvent[] {
     pushLog(cs, `${p.name}'s eyes sting — blinded! (−15% to hit, ${fd.special.rounds} rounds)`);
     evs.push({ kind: "status", dst: ["pc", t], text: "blind" });
   }
+  // rending claws open a wound on a damaging hit: +stacks per rake (max 5), and every
+  // stack bleeds 1 damage at the end of the afflicted's own turn
+  if (fd.special?.kind === "wound") {
+    const before = stackOf(p.statuses, "wound");
+    const total = addStacks(p.statuses, "wound", fd.special.stacks);
+    if (total > before) {
+      pushLog(cs, `${p.name}'s wound reopens — bleeding! (${total} stack${total === 1 ? "" : "s"}, ${total} dmg/turn)`);
+      evs.push({ kind: "status", dst: ["pc", t], text: "wound" });
+    }
+  }
+  // fen seer: on a damaging hit it reads a living ally's fate — that foe's next action
+  // is telegraphed in the log (the rear-up reveal) and takes +25% until it acts
+  if (fd.special?.kind === "mark") {
+    const kin = cs.foes
+      .map((a, i) => [a, i] as const)
+      .filter(([a, i]) => i !== foeIdx && foeAlive(a) && !a.omenMarked);
+    if (kin.length) {
+      const [m, mi] = kin[randInt(rng, 0, kin.length - 1)];
+      cs.calls = rng.calls();
+      m.omenMarked = true;
+      pushLog(cs, `The ${titleCase(f.mid)} reads the ${titleCase(m.mid)}'s fate — its next move is written! Drive deep into the mark.`);
+      evs.push({ kind: "status", src: ["foe", mi], text: "omen" });
+    }
+  }
   if (!pcAlive(p)) {
     pushLog(cs, `${p.name} falls!`);
     evs.push({ kind: "death", dst: ["pc", t], text: "" });
@@ -657,6 +857,11 @@ export function tryFlee(cs: CombatState): { events: CombatEvent[]; escaped: bool
     cs.phase = "fled";
     pushLog(cs, "The party melts into the shadows — nothing can hold them.");
     return { events: [{ kind: "status", text: "fled" }], escaped: true };
+  }
+  // undead guard-lock: while a guardian stands, escape is impossible — no roll, costs the initiative
+  if (cs.foes.some((f) => foeAlive(f) && monsterById(f.mid).behavior?.kind === "guard")) {
+    pushLog(cs, "The dead bar the way — there is no retreat from them.");
+    return { events: finishTurn(cs, [{ kind: "miss" as const, text: "blocked" }]), escaped: false };
   }
   const rng = countedStream(cs.seed, cs.calls);
   const partyAvgDex = avg(alivePcIdxs(cs).map((i) => pcStats(cs, i).dex));

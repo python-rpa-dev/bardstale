@@ -22,6 +22,8 @@ export interface GeneratedFloor {
   grid: Uint8Array;
   entities: Map<number, { kind: EntityKind }>;
   start: { x: number; y: number; dir: 0 | 1 | 2 | 3 };
+  /** Flooded floor cell ids (gimmick gates): open, entity-free cells under brackish water. */
+  flood: number[];
 }
 
 export function cellId(x: number, y: number, w = MAP_W): number {
@@ -164,7 +166,7 @@ function shuffled(items: number[], rng: Rng): number[] {
  * exactly one open cell — behind it lies a guaranteed rare drop). From depth 1 onward, ~45% of
  * floors also seal a rune-door into a wall face: clues beside the lock, elite stash behind it.
  */
-export function generateFloor(seed: number, depth = 0): GeneratedFloor {
+export function generateFloor(seed: number, depth = 0, floodChance = 0): GeneratedFloor {
   const rng = mulberry32(seed);
   const grid = new Uint8Array(MAP_W * MAP_H).fill(1);
   carveMaze(grid, rng);
@@ -218,6 +220,13 @@ export function generateFloor(seed: number, depth = 0): GeneratedFloor {
     entities.set(shuffled(secretCandidates, rng)[0], { kind: "secret" });
   }
 
-  return { w: MAP_W, h: MAP_H, grid, entities, start: { x: 1, y: 1, dir: 1 } };
+  // Flooded floors (gimmick gates): from floor 2 down, brackish water pools on ~12% of open cells.
+  const flood: number[] = [];
+  if (depth >= 1 && rng() < floodChance) {
+    const wet = shuffled(openCells.filter((id) => !entities.has(id)), rng);
+    flood.push(...wet.slice(0, Math.max(4, Math.floor(wet.length * 0.12))));
+  }
+
+  return { w: MAP_W, h: MAP_H, grid, entities, start: { x: 1, y: 1, dir: 1 }, flood };
 }
 

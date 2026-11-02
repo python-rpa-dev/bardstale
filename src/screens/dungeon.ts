@@ -7,33 +7,44 @@ import type { RouteCtx } from "../ui/router";
 import { DIR_VECS, MAP_W, bfsPath, cellId, idToXY, openDegree } from "../core/mapgen";
 import { randInt } from "../core/rng";
 import { gateById } from "../data/gates";
-import { itemById } from "../data/items";
+import { itemById, upgradeDrop } from "../data/items";
 import { bountyId } from "../data/bounties";
 import { pcBase, pcMax } from "../state/save";
-import type { GameState } from "../state/save";
+import type { DailyBest, GameState } from "../state/save";
+import { earn } from "../state/party";
 import {
+  activateShrine,
   activeBountyFamily,
+  altarBargains,
   answerRiddle,
+  applyBargain,
   campRest,
   campScout,
   campTrophy,
+  collapseTick,
   descendFloor,
   describeRare,
   endExpedition,
+  forceSeal,
   entityAt,
   gridFromSave,
   hermitGift,
   merchantWares,
   reveal,
+  pickRelic,
   rollEncounter,
   stepRng,
+  relicMods,
   trySeal,
   type SealOutcome,
-  LIGHT_PER_FLOOR, encounterChance, isLit,
+  LIGHT_PER_FLOOR, encounterChance, dailyShare, isDarkFloor, isFlooded, isLit, lightMods, witchReveal,
 } from "../state/expedition";
+import { questChestTick } from "../state/quests";
 import { RUNES, riddleFor, runeById, sealPuzzle } from "../data/riddles";
+import { relicById } from "../data/relics";
 import { loadGateTextures, renderView, VIEW_H, VIEW_W, type ViewTextures } from "../render/raycaster";
 import { renderMinimap } from "../render/minimap";
+import { darkIntensity } from "../core/music";
 
 const CHEST_CONSUMABLES = ["potion-hp", "potion-sp", "torch"];
 
@@ -100,16 +111,28 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   }
 
   let torchChip: HTMLElement | null = null; // side-column light readout, refreshed in drawView
+  let relicChip: HTMLElement | null = null; // the run's claimed relic, refreshed in drawView
   let bountyChip: HTMLElement | null = null; // accepted-bounty progress, refreshed with the view
+  let lastDark = -1; // intensity already handed to the music engine; a remount re-syncs it
   function drawView(): void {
     const ag = ctx.state().activeGate;
+    const dark = darkIntensity(ag?.lightTurns);
+    if (dark !== lastDark) {
+      lastDark = dark;
+      ctx.music?.setDark(dark); // the drone breathes in as the flame dies, out when relit
+    }
     if (!ag || !viewCanvas.isConnected) return;
-    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) });
+    const black = isDarkFloor(ag.floor); // even a lit torch reaches only arm's reach down here
+    renderView(viewCanvas, gridFromSave(ag.map), ag.map.w, ag.map.h, ag.pos, ag.dir, tex, { dark: !isLit(ag) || black, sight: black ? 1.5 : undefined });
     renderMinimap(miniCanvas, { map: ag.map, visited: ag.visited, pos: ag.pos, dir: ag.dir, chests: ag.chests });
     if (torchChip) {
       const lit = isLit(ag);
       torchChip.textContent = lit ? `Torchlight holds for ${ag.lightTurns ?? LIGHT_PER_FLOOR} more steps` : "In the dark — things move between the flickers";
       torchChip.classList.toggle("dark", !lit);
+    }
+    if (relicChip) {
+      relicChip.textContent = ag.relic ? `⚑ ${relicById(ag.relic).name}` : "";
+      relicChip.classList.toggle("muted", !ag.relic);
     }
     if (bountyChip) {
       const st = ctx.state();
@@ -149,7 +172,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     stopAuto();
     const rare = ctx.state().activeGate?.rareSpawn; // read before endExpedition clears the run
     ctx.sfx.victory();
-    ctx.commit((d) => endExpedition(d));
+    let dailyRec: DailyBest | undefined; // this run's leaderboard entry when it was the Daily Challenge
+    ctx.commit((d) => { dailyRec = endExpedition(d, true); }); // surfaced — pin this run to the Hall of Runs
+    const dailyEntry = dailyRec;
     const rows = Object.entries(loot.items).map(([id, n]) => `${itemById(id).name} ×${n}`);
     const close = modal(
       "Expedition Complete",
@@ -160,6 +185,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           ...(rows.length ? rows.map((r) => el("li", { text: r })) : [el("li", { class: "muted", text: "No items recovered" })]),
         ),
         rare ? el("p", { class: "muted rare-line", text: describeRare(rare) }) : null,
+        dailyEntry ? el("p", { class: "daily-share" },
+          el("code", { text: dailyShare(dailyEntry) }),
+          button("Copy Result", { hint: "Copy your daily result string to brag with", onClick: () => { void navigator.clipboard.writeText(dailyShare(dailyEntry)); toast("Result copied — go brag."); } }),
+        ) : null,
         button("Back to Town", { onClick: () => { close(); if (rare) toast(describeRare(rare)); ctx.navigate("#/town"); } }),
       ),
     );
@@ -173,6 +202,9 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     avoided?: string; // trap detected and stilled before springing
     finished?: { loot: { gold: number; items: Record<string, number> }; gateName: string };
     boss?: string; // gate lord stirred on the final floor — display name
+    revealed?: string[]; // witchlight uncovered hidden entities near the flame this move
+    slowed?: string; // flooded cell — the water doubles the odds of being found
+    collapsed?: boolean; // the spire shook the stair down — a new one grind open somewhere ahead
   }
 
   /** One grid step in the facing direction (or straight back). Traps spring and encounters roll here. */
@@ -203,6 +235,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       const cell = cellId(nx, ny);
       reveal(ag);
       if (ag.lightTurns !== undefined && ag.lightTurns > 0) ag.lightTurns -= 1; // one step, one breath of flame
+      // The Ember Spire shakes itself down: on schedule the stair caves in and opens elsewhere.
+      if (collapseTick(ag)) out.collapsed = true;
 
       // Traps spring when stepped on, once per cell.
       if (entityAt(ag, cell) === "trap" && !ag.flags[`trap${cell}`]) {
@@ -220,6 +254,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
             : "You nearly don't notice the trigger. This time.";
         } else {
           let dmg = Math.floor((def.levels[1] - def.levels[0] + 1) / 2); // half the level-band width
+          dmg = Math.floor(dmg * relicMods(ag).trapMult); // the Grave Coin doubles the dead's bite
+          if (isDarkFloor(ag.floor) && !isLit(ag)) dmg *= 2; // nobody sees the glint of steel in black dark
           if (rogues[0]) dmg = Math.floor(dmg / 2);
           const victim = d.party[randInt(rng, 0, d.party.length - 1)];
           victim.hp = Math.max(0, victim.hp - dmg);
@@ -229,7 +265,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
 
       // Encounters roll only on empty corridor cells.
       const kind = entityAt(ag, cell);
-      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag))) {
+      const rollFoe = (): void => {
         const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
         ag.pendingMonsters = mobs.map((m) => m.id);
         if (elite !== null) ag.pendingElites = [elite];
@@ -240,7 +276,18 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           counts.set(label, (counts.get(label) ?? 0) + 1);
         });
         out.encounter = [...counts].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label));
+      };
+      if (!kind && openDegree(gridFromSave(ag.map), cell) === 2 && stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke, relicMods(ag).ambushDelta)) rollFoe();
+
+      // Flooded cells slow the party and double its odds of being found.
+      if (!out.encounter && isFlooded(ag, cell)) {
+        out.slowed = "Brackish water swallows your boots — every step takes twice as long.";
+        if (stepRng(ag)() < encounterChance(isLit(ag), lightMods(ag).smoke, relicMods(ag).ambushDelta)) rollFoe();
       }
+
+      // Witchlight marks hidden walls, traps and sealed doors near the flame — no Look needed.
+      const uncovered = witchReveal(ag);
+      if (uncovered.length) out.revealed = uncovered;
 
       if (kind === "stairs") {
         if (ag.floor + 1 >= def.floors) out.finished = { loot: structuredClone(ag.loot), gateName: def.name };
@@ -261,6 +308,15 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     if (out.encounter) ctx.sfx.encounter(); // foes drop in before the screen flips
     else if (out.boss) ctx.sfx.encounter();
     if (out.descended) ctx.sfx.descend();
+    if (out.slowed) log(out.slowed);
+    if (out.collapsed) {
+      ctx.sfx.thud();
+      log("The spire groans. Behind you the old stairs cave in — somewhere ahead, new ones grind open.");
+    }
+    if (out.revealed?.length) {
+      const names = out.revealed.map((k) => (k === "secret" ? "a hidden alcove" : k === "trap" ? "a concealed trap" : "a rune-sealed door"));
+      log(`The witchlight's cold glow uncovers ${names.join(", ")}.`);
+    }
     return out;
   }
 
@@ -270,6 +326,8 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     const sfxKinds: ("heal" | "chest" | "coin" | "secret")[] = [];
     let pendingRiddle = false;
     let pendingSeal = false;
+    let pendingChestFoe = false; // Greed's Molar: the cracked chest woke a creditor
+    let relicOffer: string[] | null = null; // pedestal offer surfaced by this look
     ctx.commit((d) => {
       const ag = agOf(d);
       const [dx, dy] = DIR_VECS[ag.dir];
@@ -304,7 +362,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       // Rune-seal door: a carved wall face; the lock is read, not forced.
       if (entityAt(ag, faceCell) === "sealed" && !facingOpen) {
         if (ag.flags[`sealed-f${ag.floor}`]) msgs.push("The rune-door hangs open, its vaults rifled.");
-        else pendingSeal = true;
+        else if (relicMods(ag).autoSeal) {
+          const res = forceSeal(d); // Skeleton Key: touch, don't guess — the bolt still bites
+          msgs.push(`The Skeleton Key turns of its own accord. The vault yields ${res.gold} gold and ${itemById(res.item!).name}.`);
+          if (res.victim) msgs.push(`A bolt of force spits from the lock — ${res.victim} takes ${res.damage} damage.`);
+          sfxKinds.push("secret");
+          if (res.relicChoices) relicOffer = res.relicChoices;
+        } else pendingSeal = true;
         return;
       }
 
@@ -321,17 +385,27 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
           chest.opened = true;
           lastLookCell = -1;
           const rng = stepRng(ag);
-          const gold = randInt(rng, 6 + ag.floor * 4, 12 + ag.floor * 8);
-          d.gold += gold; // expedition gold is safe from a wipe — only unclaimed items are forfeited
+          const gold = Math.floor(randInt(rng, 6 + ag.floor * 4, 12 + ag.floor * 8) * relicMods(ag).chestGoldMult * relicMods(ag).goldMult);
+          earn(d, gold); // expedition gold is safe from a wipe — only unclaimed items are forfeited
           ag.loot.gold += gold;
           msgs.push(`The chest yields ${gold} gold.`);
           sfxKinds.push("chest", "coin");
           if (rng() < 0.25) {
-            const drop = CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)];
+            const drop = isDarkFloor(ag.floor) ? upgradeDrop(CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)]) : CHEST_CONSUMABLES[randInt(rng, 0, CHEST_CONSUMABLES.length - 1)]; // the dark hoards richer loot
             d.inventory[drop] = (d.inventory[drop] ?? 0) + 1;
             ag.loot.items[drop] = (ag.loot.items[drop] ?? 0) + 1;
             msgs.push(`Also: ${itemById(drop).name}.`);
           }
+          if (relicMods(ag).chestAmbush) { // Greed's Molar: every crack wakes a creditor
+            const { mobs, elite } = rollEncounter(ag, activeBountyFamily(d));
+            ag.pendingMonsters = mobs.map((m) => m.id);
+            if (elite !== null) ag.pendingElites = [elite];
+            else delete ag.pendingElites;
+            pendingChestFoe = true;
+            msgs.push("Something was owed on that gold — it has come to collect.");
+          }
+          const qNote = questChestTick(d, ag.gateId);
+          if (qNote) msgs.push(qNote);
           // sound handled via sfxKinds above
         } else {
           lastLookCell = targetCell;
@@ -341,17 +415,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       }
 
       if (kind === "shrine") {
-        const flag = `shrine-f${ag.floor}`;
-        if (!ag.flags[flag]) {
-          ag.flags[flag] = true;
-          for (const p of d.party) {
-            if (p.hp <= 0) continue; // shrines heal the living; the temple revives the dead
-            const m = pcMax(p);
-            p.hp = m.hp;
-            p.sp = m.sp;
-          }
+        if (activateShrine(d)) {
           sfxKinds.push("heal");
           msgs.push("The shrine's quiet light knits flesh and spirit. Fully restored — its power now sleeps on this floor.");
+          msgs.push("Among the wet stones you cut a moonpetal sprig — the tavern kitchen brews with these.");
         } else {
           msgs.push("The shrine is dark. Its power sleeps until you descend deeper.");
         }
@@ -377,6 +444,12 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     for (const k of sfxKinds) ctx.sfx[k]();
     if (pendingRiddle) openRiddle();
     if (pendingSeal) openSealed();
+    if (pendingChestFoe) {
+      ctx.sfx.encounter();
+      shake();
+      ctx.navigate("#/combat");
+    }
+    if (relicOffer) openPedestal(relicOffer);
   }
 
   /** Swap the Auto-Walk button between its two states; textContent stays "Auto-Walk"/"Halt" for any reader. */
@@ -406,7 +479,13 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       const cur = ctx.state().activeGate!;
       let stairsNow = -1;
       for (const [id, kind] of cur.map.entities) if (kind === "stairs") stairsNow = id;
-      const path = bfsPath(gridFromSave(cur.map), cellId(cur.pos.x, cur.pos.y), stairsNow);
+      const base = gridFromSave(cur.map);
+      let path = bfsPath(base, cellId(cur.pos.x, cur.pos.y), stairsNow);
+      if (cur.map.flood?.length) {
+        const dry = Uint8Array.from(base); // auto-walk wades only when no dry route exists
+        for (const id of cur.map.flood) dry[id] = 1;
+        path = bfsPath(dry, cellId(cur.pos.x, cur.pos.y), stairsNow) ?? path;
+      }
       if (path === null) {
         stopAuto(); // no route at all — tell the player instead of silently reverting the button
         log("The stair lies beyond walls — no way from here.");
@@ -442,7 +521,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         ctx.navigate("#/combat");
         return;
       }
-      if (out.descended) log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
+      if (out.descended) {
+        log("You descend. The air changes."); // cross-floor auto-walk: next tick re-paths on the new floor
+        if (isDarkFloor(ctx.state().activeGate!.floor)) log("Black dark pools against the walls — your torchlight shrinks to arm's reach.");
+      }
       // A dodged trap is a non-event for walking — keep rolling; only real damage (or a finish) halts.
       if (out.finished || out.trapMsg || out.encounter) {
         stopAuto();
@@ -538,6 +620,35 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     );
   }
 
+  /** The vault's pedestal: two relics glint; the run claims exactly one. */
+  function openPedestal(choices: string[]): void {
+    const close = modal(
+      "Two Things Glint in the Vault's Dark",
+      el("div", {},
+        el("p", { class: "riddle-prompt", text: "A stone pedestal, two hollows carved side by side. Take one — the vaults will offer nothing again this run." }),
+        el("div", { class: "modal-actions" },
+          ...choices.map((id) => {
+            const r = relicById(id);
+            return button(r.name, {
+              hint: `${r.boon} — but ${r.cost.toLowerCase()}`,
+              onClick: () => {
+                close();
+                let msg = "";
+                ctx.commit((d) => {
+                  msg = pickRelic(d, id);
+                });
+                ctx.sfx.levelup();
+                toast(msg);
+                refreshParty();
+                drawView();
+              },
+            });
+          }),
+        ),
+      ),
+    );
+  }
+
   /** Rune-seal door modal: read the clues, set three runes in order. Wrong triples bite. */
   function openSealed(): void {
     stopAuto();
@@ -572,6 +683,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         toast(`The seal unravels — ${res.gold} gold and ${itemById(res.item!).name} claimed!`);
         refreshParty();
         drawView();
+        if (res.relicChoices) openPedestal(res.relicChoices);
       } else if (res.victim) {
         statusEl.textContent = `${res.victim} recoils — ${res.damage} damage. The runes flare, unimpressed.`;
         ctx.sfx.trap();
@@ -610,7 +722,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
   function openItems(): void {
     stopAuto();
     const s = ctx.state();
-    const usable = Object.entries(s.inventory).filter(([id, n]) => n > 0 && itemById(id).slot === "consumable");
+    const usable = Object.entries(s.inventory).filter(([id, n]) => n > 0 && itemById(id).slot === "consumable" && !itemById(id).material); // sprigs are brew stock, not rations
     if (!usable.length) {
       toast("Your packs hold nothing you can use down here.");
       return;
@@ -658,7 +770,14 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
                     const ag = d.activeGate;
                     if (ag) {
                       ag.lightTurns = (ag.lightTurns ?? LIGHT_PER_FLOOR) + def.use.amount;
-                      toast("Your torch catches. The dark falls back a step.");
+                      ag.torchKind = def.id; // the run's flame keeps this kind's perk while lit
+                      toast(
+                        def.use.smoke
+                          ? "Tallow spits greasy smoke. The dark leans back, half-blind."
+                          : def.use.reveal
+                            ? "A cold witchlight blooms. Hidden things squirm under it."
+                            : "Your torch catches. The dark falls back a step.",
+                      );
                     }
                   }
                 });
@@ -698,7 +817,10 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     }
     refreshParty();
     drawView();
-    if (out.descended) log("You descend. The air changes.");
+    if (out.descended) {
+      log("You descend. The air changes.");
+      if (isDarkFloor(ctx.state().activeGate!.floor)) log("Black dark pools against the walls — your torchlight shrinks to arm's reach.");
+    }
     if (out.finished) finishRun(out.finished.loot, out.finished.gateName);
   }
 
@@ -725,7 +847,7 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
       toast("You already banked a fire on this floor. Embers make poor company.");
       return;
     }
-    log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP).");
+    log("You bank the coals into a small campfire. Wounds knit; breath steadies (+25% HP/SP)." + (res.woundsKnit ? " An old bleed scabs over and closes." : ""));
     if (!meetCompany(res.ambush)) toast("The campfire holds. +25% HP and SP.");
   }
 
@@ -862,6 +984,25 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
         }),
       );
     }
+    if (ag.rareSpawn === "altar") {
+      return el("div", { class: "panel rare-card" },
+        el("p", { text: "A black altar squats in the dark, its bowl full of old ash. It has all night — and so, it says, do you." }),
+        ...altarBargains().map((b) => button(b.label, {
+          hint: b.hint,
+          onClick: () => {
+            stopAuto();
+            let msg = "";
+            ctx.commit((d) => {
+              msg = applyBargain(d, b.id);
+            });
+            ctx.sfx.levelup();
+            toast(msg);
+            drawRare();
+            fitShell(); // banner removal shrinks `top` - re-measure the shell or it stays short until a manual resize
+          },
+        })),
+      );
+    }
     return el("div", { class: "panel rare-card" },
       el("p", { text: "A villager is trapped beneath fallen rubble, calling for help." }),
       button("Dig Them Out", {
@@ -923,11 +1064,12 @@ export function renderDungeon(host: HTMLElement, ctx: RouteCtx): void {
     el("div", { class: "view-col" }, viewStage, cmdBar, dpad),
     el("div", { class: "side-col" },
       el("div", { class: "panel mini-card" },
-        el("p", { class: "muted", text: `${def.name} · Floor ${ag.floor + 1}/${def.floors}` }),
+        el("p", { class: "muted", text: `${def.name}${ag.daily ? " — Daily Challenge" : ""} · Floor ${ag.floor + 1}/${def.floors}` }),
         (torchChip = el("p", { class: "torch-chip muted" })),
+        (relicChip = el("p", { class: "relic-chip muted" })),
         (bountyChip = el("p", { class: "bounty-chip muted" })),
         miniCanvas,
-        el("p", { class: "muted legend", text: "■ stairs · ? chest · ✚ shrine · ◈ riddle — explored cells only; ▣ marks a rune-sealed wall" }),
+        el("p", { class: "muted legend", text: `■ stairs · ? chest · ✚ shrine · ◈ riddle${def.gimmick === "flood" ? " · ≈ flood (wading is slow)" : def.gimmick === "collapse" ? " · ⌛ the stair moves" : ""} — explored cells only; ▣ marks a rune-sealed wall` }),
       ),
       partyHost,
       logEl,

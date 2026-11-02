@@ -97,13 +97,23 @@ test("seeded full loop: descend under the ambient omen, auto-walk to the surface
   }
 
   await expect(page).toHaveURL(/#\/town/);
+  await expect.poll( // the shelf is committed last in the run — let the debounced save flush land
+    () => page.evaluate(() => { const d = JSON.parse(localStorage.getItem("bardstale.save.v1") ?? "{}"); return Array.isArray(d.hall) ? (d.hall as unknown[]).length : 0; }),
+    { timeout: 5000 },
+  ).toBeGreaterThan(0);
   const after = await page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem("bardstale.save.v1") ?? "{}");
-    return { total: (d.gold ?? 0) + (d.bank ?? 0), runs: d.runs?.["hollow-roots"] ?? 0, hps: (d.party as { hp: number }[]).map((p) => p.hp) };
+    return { total: (d.gold ?? 0) + (d.bank ?? 0), runs: d.runs?.["hollow-roots"] ?? 0, hps: (d.party as { hp: number }[]).map((p) => p.hp), hall: d.hall as { gateId: string; depth: number; kills: number; crew: unknown[] }[] | undefined };
   });
   expect(after.runs).toBe(before.runs + 1); // the completion counter ticked exactly once
   expect(after.total).toBeGreaterThan(before.total); // loot beat any gate fee — a surfaced run always nets gold
   expect(after.hps.some((hp) => hp > 0)).toBe(true); // partial knockdowns are legal mid-run; a full wipe ends at Stumble Home, never here
+  const shelf = after.hall ?? []; // the Guild's Hall of Runs remembers this exact run
+  expect(shelf.length).toBeGreaterThan(0);
+  expect(shelf[0].gateId).toBe("hollow-roots");
+  expect(shelf[0].depth).toBeGreaterThanOrEqual(1);
+  expect(shelf[0].kills).toBeGreaterThan(0); // combat kills tallied into the run's memory via claimVictory
+  expect((shelf[0].crew as unknown[]).length).toBeGreaterThan(0);
 
   // the loop's fingerprints: it fought, claimed, and had to re-arm the walker at least once
   expect(actions.filter((a) => a === "quick-resolve").length).toBeGreaterThan(0);

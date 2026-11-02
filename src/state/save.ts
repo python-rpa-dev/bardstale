@@ -1,6 +1,9 @@
 import { classById, type ClassId } from "../data/classes";
 import { boonById } from "../data/boons";
 import { bountyId, offersForDay, shuffledPool, type BountyDef } from "../data/bounties";
+import { questOffersForDay } from "../data/quests";
+import type { QuestBoard } from "./quests";
+import { accrueInterest, type Ledger } from "./ledger";
 import { dailySeed, dayKey, hashStr, mulberry32 } from "../core/rng";
 import type { CombatState } from "../core/combat";
 
@@ -24,11 +27,59 @@ export interface Pc {
   boonQueue?: number; // level-ups whose boon pick is still owed
 }
 
-/** A lingering condition on a PC; rounds tick only during combat. */
+/** A lingering condition on a PC; rounds tick only during combat.
+ *  Wound and focus are stack marks — their `roundsLeft` field carries the
+ *  stack count and never ticks per round: wound decays one stack per rest
+ *  and focus resets when a blow draws blood (see core/combat.ts). */
 export interface StatusMark {
-  kind: "poison" | "wound" | "blind" | "burn";
+  kind: "poison" | "wound" | "blind" | "burn" | "focus";
   roundsLeft: number;
 }
+
+/** Wound: each stack bleeds 1 damage at the end of the afflicted's turn; infliction clamps here. */
+export const WOUND_MAX = 5;
+
+/** Focus: +5% crit per consecutive landed weapon attack, up to 4 stacks (+20%). */
+export const FOCUS_MAX = 4;
+export const FOCUS_CRIT_STEP = 0.05;
+
+const STACK_MAX: Record<"wound" | "focus", number> = { wound: WOUND_MAX, focus: FOCUS_MAX };
+
+/** Stacks carried for a stack-mark kind (0 when absent; hostile-save clamp built in). */
+export const stackOf = (marks: readonly StatusMark[], kind: "wound" | "focus"): number => {
+  const raw = marks.find((s) => s.kind === kind)?.roundsLeft ?? 0;
+  return Math.max(0, Math.min(STACK_MAX[kind], raw));
+};
+
+/** Add stacks up to the kind's max; returns the new total. */
+export function addStacks(marks: StatusMark[], kind: "wound" | "focus", n: number): number {
+  const total = Math.min(STACK_MAX[kind], stackOf(marks, kind) + n);
+  const mark = marks.find((s) => s.kind === kind);
+  if (mark) mark.roundsLeft = total;
+  else if (total > 0) marks.push({ kind, roundsLeft: total });
+  return total;
+}
+
+/** Drop a stack-mark to zero and remove it; returns the stacks lost. */
+export function clearStacks(marks: StatusMark[], kind: "wound" | "focus"): number {
+  const had = stackOf(marks, kind);
+  const at = marks.findIndex((s) => s.kind === kind);
+  if (at >= 0) marks.splice(at, 1);
+  return had;
+}
+
+/** Resting knits one wound stack (focus is earned, not slept off); returns stacks lost. */
+export function restWoundDecay(marks: StatusMark[]): number {
+  const at = marks.findIndex((s) => s.kind === "wound");
+  if (at < 0) return 0;
+  const left = stackOf(marks, "wound") - 1;
+  if (left > 0) marks[at].roundsLeft = left;
+  else marks.splice(at, 1);
+  return 1;
+}
+
+/** Focus is a boon, not an ailment — purifies, cures, and shrugs leave it standing. */
+export const clearAilments = (marks: StatusMark[]): StatusMark[] => marks.filter((s) => s.kind === "focus");
 
 /** Display name for a status kind ("blind" → "Blind"). */
 export const statusLabel = (kind: StatusMark["kind"]): string => kind[0].toUpperCase() + kind.slice(1);
@@ -73,10 +124,11 @@ export interface FloorMapSave {
   h: number;
   cells: string; // row-major "0"/"1", 1 = wall
   entities: [number, string][]; // cellId → kind ("stairs"|"chest"|"shrine"|"trap"|"secret"|"riddle"|"sealed")
+  flood?: number[]; // flooded cell ids (gimmick gates); absent = bone-dry floors and pre-flood saves
 }
 
 /** One-off expedition event rolled at run start (8% chance). */
-export type RareKind = "merchant" | "hermit" | "villager";
+export type RareKind = "merchant" | "hermit" | "villager" | "altar";
 
 export interface ActiveGate {
   gateId: string;
@@ -97,6 +149,13 @@ export interface ActiveGate {
   pendingMonsters?: string[]; // encounter awaiting combat resolution (see core/combat)
   pendingElites?: number[]; // indices into pendingMonsters marked elite at roll time
   lightTurns?: number; // steps of torchlight left on this floor; absent (legacy) reads as lit
+  torchKind?: string; // id of the last light item used this run — tallow smoke / witchlight reveal perks
+  killsThisRun?: number; // monsters felled this run — feeds the Hall of Runs record
+  medalsThisRun?: number; // family medals completed this run — the Hall's trophy line
+  daily?: boolean; // today's shared Daily Challenge maze — scores land on the leaderboard
+  oathDepth?: boolean; // the black altar's Deep Bargain: every foe this run runs +1 level, kills pay ×1.5
+  collapseTurns?: number; // collapse-gimmick floors: steps until the stair relocates (see collapseTick)
+  relic?: string; // claimed relic id for this run (see data/relics) — one per run, first vault offers the choice
 }
 // ---------- Chronicle (lifetime stats; rendered by screens/chronicle.ts) ----------
 
@@ -108,11 +167,53 @@ export interface Chronicle {
   deepestFloor: number; // deepest floor+1 ever reached on any run
   bestHit: number; // biggest single PC hit ever dealt (synced from CombatState.bestHit)
   crits: number; // lifetime critical hits landed by the party
+  goldEarned: number; // lifetime gold taken into the purse (career earnings)
 }
 
 export function emptyChronicle(): Chronicle {
-  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0 };
+  return { killsByFoe: {}, battlesWon: 0, battlesFled: 0, partyWipes: 0, deepestFloor: 0, bestHit: 0, crits: 0, goldEarned: 0 };
 }
+
+// ---------- Hall of Runs (per-run memory; rendered on the Guild shelf) ----------
+
+/** One surfaced expedition. The Chronicle is lifetime totals — this is memory per run, newest first. */
+export interface RunRecord {
+  gateId: string;
+  dayKey: string; // in-world date at surfacing
+  runNumber: number; // the gate's own expedition counter at start
+  depth: number; // floors descended + 1 (deepest floor reached, 1-based)
+  kills: number;
+  medals: number; // family medals earned during this run
+  gold: number; // loot tally carried to the surface
+  items: Inventory;
+  crew: { name: string; level: number }[]; // party as it walked out
+}
+
+/** One wiped expedition — who fell, how deep, and what was waiting for them. */
+export interface FallenRun {
+  dayKey: string; // in-world date at the wipe
+  gateId: string;
+  depth: number; // floor the party went down on (1-based)
+  crew: { name: string; level: number }[]; // as they went in
+  cause: string; // "overwhelmed by <foes>" — the pack standing over them
+}
+
+/** One daily-challenge attempt: score = depth·100 + kills·10 + gold. */
+export interface DailyBest {
+  dayKey: string; // ISO date of the challenge this was played on
+  gateId: string;
+  attempt: number; // the gate's own run counter at start — the #N in the share string
+  score: number;
+  depth: number; // deepest floor reached, 1-based
+  kills: number;
+  gold: number;
+  crew: string; // hero names as they walked out (or fell)
+}
+
+/** The shelf holds this many memories; older runs are forgotten. */
+export const HALL_SIZE = 8;
+/** The memorial keeps this many wipes; older losses are forgotten. */
+export const FALLEN_SIZE = 8;
 
 // ---------- Root state ----------
 
@@ -143,12 +244,18 @@ export interface GameState {
   inventory: Inventory;
   codex: string[]; // stamped bestiary ids
   medals: string[]; // family ids with completed codex
+  trophies?: string[]; // gate ids whose lord's trophy is raised — permanent town-wide perks
   bounties: { offers: BountyOffer[]; completed: string[]; active?: string }; // active = accepted bountyId
+  quests?: QuestBoard; // quest chains — one active, two posted daily; migrate backfills older saves
+  ledger?: Ledger; // the Ferryman's Ledger — debt compounds daily and tithes every earn(); migrate backfills
   dayKey: string;
   runs: Record<string, number>; // gateId → expedition count
   chronicle?: Chronicle; // lifetime accumulator; migrate backfills older saves
   reviveToken?: boolean; // villager-rescue token; consumed instead of the temple revive fee
   tourSeen?: boolean; // welcome coach-mark tour completed or skipped
+  hall?: RunRecord[]; // Guild shelf — the last surfaced runs, newest first; migrate backfills older saves
+  fallen?: FallenRun[]; // memorial shelf — wiped runs, newest first; migrate backfills older saves
+  dailyBests?: DailyBest[]; // daily-challenge leaderboard — best ten attempts, highest score first
   settings: Settings;
   activeGate?: ActiveGate;
   activeCombat?: CombatState; // fight in progress — rng stream survives reloads via seed + calls
@@ -195,9 +302,13 @@ export function newGame(now: () => Date = () => new Date()): GameState {
     codex: [],
     medals: [],
     bounties: { offers: offersForDay(rng).map((b) => ({ ...b, kills: 0, done: false })), completed: [] },
+    quests: { offers: questOffersForDay(mulberry32(hashStr(`quests:${dayKey(now())}`)), []).map((q) => q.id), completed: [] },
+    ledger: { debt: 0, borrowed: 0 },
     dayKey: dayKey(now()),
     runs: {},
     chronicle: emptyChronicle(),
+    hall: [], // the Guild shelf starts empty
+    fallen: [], // and so does the memorial
     settings: { quickBattle: false, reduceMotion: false, highContrast: false, colorblind: false, tooltips: true, fontScale: 1, sfxVolume: 0.5, musicVolume: 0.35, sfxMuted: false },
 };
 }
@@ -224,6 +335,10 @@ export function rotateDaily(state: GameState, now: () => Date): boolean {
     fresh.push({ ...b, kills: 0, done: false });
   }
   state.bounties.offers = fresh;
+  const qBoard = (state.quests ??= { offers: [], completed: [] });
+  qBoard.offers = questOffersForDay(mulberry32(hashStr(`quests:${today}`)), qBoard.completed).map((q) => q.id);
+  if (qBoard.active && qBoard.completed.includes(qBoard.active.id)) qBoard.active = undefined;
+  accrueInterest(state); // the Ferryman bills every morning, before breakfast
   return true;
 }
 
@@ -249,7 +364,12 @@ function migrate(save: GameState & { version: number }): GameState | null {
       s.settings.highContrast ??= false; // v1 saves predate the contrast toggle
       s.settings.tooltips ??= true; // v1 saves predate the tooltip toggle — on by default
       s.chronicle ??= emptyChronicle(); // v1 saves predate the chronicle
+      s.chronicle.goldEarned ??= 0; // chronicles predate the career-gold stat
       s.settings.musicVolume ??= 0.35; // v1 saves predate the music volume
+      s.hall ??= []; // v1 saves predate the Hall of Runs
+      s.fallen ??= []; // v1 saves predate the memorial shelf
+      s.quests ??= { offers: questOffersForDay(mulberry32(hashStr(`quests:${s.dayKey}`)), []).map((q) => q.id), completed: [] }; // v1 saves predate quest chains
+      s.ledger ??= { debt: 0, borrowed: 0 }; // v1 saves predate the Ferryman
       const legacyBank = (s as Partial<{ bank: number }>).bank; // v1 kept a separate reserve; one wallet now
       if (typeof legacyBank === "number" && Number.isFinite(legacyBank) && legacyBank > 0) s.gold += Math.floor(legacyBank);
       delete (s as Partial<{ bank: number }>).bank;

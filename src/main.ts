@@ -18,6 +18,7 @@ import { renderGate } from "./screens/gate";
 import { renderDungeon } from "./screens/dungeon";
 import { renderCombat } from "./screens/combat";
 import { renderChronicle } from "./screens/chronicle";
+import { renderLedger } from "./screens/ledger";
 
 const store = createStore();
 const sfx = createSfx(store.state.settings.sfxVolume);
@@ -62,6 +63,7 @@ const ctx: RouteCtx = {
     applySettings();
   },
   sfx,
+  music,
   navigate: navigateTo,
   refresh: () => routerRef?.refresh(),
   newGame() {
@@ -77,11 +79,12 @@ const LOC_NAMES: Record<string, string> = {
   title: "Hollow Vale",
   town: "Town Square",
   party: "Adventurers' Guild",
-  shop: "General Store",
+  shop: "Merchants' Row",
   temple: "Temple of the Quiet Light",
   tavern: "The Broken Antler",
   codex: "Codex Library",
   chronicle: "The Chronicle",
+  ledger: "The Ferryman's Ledger",
   gate: "Gate of Adventures",
   dungeon: "The Depths",
   combat: "Battle!",
@@ -123,6 +126,7 @@ const routes: Record<string, Screen> = {
   tavern: renderTavern,
   codex: renderCodex,
   chronicle: renderChronicle,
+  ledger: renderLedger,
   gate: renderGate,
   dungeon: renderDungeon,
   combat: renderCombat,

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { foeAct, foeDef, normalizeActiveTurn, quickResolve, startCombat, tallyVictory } from "../../core/combat";
 import { BESTIARY, monsterById } from "../../data/bestiary";
-import { ITEMS, itemById } from "../../data/items";
+import { ITEMS, itemById, upgradeDrop } from "../../data/items";
 import type { ActiveGate, GameState } from "../save";
-import { makePc, newGame, pcMax } from "../save";
-import { answerRiddle, campRest, campScout, campTrophy, descendFloor, gridFromSave, hermitGift, LIGHT_PER_FLOOR, encounterChance, isLit, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
+import { FALLEN_SIZE, HALL_SIZE, makePc, newGame, pcMax } from "../save";
+import { activateShrine, answerRiddle, altarBargains, applyBargain, campRest, campScout, campTrophy, COLLAPSE_PERIOD, collapseTick, descendFloor, describeRare, endExpedition, forceSeal, gridFromSave, hermitGift, isDarkFloor, isFlooded, LIGHT_PER_FLOOR, encounterChance, isLit, lightMods, pickRelic, pickRelicPair, relicMods, witchReveal, merchantWares, RARE_CHANCE, rollRare, startExpedition, trySeal } from "../expedition";
 import { allSeals, riddleFor, sealPuzzle } from "../../data/riddles";
-import { claimVictory } from "../combat";
+import { RELICS, relicById } from "../../data/relics";
+import { applyDefeat, claimVictory } from "../combat";
 
 const party = () => [makePc("fighter", 0), makePc("cleric", 1)];
 
@@ -41,19 +42,22 @@ describe("rare spawns", () => {
     for (const seed of [1, 42, 9999]) expect(rollRare(seed)).toBe(rollRare(seed));
   });
 
-  it("fires on ~8% of runs and only with known kinds", () => {
-    const kinds = new Set(["merchant", "hermit", "villager"]);
+  it("fires on ~8% of runs and only with known kinds — all four kinds occur", () => {
+    const kinds = new Set(["merchant", "hermit", "villager", "altar"]);
+    const seen = new Set<string>();
     let hits = 0;
     for (let seed = 0; seed < 1000; seed++) {
       const r = rollRare(seed);
       if (r === null) continue;
       expect(kinds.has(r)).toBe(true);
+      seen.add(r);
       hits++;
     }
     // deterministic stream: assert the observed rate brackets the nominal 8%
     expect(hits).toBeGreaterThanOrEqual(40);
     expect(hits).toBeLessThanOrEqual(130);
     expect(RARE_CHANCE).toBe(0.08);
+    for (const k of kinds) expect(seen.has(k), `kind ${k} must occur within 1000 seeds`).toBe(true);
   });
 
   it("merchant stock is stable, three uncommon/rare goods at −25%", () => {
@@ -182,7 +186,7 @@ describe("campfire rest", () => {
     const hpBefore = s.party.map((p) => p.hp);
     const stepsBefore = s.activeGate!.steps;
     const r2 = campRest(s);
-    expect(r2).toEqual({ healed: false, ambush: null });
+    expect(r2).toEqual({ healed: false, ambush: null, woundsKnit: 0 });
     expect(s.party.map((p) => p.hp)).toEqual(hpBefore);
     expect(s.activeGate!.steps).toBe(stepsBefore); // blocked call must not burn the event rng
   });
@@ -456,5 +460,479 @@ describe("torchlight", () => {
   it("the dark emboldens foes: 0.18 lit vs 0.26 unlit", () => {
     expect(encounterChance(true)).toBe(0.18);
     expect(encounterChance(false)).toBe(0.26);
+  });
+});
+
+// ---------- torch quality tiers + career gold (torch/shop batch) ----------
+
+describe("torch quality tiers", () => {
+  it("tallow smoke dulls lit encounter odds by a tenth; the dark is untouched", () => {
+    expect(encounterChance(true)).toBe(0.18);
+    expect(encounterChance(false, true)).toBe(0.26); // smoke means nothing in pitch dark
+    expect(encounterChance(true, true)).toBeLessThan(encounterChance(true));
+    expect(encounterChance(true, true)).toBeCloseTo(0.18 * 0.9, 10);
+  });
+
+  it("lightMods reads perks off the run's torch kind; absent or unknown kinds have none", () => {
+    const ag = gateFor(7);
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 }); // plain flame by default
+    ag.torchKind = "torch";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 });
+    ag.torchKind = "tallow-torch";
+    expect(lightMods(ag)).toEqual({ smoke: true, reveal: 0 });
+    ag.torchKind = "witchlight";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 2 });
+    ag.torchKind = "not-an-item";
+    expect(lightMods(ag)).toEqual({ smoke: false, reveal: 0 });
+  });
+
+  it("witchlight marks hidden entities within radius 2 explored — once per cell", () => {
+    const ag = gateFor(7); // pos (10,11) on a 21-wide grid → cell 241
+    const near = 11 * 21 + 12; // (12,11): Chebyshev distance 2 — inside the glow
+    const far = 8 * 21 + 15; // (15,8): distance 5 — outside it
+    ag.map.entities = [
+      [near, "trap"],
+      [far, "secret"],
+      [241, "sealed"],
+    ];
+    ag.lightTurns = 5;
+    ag.torchKind = "witchlight";
+    const found = witchReveal(ag);
+    expect(found).toContain("trap");
+    expect(found).toContain("sealed");
+    expect(found).not.toContain("secret"); // out of radius stays hidden
+    expect(ag.visited).toContain(near);
+    expect(ag.visited).not.toContain(far);
+    expect(witchReveal(ag)).toEqual([]); // once per cell — no re-logging
+  });
+
+  it("witchlight does nothing once the flame is out", () => {
+    const ag = gateFor(7);
+    ag.torchKind = "witchlight";
+    ag.lightTurns = 0;
+    ag.map.entities = [[243, "trap"]]; // a cell not already in the starting visited set
+    expect(witchReveal(ag)).toEqual([]);
+    expect(ag.visited).not.toContain(243);
+  });
+
+  it("tallow and witchlight carry the documented payloads", () => {
+    expect(itemById("tallow-torch").use).toEqual({ kind: "light", amount: 60, smoke: true });
+    expect(itemById("witchlight").use).toEqual({ kind: "light", amount: 45, reveal: 2 });
+  });
+});
+
+describe("camp windfalls land in the purse (income regression)", () => {
+  it("trophy gold hits d.gold and the chronicle once per floor", () => {
+    const s = runState(7);
+    const g0 = s.gold;
+    const r = campTrophy(s);
+    expect(r.gold).toBeGreaterThan(0);
+    expect(s.gold).toBe(g0 + r.gold);
+    expect(s.chronicle!.goldEarned).toBe(r.gold);
+  });
+
+  it("riddle gold hits the purse", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const view = riddleFor(ag.seed, ag.floor);
+    const g0 = s.gold;
+    expect(answerRiddle(s, view.correctAt).correct).toBe(true);
+    expect(s.gold).toBe(g0 + 18 * (ag.floor + 1));
+  });
+
+  it("seal gold hits the purse", () => {
+    const s = runState(7);
+    const ag = s.activeGate!;
+    const { solution } = sealPuzzle(ag.seed, ag.floor);
+    const g0 = s.gold;
+    expect(trySeal(s, [...solution]).solved).toBe(true);
+    expect(s.gold).toBe(g0 + 25 * (ag.floor + 1));
+  });
+});
+
+describe("torch kind lifecycle", () => {
+  it("a fresh run strikes a plain torch; descending keeps an upgraded flame", () => {
+    const s = newGame(clock);
+    startExpedition(s, "hollow-roots");
+    expect(s.activeGate!.torchKind).toBe("torch"); // the threshold torch is the cheap one
+    s.activeGate!.torchKind = "witchlight";
+    descendFloor(s);
+    expect(s.activeGate!.torchKind).toBe("witchlight"); // the perk survives the new floor
+    expect(s.activeGate!.lightTurns).toBe(LIGHT_PER_FLOOR); // but the flame is re-struck fresh
+  });
+});
+
+describe("Hall of Runs", () => {
+  it("a surfaced run pins its stats and crew to the Guild shelf", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    descendFloor(s); // depth 2 by the time the run surfaces
+    const ag = s.activeGate!;
+    ag.killsThisRun = 7;
+    ag.medalsThisRun = 1;
+    ag.loot.gold = 41;
+    ag.loot.items["potion-hp"] = 2;
+    endExpedition(s, true);
+    expect(s.hall).toHaveLength(1);
+    const rec = s.hall![0];
+    expect(rec).toMatchObject({ gateId: "hollow-roots", dayKey: s.dayKey, runNumber: 1, depth: 2, kills: 7, medals: 1, gold: 41 });
+    expect(rec.items["potion-hp"]).toBe(2);
+    expect(rec.crew.map((c) => c.name)).toEqual(s.party.map((p) => p.name)); // crew as it walked out
+  });
+
+  it("retreats and abandons are not remembered — only surfacings", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    endExpedition(s); // leave() / abandon: no record
+    expect(s.hall).toEqual([]);
+  });
+
+  it("the shelf keeps the newest eight first and forgets older runs", () => {
+    const s = newGame();
+    for (let i = 0; i < 10; i++) {
+      startExpedition(s, "hollow-roots");
+      endExpedition(s, true);
+    }
+    expect(s.hall).toHaveLength(HALL_SIZE);
+    expect(s.hall!.map((r) => r.runNumber)).toEqual([10, 9, 8, 7, 6, 5, 4, 3]); // runs 1-2 forgotten
+  });
+});
+
+describe("activateShrine - healing springs and brewing herbs", () => {
+  it("fully heals the living, gifts exactly one moonpetal, then sleeps for this floor", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const p0 = s.party[0]!;
+    p0.hp = 1;
+    p0.sp = 0;
+    expect(activateShrine(s)).toBe(true);
+    const max = pcMax(p0);
+    expect(p0.hp).toBe(max.hp);
+    expect(p0.sp).toBe(max.sp);
+    expect(s.inventory.moonpetal).toBe(1); // one sprig per visit...
+    expect(s.activeGate!.loot.items.moonpetal).toBe(1); // ...tallied, so a wipe takes it back
+    expect(activateShrine(s)).toBe(false); // the spring sleeps until you descend deeper
+    expect(s.inventory.moonpetal).toBe(1); // no double-dipping on the same floor
+  });
+
+  it("shrines heal the living and leave the dead to the temple", () => {
+    const s = newGame();
+    startExpedition(s, "hollow-roots");
+    const fallen = s.party[0]!;
+    fallen.hp = 0; // downed members are revived at the temple, not here
+    expect(activateShrine(s)).toBe(true);
+    expect(fallen.hp).toBe(0);
+  });
+});
+
+describe("black floors - darkness with richer spoils", () => {
+  it("goes black every third floor from the third down", () => {
+    expect(isDarkFloor(0)).toBe(false);
+    expect(isDarkFloor(1)).toBe(false);
+    for (let f = 2; f <= 11; f++) expect(isDarkFloor(f)).toBe((f - 2) % 3 === 0); // floors 2, 5, 8 are black
+    expect(isDarkFloor(-1)).toBe(false);
+  });
+
+  it("upgrades chest drops one rung and leaves everything else alone", () => {
+    const ladder: [string, string][] = [
+      ["potion-hp", "potion-greater-hp"],
+      ["torch", "tallow-torch"],
+      ["tallow-torch", "witchlight"],
+    ];
+    for (const [from, to] of ladder) {
+      expect(upgradeDrop(from)).toBe(to);
+      const src = ITEMS.find((i) => i.id === from)!;
+      const dst = ITEMS.find((i) => i.id === to); // every rung must exist...
+      expect(dst).toBeDefined();
+      expect(dst!.price).toBeGreaterThan(src.price); // ...and cost more than the rung below it
+    }
+    for (const plain of ["witchlight", "potion-sp"]) expect(upgradeDrop(plain)).toBe(plain); // top rung and off-ladder items stay as-is
+  });
+});
+
+describe("flooded floors - the Sunken Cloister gimmick", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+
+  it("cloister descents drown cells below floor 1; other gates stay dry", () => {
+    const s = newGame(clock);
+    startExpedition(s, "sunken-cloister");
+    expect(s.activeGate!.map.flood).toBeUndefined(); // the threshold is never wet
+    descendFloor(s); // floor 2 — the water starts here
+    const ag = s.activeGate!;
+    const wet = ag.map.flood;
+    expect(wet === undefined || wet.length >= 4).toBe(true); // chance 0.9: a real pool or none, never a drizzle
+    if (wet) {
+      expect(isFlooded(ag, wet[0])).toBe(true);
+      for (const [id, kind] of ag.map.entities) if (kind === "stairs") expect(wet).not.toContain(id);
+    }
+    const h = newGame(clock);
+    startExpedition(h, "hollow-roots");
+    descendFloor(h);
+    expect(h.activeGate!.map.flood).toBeUndefined(); // bone dry outside the cloister
+  });
+});
+
+describe("the black altar - bargain runs", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const run = (gateId = "hollow-roots") => {
+    const s = newGame(clock);
+    startExpedition(s, gateId);
+    return s;
+  };
+
+  it("offers three distinct standing bargains", () => {
+    const bs = altarBargains();
+    expect(bs.map((b) => b.id)).toEqual(["blood", "oath", "flame"]);
+    for (const b of bs) expect(b.label.length).toBeGreaterThan(0);
+  });
+
+  it("Blood Price sheds 4 HP per living hero and pays 30 g per floor through the purse chokepoint", () => {
+    const s = run();
+    const ag = s.activeGate!;
+    ag.floor = 2; // depth 3 → 90 g
+    s.party[1].hp = 2; // a hero at death's door keeps one point
+    s.party[2].hp = 0; // the downed pay nothing and lose nothing
+    const goldBefore = s.gold;
+    applyBargain(s, "blood");
+    expect(s.party[0].hp).toBe(pcMax(s.party[0]).hp - 4);
+    expect(s.party[1].hp).toBe(1); // never finishes them off
+    expect(s.party[2].hp).toBe(0);
+    expect(s.gold).toBe(goldBefore + 90);
+    expect(s.chronicle!.goldEarned).toBe(90); // the purse chokepoint saw every coin
+    expect(ag.flags["rare-done"]).toBe(true);
+  });
+
+  it("Deep Bargain puts +1 level on every foe and half again the gold on every kill", () => {
+    const s = run();
+    applyBargain(s, "oath");
+    expect(s.activeGate!.oathDepth).toBe(true);
+    const mid = BESTIARY[0].id;
+    const plain = startCombat(party(), [mid], { seed: 7 });
+    const sworn = startCombat(party(), [mid], { seed: 7, oath: true });
+    expect(foeDef(sworn.foes[0]).lvl).toBe(foeDef(plain.foes[0]).lvl + 1);
+    expect(tallyVictory(sworn).gold).toBe(Math.floor(tallyVictory(plain).gold * 1.5)); // same seed, same rolls — only the bargain differs
+  });
+
+  it("Ash for Flesh snuffs the torch and knits every living wound whole", () => {
+    const s = run();
+    const ag = s.activeGate!;
+    ag.lightTurns = 12;
+    s.party[0].hp = 3;
+    s.party[2].hp = 0; // the dead stay dead — that is the temple's business
+    applyBargain(s, "flame");
+    expect(ag.lightTurns).toBe(0);
+    expect(s.party[0].hp).toBe(pcMax(s.party[0]).hp);
+    expect(s.party[2].hp).toBe(0);
+  });
+
+  it("the altar speaks once per run and the toast knows its kind", () => {
+    const s = run();
+    applyBargain(s, "oath");
+    expect(s.activeGate!.flags["rare-done"]).toBe(true); // any bargain spends the altar
+    expect(describeRare("altar")).toContain("altar");
+  });
+});
+
+describe("the memorial shelf - fallen expeditions", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+
+  it("a wipe stamps who fell, how deep, and what stood over them", () => {
+    const s = newGame(clock);
+    startExpedition(s, "gallows-fen");
+    const ag = s.activeGate!;
+    ag.floor = 1;
+    ag.pendingMonsters = [BESTIARY[0].id, BESTIARY[1].id, BESTIARY[0].id]; // a pack with duplicates
+    applyDefeat(s);
+    expect(s.fallen).toHaveLength(1);
+    const f = s.fallen![0];
+    expect(f.gateId).toBe("gallows-fen");
+    expect(f.depth).toBe(2);
+    expect(f.dayKey).toBe("2026-10-05");
+    expect(f.crew.map((c) => c.name)).toEqual(s.party.map((p) => p.name)); // crew recorded as they went in
+    const a = monsterById(BESTIARY[0].id).id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    expect(f.cause).toContain(a); // title-cased display names, deduped
+    expect(f.cause.split(",").length).toBe(2); // duplicates collapsed to one killer name
+    for (const p of s.party) expect(p.hp).toBe(1); // the crawl home at 1 HP still stands
+    expect(s.activeGate).toBeUndefined();
+  });
+
+  it("the shelf keeps eight losses newest-first and forgets retreats entirely", () => {
+    const s = newGame(clock);
+    for (let i = 0; i < FALLEN_SIZE + 2; i++) {
+      startExpedition(s, "hollow-roots");
+      s.activeGate!.floor = i; // depth distinguishes the order
+      applyDefeat(s);
+    }
+    expect(s.fallen).toHaveLength(FALLEN_SIZE);
+    expect(s.fallen![0].depth).toBe(FALLEN_SIZE + 2); // newest first
+    const before = s.fallen!.length;
+    startExpedition(s, "hollow-roots");
+    endExpedition(s); // a clean retreat is not a loss — the memorial stays silent
+    expect(s.fallen).toHaveLength(before);
+  });
+});
+
+describe("collapsing floors - the Ember Spire gimmick", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const spire = (seed = 7) => {
+    const s = newGame(clock);
+    startExpedition(s, "ember-spire", undefined, seed);
+    return s;
+  };
+  const stairCell = (s: GameState) => s.activeGate!.map.entities.find(([, k]) => k === "stairs")![0];
+
+  it("only the spire counts down; other gates never set the field", () => {
+    const s = spire();
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD);
+    const h = newGame(clock);
+    startExpedition(h, "hollow-roots");
+    expect(h.activeGate!.collapseTurns).toBeUndefined();
+    expect(collapseTick(h.activeGate!)).toBe(false); // a nudge does nothing on dry stone
+    expect(h.activeGate!.collapseTurns).toBeUndefined();
+  });
+
+  it("the stair holds for 24 steps, then caves in and grinds open elsewhere", () => {
+    const s = spire();
+    const ag = s.activeGate!;
+    const before = stairCell(s);
+    for (let i = 0; i < COLLAPSE_PERIOD - 1; i++) {
+      expect(collapseTick(ag)).toBe(false);
+      expect(stairCell(s)).toBe(before); // the stair waits right up to the last step
+    }
+    expect(collapseTick(ag)).toBe(true);
+    const after = stairCell(s);
+    expect(after).not.toBe(before);
+    expect(ag.collapseTurns).toBe(COLLAPSE_PERIOD); // the countdown starts again
+    // the new stair is walkable, feature-free, and reachable — never a cruel island
+    const grid = gridFromSave(ag.map);
+    expect(grid[after]).toBe(0);
+    expect(ag.map.entities.filter(([id]) => id === after)).toHaveLength(1);
+    const start = ag.pos.y * ag.map.w + ag.pos.x;
+    const seen = new Set<number>([start]);
+    const q = [start];
+    for (let head = 0; head < q.length; head++) {
+      const cx = q[head] % ag.map.w;
+      const cy = Math.floor(q[head] / ag.map.w);
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        const nid = ny * ag.map.w + nx;
+        if (nx < 0 || ny < 0 || nx >= ag.map.w || ny >= ag.map.h || grid[nid] === 1 || seen.has(nid)) continue;
+        seen.add(nid);
+        q.push(nid);
+      }
+    }
+    expect(seen.has(after)).toBe(true);
+  });
+
+  it("relocation replays identically for the same run seed", () => {
+    const a = spire(42);
+    const b = spire(42);
+    for (let i = 0; i < COLLAPSE_PERIOD; i++) collapseTick(a.activeGate!);
+    for (let i = 0; i < COLLAPSE_PERIOD; i++) collapseTick(b.activeGate!);
+    expect(stairCell(a)).toBe(stairCell(b));
+  });
+
+  it("descending resets the countdown", () => {
+    const s = spire();
+    for (let i = 0; i < 10; i++) collapseTick(s.activeGate!);
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD - 10);
+    descendFloor(s);
+    expect(s.activeGate!.collapseTurns).toBe(COLLAPSE_PERIOD);
+  });
+});
+
+describe("relics - one run-defining trinket per run", () => {
+  const clock = () => new Date("2026-10-05T12:00:00Z");
+  const run = (seed = 11) => {
+    const s = newGame(clock);
+    startExpedition(s, "hollow-roots", undefined, seed);
+    return s;
+  };
+  const solveSeal = (s: GameState) => {
+    const ag = s.activeGate!;
+    return trySeal(s, [...sealPuzzle(ag.seed, ag.floor).solution]);
+  };
+
+  it("the pedestal pair is seeded, distinct, and drawn from the pool", () => {
+    const [a1, b1] = pickRelicPair(42, 0);
+    const [a2, b2] = pickRelicPair(42, 0);
+    expect([a1, b1]).toEqual([a2, b2]); // same seed + floor, same offer
+    expect(a1).not.toBe(b1);
+    for (const id of [a1, b1]) expect(RELICS.some((r) => r.id === id)).toBe(true);
+    expect(pickRelicPair(42, 1).concat(pickRelicPair(99, 0)).length).toBe(4); // other floors still answer
+  });
+
+  it("relicMods defaults to identity and each relic bends exactly its own rules", () => {
+    const base = { lightMult: 1, ambushDelta: 0, goldMult: 1, chestGoldMult: 1, trapMult: 1, chestAmbush: false, autoSeal: false, dmgBonus: 0 };
+    expect(relicMods(undefined)).toEqual(base);
+    expect(relicMods({ relic: "nope" } as ActiveGate)).toEqual(base);
+    expect(relicMods({ relic: "emberheart" } as ActiveGate)).toEqual({ ...base, lightMult: 1.5, ambushDelta: 0.06 });
+    expect(relicMods({ relic: "owl-mask" } as ActiveGate)).toEqual({ ...base, lightMult: 0.75, ambushDelta: -0.08 });
+    expect(relicMods({ relic: "grave-coin" } as ActiveGate)).toEqual({ ...base, goldMult: 1.5, trapMult: 2 });
+    expect(relicMods({ relic: "skeleton-key" } as ActiveGate)).toEqual({ ...base, autoSeal: true });
+    expect(relicMods({ relic: "greed-molar" } as ActiveGate)).toEqual({ ...base, chestGoldMult: 2, chestAmbush: true });
+    expect(relicMods({ relic: "butcher-hook" } as ActiveGate)).toEqual({ ...base, dmgBonus: 2 });
+  });
+
+  it("the first vault offers two relics; after the claim, vaults stay silent", () => {
+    const s = run();
+    const res = solveSeal(s);
+    expect(res.solved).toBe(true);
+    expect(res.relicChoices).toHaveLength(2);
+    expect(new Set(res.relicChoices).size).toBe(2);
+    const msg = pickRelic(s, res.relicChoices![0]);
+    expect(s.activeGate!.relic).toBe(res.relicChoices![0]);
+    expect(msg).toContain(relicById(res.relicChoices![0]).name);
+    descendFloor(s);
+    expect(solveSeal(s).relicChoices).toBeUndefined(); // one relic per run, then never again
+  });
+
+  it("the Skeleton Key forces the lock but eats the bolt", () => {
+    const s = run();
+    s.activeGate!.relic = "skeleton-key";
+    const before = s.party.map((p) => p.hp);
+    const res = forceSeal(s);
+    expect(res.solved).toBe(true);
+    expect(res.gold).toBe(25); // floor 1 vault, no gold relic
+    expect(res.victim).toBeTruthy();
+    expect(res.damage).toBe(6); // 6 + 2×depth, same bite as a wrong guess
+    const totalAfter = s.party.reduce((n, p) => n + p.hp, 0);
+    expect(totalAfter).toBe(before.reduce((n, h) => n + h, 0) - 6);
+    expect(forceSeal(s).solved).toBe(false); // the vault only defends once
+  });
+
+  it("flame relics rescale the torch — on claim and on every new floor", () => {
+    const s = run();
+    expect(s.activeGate!.lightTurns).toBe(LIGHT_PER_FLOOR);
+    pickRelic(s, "emberheart");
+    expect(s.activeGate!.lightTurns).toBe(45); // 30 × 1.5 on the spot
+    descendFloor(s);
+    expect(s.activeGate!.lightTurns).toBe(45);
+    const o = run();
+    o.activeGate!.relic = "owl-mask";
+    descendFloor(o);
+    expect(o.activeGate!.lightTurns).toBe(Math.round(LIGHT_PER_FLOOR * 0.75)); // 23: owl eyes hate flame
+  });
+
+  it("the Grave Coin pays vaults half again", () => {
+    const s = run();
+    s.activeGate!.relic = "grave-coin";
+    const res = solveSeal(s);
+    expect(res.gold).toBe(Math.floor(25 * 1.5));
+    expect(s.activeGate!.loot.gold).toBe(Math.floor(25 * 1.5));
+  });
+
+  it("encounterChance bends with the relic delta and clamps", () => {
+    expect(encounterChance(true, false)).toBeCloseTo(0.18);
+    expect(encounterChance(true, false, 0.06)).toBeCloseTo(0.24);
+    expect(encounterChance(true, false, -0.08)).toBeCloseTo(0.1);
+    expect(encounterChance(false, false, -0.5)).toBe(0.02); // relics bend odds, never break them
+  });
+
+  it("the Butcher's Hook rides into every fight via beginCombat", () => {
+    const cs = startCombat(party(), ["cave-rat"], { seed: 3, atkBonus: relicMods({ relic: "butcher-hook" } as ActiveGate).dmgBonus });
+    expect(cs.atkBonus).toBe(2);
+    expect(startCombat(party(), ["cave-rat"], { seed: 3 }).atkBonus).toBe(0);
   });
 });

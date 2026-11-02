@@ -1,3 +1,4 @@
+import { dailySeed, mulberry32 } from "../core/rng";
 export type ItemSlot = "weapon" | "armor" | "trinket" | "consumable";
 export type Rarity = "common" | "uncommon" | "rare";
 
@@ -11,7 +12,11 @@ export interface ItemDef {
   /** Equipped-item stat deltas (weapon/armor/trinket). */
   bonus?: Partial<{ atk: number; def: number; dex: number; mnd: number }>;
   critChanceBonus?: number; // lucky-charm: +6% (fraction)
-  use?: { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal" | "light"; amount: number };
+  use?:
+    | { kind: "restore-hp" | "restore-sp" | "combat-atk-buff" | "party-heal"; amount: number }
+    | { kind: "light"; amount: number; smoke?: boolean; reveal?: number };
+  /** Brewing material (moonpetal): never stocked by merchants, only brewed at the tavern. */
+  material?: boolean;
 }
 
 export const ITEMS: ItemDef[] = [
@@ -35,7 +40,74 @@ export const ITEMS: ItemDef[] = [
   { id: "ember-sigil", name: "Ember Sigil", slot: "trinket", price: 200, rarity: "rare", bonus: { atk: 2, mnd: 2 } },
   { id: "potion-greater-hp", name: "Greater Health Potion", slot: "consumable", price: 75, rarity: "uncommon", use: { kind: "restore-hp", amount: 60 } },
   { id: "torch", name: "Torch", slot: "consumable", price: 12, rarity: "common", use: { kind: "light", amount: 40 } },
+  { id: "tallow-torch", name: "Tallow Torch", slot: "consumable", price: 26, rarity: "common", use: { kind: "light", amount: 60, smoke: true } },
+  { id: "witchlight", name: "Witchlight", slot: "consumable", price: 34, rarity: "uncommon", use: { kind: "light", amount: 45, reveal: 2 } },
+  { id: "moonpetal", name: "Moonpetal Sprig", slot: "consumable", price: 8, rarity: "common", material: true },
 ];
+
+/** Career gold (chronicle) the merchant requires before stocking rare wares. Pure for tests. */
+export const RARE_UNLOCK_GOLD = 300;
+export function rareUnlocked(goldEarned: number): boolean {
+  return goldEarned >= RARE_UNLOCK_GOLD;
+}
+
+/** Hearth Kitchen recipe: gathered herbs + coin brewed into one potion at the tavern. */
+export interface Recipe {
+  out: string; // potion item id
+  herbs: number; // moonpetal sprigs consumed
+  gold: number; // kettle fuel
+}
+
+/** Brewing beats buying — that is the whole point of carrying sprigs back up. */
+export const RECIPES: Recipe[] = [
+  { out: "potion-hp", herbs: 2, gold: 10 }, // buys for 30
+  { out: "potion-sp", herbs: 3, gold: 15 }, // buys for 40
+];
+
+/** Black floors pay better: chest drops climb one rung of this ladder instead of the plain table. */
+const DROP_UPGRADES: Record<string, string> = {
+  "potion-hp": "potion-greater-hp",
+  torch: "tallow-torch",
+  "tallow-torch": "witchlight",
+};
+
+/** The next-better version of a consumable; identity when there is no upgrade. */
+export function upgradeDrop(id: string): string {
+  return DROP_UPGRADES[id] ?? id;
+}
+
+/** Two merchants who despise each other share the street; every dawn they roll out overlapping but different carts. */
+export const STALLS = [
+  { id: "mira", name: "Mira's Wares", tagline: "Best prices in town — ask Bram why." },
+  { id: "bram", name: "Bram & Sons", tagline: "Old forge, honest steel, cheaper than *her*." },
+] as const;
+
+/** Price cut on goods the rival merchant does not carry today. */
+export const RIVALRY_DISCOUNT = 0.25;
+
+const STALL_SHARE = 0.7; // each cart holds ~70% of the catalogue, so the two carts always cover it all
+
+/**
+ * Daily cart contents: shuffle the catalogue with mulberry32(dailySeed(dayKey)), then stall 0 takes
+ * the first ceil(70%) and stall 1 the last ceil(70%). The overlap is full-price goods; both ends
+ * are exclusives. Pure — nothing to persist, save-compatible by construction.
+ */
+export function stallStock(dayKey: string, stallIndex: number): ItemDef[] {
+  const pool = ITEMS.filter((it) => !it.material); // brewing herbs are never sold — shrines grow them
+  const rnd = mulberry32(dailySeed(dayKey));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const take = Math.ceil(pool.length * STALL_SHARE);
+  return stallIndex === 0 ? pool.slice(0, take) : pool.slice(pool.length - take);
+}
+
+/** Exclusive goods (absent from the rival's cart today) carry the rivalry discount. */
+export function stallPrice(def: ItemDef, rivalStock: readonly ItemDef[]): number {
+  if (rivalStock.some((d) => d.id === def.id)) return def.price;
+  return Math.max(1, Math.round(def.price * (1 - RIVALRY_DISCOUNT)));
+}
 
 export function itemById(id: string): ItemDef {
   const def = ITEMS.find((i) => i.id === id);
@@ -43,7 +115,7 @@ export function itemById(id: string): ItemDef {
   return def;
 }
 
-/** Shop stock is the full table; sell price is half. */
+/** Salvage buys at half of base price — rivalry discounts never apply to selling. */
 export function sellPrice(def: ItemDef): number {
   return Math.floor(def.price / 2);
 }

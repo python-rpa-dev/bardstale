@@ -133,7 +133,8 @@ body:not(.no-tooltips) .btn[data-hint]:not([data-hint=""]):active::after {
   letter-spacing: 0.12em;
   margin: var(--s4) 0 var(--s2);
 }
-.subtitle { color: var(--muted); margin-bottom: var(--s5); }
+.subtitle { color: var(--muted); margin-bottom: var(--s2); }
+.build-stamp { color: var(--muted); font-size: 0.8em; letter-spacing: 0.06em; margin: 0 0 var(--s5); }
 .title-buttons { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; }
 
 /* ---------- town ---------- */
@@ -222,6 +223,7 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   background: color-mix(in srgb, var(--uncommon) 30%, var(--panel));
 }
 .chip-wound { background: color-mix(in srgb, var(--hp) 30%, var(--panel)); }
+.chip-focus { background: color-mix(in srgb, var(--gold) 24%, var(--panel)); }
 .chip-blind { background: color-mix(in srgb, var(--rare) 30%, var(--panel)); }
 .chip-burn { background: color-mix(in srgb, #e0762f 35%, var(--panel)); }
 .status-chips { display: flex; gap: 0.25rem; min-height: 1.2em; }
@@ -296,6 +298,11 @@ body.hc :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   border-radius: 6px;
 }
 .shop-card .muted { flex: 1; font-size: 0.85rem; }
+.shop-card.locked { opacity: 0.6; }
+.lock-line { font-size: 0.78rem; font-style: italic; }
+.stall-tagline { font-style: italic; margin-top: calc(var(--s1) * -1); }
+.price s { opacity: 0.55; margin-right: var(--s1); }
+.deal { color: var(--uncommon); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; margin-left: var(--s1); white-space: nowrap; }
 .sell-list { display: grid; gap: 0.4rem; margin-block: 0.75rem; }
 .sell-row,
 .temple-row {
@@ -464,6 +471,8 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 }
 .status-chip.poison { background: color-mix(in srgb, #58c26b 25%, var(--panel)); }
 .status-chip.wound { background: color-mix(in srgb, var(--danger) 25%, var(--panel)); }
+.status-chip.focus { background: color-mix(in srgb, var(--gold) 20%, var(--panel)); }
+.status-chip.omen { background: color-mix(in srgb, var(--rare) 30%, var(--panel)); }
 .status-chip.blind { background: color-mix(in srgb, var(--rare) 28%, var(--panel)); }
 .status-chip.burn { background: color-mix(in srgb, #e0762f 32%, var(--panel)); }
 .status-chip.guard { background: color-mix(in srgb, var(--gold) 22%, var(--panel)); }
@@ -564,6 +573,11 @@ button.danger { color: #e0645c; border-color: #7e2f2a; }
 
 /* Chronicle ledger rows */
 .deed-row { display: flex; justify-content: space-between; gap: var(--s3); padding: 0.15rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--gold) 25%, transparent); }
+
+/* Guild shelf — Hall of Runs */
+.hall { margin-top: var(--s4); }
+.hall-row { padding: var(--s2) 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 20%, transparent); }
+.hall-row:last-child { border-bottom: none; }
 
 /* Torchlight readout in the dungeon side column */
 .torch-chip { color: var(--gold); }

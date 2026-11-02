@@ -65,11 +65,12 @@ export function renderView(
   pos: { x: number; y: number },
   dir: 0 | 1 | 2 | 3,
   tex: ViewTextures,
-  opts?: { dark?: boolean }, // torch-out: short sight, heavy gloom
+  opts?: { dark?: boolean; sight?: number }, // torch-out / pitch-black floor: short sight, heavy gloom (sight = max wall distance)
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const dark = opts?.dark === true;
+  const sight = opts?.sight ?? 3; // a dying torch reaches three cells; black floors only half as far
   // Size once: re-assigning width/height reallocates the backing store and resets all context
   // state every frame. The two full-width tint fills below repaint every pixel, so frames need
   // no explicit clear between them.
@@ -136,7 +137,7 @@ export function renderView(
 
     const perp = side === 0 ? sideX - dDistX : sideY - dDistY;
     const dist = Math.max(0.05, perp);
-    if (dark && dist > 3) continue; // beyond the last flicker of torchlight
+    if (dark && dist > sight) continue; // beyond the last flicker of light
     const lineH = VIEW_H / dist;
     const top = halfH - lineH / 2;
 

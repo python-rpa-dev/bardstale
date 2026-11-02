@@ -55,7 +55,7 @@ export function renderTown(host: HTMLElement, ctx: RouteCtx): void {
       ),
     ),
   );
-  // The Chronicle is a ledger, not a building — linked under the services, no hotspot on the art.
+  // The Chronicle and the Ferryman's Ledger are ledgers, not buildings — linked under the services, no hotspot on the art.
   host.append(
     el("div", { class: "service-row" },
       button("Chronicle", {
@@ -63,6 +63,13 @@ export function renderTown(host: HTMLElement, ctx: RouteCtx): void {
         onClick: () => {
           ctx.sfx.click();
           ctx.navigate("#/chronicle");
+        },
+      }),
+      button("Ferryman's Ledger", {
+        hint: "Borrow coin today, pay with tomorrow's earnings",
+        onClick: () => {
+          ctx.sfx.click();
+          ctx.navigate("#/ledger");
         },
       }),
     ),

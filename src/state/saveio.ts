@@ -1,7 +1,8 @@
 import { FAMILIES, type Family } from "../data/bestiary";
 import { CLASSES, type ClassId } from "../data/classes";
 import { BOONS } from "../data/boons";
-import type { ActiveGate, Chronicle, GameState, Pc, Settings, StatusMark } from "./save";
+import type { ActiveGate, Chronicle, FallenRun, GameState, Inventory, Pc, RunRecord, Settings, StatusMark } from "./save";
+import { FALLEN_SIZE, HALL_SIZE } from "./save";
 /**
  * Save-code import. Export is just `serialize(state)` — the state carries its
  * own `version`, so a code is plain JSON. Import re-validates everything the
@@ -69,7 +70,7 @@ function parsePc(raw: Record<string, unknown>): Pc | null {
   if (Array.isArray(raw.statuses)) {
     for (const mark of raw.statuses) {
       if (!isObj(mark)) continue;
-      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" ? mark.kind : null;
+      const kind = mark.kind === "poison" || mark.kind === "wound" || mark.kind === "blind" || mark.kind === "burn" || mark.kind === "focus" ? mark.kind : null;
       if (kind && int(mark.roundsLeft) && mark.roundsLeft >= 0) statuses.push({ kind, roundsLeft: mark.roundsLeft });
     }
   }
@@ -145,6 +146,22 @@ export function importSave(raw: string): ImportResult {
       done: boolOr(o.done, false),
     });
   }
+  // Quest board is optional history: tolerate absence, clamp the rest.
+  let quests: GameState["quests"];
+  if (isObj(parsed.quests)) {
+    const qOffers = Array.isArray(parsed.quests.offers) ? parsed.quests.offers.filter(str) : [];
+    const qDone = Array.isArray(parsed.quests.completed) ? parsed.quests.completed.filter(str) : [];
+    const qa = isObj(parsed.quests.active) ? parsed.quests.active : undefined;
+    const qActive = qa && str(qa.id) && int(qa.step) && qa.step >= 0 && int(qa.progress) && qa.progress >= 0
+      ? { id: qa.id, step: qa.step, progress: qa.progress }
+      : undefined;
+    quests = { offers: qOffers, completed: qDone, ...(qActive ? { active: qActive } : {}) };
+  }
+  // The Ferryman's Ledger is optional history: tolerate absence, clamp to whole coin.
+  let ledger: GameState["ledger"];
+  if (isObj(parsed.ledger)) {
+    ledger = { debt: nonNegInt(parsed.ledger.debt), borrowed: nonNegInt(parsed.ledger.borrowed) };
+  }
 
   const inventory: GameState["inventory"] = {};
   if (isObj(parsed.inventory)) {
@@ -174,7 +191,54 @@ export function importSave(raw: string): ImportResult {
     deepestFloor: nonNeg(rc.deepestFloor),
     bestHit: nonNeg(rc.bestHit),
     crits: nonNeg(rc.crits),
+    goldEarned: nonNeg(rc.goldEarned),
   };
+
+  // The Hall of Runs is cosmetic memory like the chronicle — clamp or drop records, never reject.
+  const hall: RunRecord[] = [];
+  if (Array.isArray(parsed.hall)) {
+    for (const rh of parsed.hall) {
+      if (!isObj(rh) || !str(rh.gateId)) continue; // a memory without its gate is no memory
+      const items: Inventory = {};
+      if (isObj(rh.items)) for (const [k, v] of Object.entries(rh.items)) if (int(v) && v > 0) items[k] = v;
+      hall.push({
+        gateId: rh.gateId,
+        dayKey: str(rh.dayKey) ? rh.dayKey : "",
+        runNumber: nonNeg(rh.runNumber),
+        depth: nonNeg(rh.depth),
+        kills: nonNeg(rh.kills),
+        medals: nonNeg(rh.medals),
+        gold: nonNeg(rh.gold),
+        items,
+        crew: Array.isArray(rh.crew)
+          ? rh.crew
+              .filter((c): c is { name: string; level?: number } => isObj(c) && str(c.name))
+              .map((c) => ({ name: c.name.slice(0, 40), level: nonNeg(c.level) }))
+          : [],
+      });
+      if (hall.length >= HALL_SIZE) break; // an export cannot bloat the shelf past its canonical size
+    }
+  }
+
+  // The memorial shelf is memory too — clamp or drop names, never reject the whole save.
+  const fallen: FallenRun[] = [];
+  if (Array.isArray(parsed.fallen)) {
+    for (const fh of parsed.fallen) {
+      if (!isObj(fh) || !str(fh.gateId)) continue; // a loss without its gate is no loss
+      fallen.push({
+        dayKey: str(fh.dayKey) ? fh.dayKey : "",
+        gateId: fh.gateId,
+        depth: nonNeg(fh.depth),
+        crew: Array.isArray(fh.crew)
+          ? fh.crew
+              .filter((c): c is { name: string; level?: number } => isObj(c) && str(c.name))
+              .map((c) => ({ name: c.name.slice(0, 40), level: nonNeg(c.level) }))
+          : [],
+        cause: str(fh.cause) ? String(fh.cause).slice(0, 120) : "lost in the dark",
+      });
+      if (fallen.length >= FALLEN_SIZE) break; // an export cannot bloat the memorial past its canonical size
+    }
+  }
 
   const rs = isObj(parsed.settings) ? parsed.settings : {};
   const settings: Settings = {
@@ -205,14 +269,20 @@ export function importSave(raw: string): ImportResult {
     inventory,
     codex: Array.isArray(parsed.codex) ? parsed.codex.filter(str) : [],
     medals: Array.isArray(parsed.medals) ? parsed.medals.filter(str) : [],
+    ...(Array.isArray(parsed.trophies) && parsed.trophies.length ? { trophies: parsed.trophies.filter(str) } : {}), // trophy perks survive a round-trip
+    ...(Array.isArray(parsed.dailyBests) && parsed.dailyBests.length ? { dailyBests: parsed.dailyBests.filter((b) => b && typeof b.score === "number" && str(b.dayKey) && str(b.gateId)) } : {}), // the leaderboard survives export/import
     bounties: {
       offers,
       completed: parsed.bounties.completed.filter(str),
       ...(str(parsed.bounties.active) ? { active: parsed.bounties.active } : {}),
     },
+    ...(quests ? { quests } : {}),
+    ...(ledger ? { ledger } : {}),
     dayKey: parsed.dayKey,
     runs,
     chronicle,
+    hall,
+    fallen,
     settings,
     ...(boolOr(parsed.reviveToken, false) ? { reviveToken: true } : {}),
     ...(boolOr(parsed.tourSeen, false) ? { tourSeen: true } : {}),

@@ -62,6 +62,17 @@ export function renderMinimap(canvas: HTMLCanvasElement, input: MinimapInput): v
     }
   }
 
+  // Blue water sheen over flooded floor cells (gimmick gates) — explored cells only.
+  if (map.flood) {
+    ctx.fillStyle = "rgba(84,150,207,0.55)";
+    for (const id of map.flood) {
+      if (!visited.has(id)) continue;
+      const x = (id % w) * CELL;
+      const y = Math.floor(id / w) * CELL;
+      ctx.fillRect(x, y + 1, CELL, CELL - 2);
+    }
+  }
+
   // Gold stairs glyph.
   for (const id of stairsCells) {
     const x = (id % w) * CELL;
